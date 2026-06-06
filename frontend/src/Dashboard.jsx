@@ -115,16 +115,8 @@ export default function Dashboard() {
         throw new Error('API failed');
       }
     } catch (err) {
-      console.warn('Backend offline, running in offline mock mode.', err);
+      console.error('Failed to fetch schedules from database:', err);
       setBackendOnline(false);
-      
-      const saved = localStorage.getItem('manar_schedules');
-      if (saved) {
-        setSchedules(JSON.parse(saved));
-      } else {
-        setSchedules(MOCK_SCHEDULES);
-        localStorage.setItem('manar_schedules', JSON.stringify(MOCK_SCHEDULES));
-      }
     } finally {
       setLoading(false);
     }
@@ -198,49 +190,19 @@ export default function Dashboard() {
     setDraggedSchedule(null);
 
     try {
-      if (backendOnline) {
-        const token = localStorage.getItem('manar_token');
-        const res = await axios.post('http://localhost:5000/api/schedules/override', payload, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {}
-        });
-        if (res.data && res.data.success) {
-          showToast(`Successfully moved to ${targetDay} ${targetStart}-${targetEnd}! Notification sent to Group.`);
-          fetchSchedules();
-        }
-      } else {
-        const updated = schedules.map(s => {
-          if (s.id === scheduleId) {
-            const newOverride = {
-              id: Date.now(),
-              scheduleId,
-              newStartTime: targetStart,
-              newEndTime: targetEnd,
-              newRoomId: s.roomId,
-              newRoom: s.room,
-              date: new Date(targetDate),
-              overrideType
-            };
-            return {
-              ...s,
-              overrides: [...s.overrides, newOverride]
-            };
-          }
-          return s;
-        });
-        setSchedules(updated);
-        localStorage.setItem('manar_schedules', JSON.stringify(updated));
-        showToast(`[Mock Mode] Moved schedule and simulated targeted notification alert!`, 'info');
+      const token = localStorage.getItem('manar_token');
+      const res = await axios.post('http://localhost:5000/api/schedules/override', payload, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (res.data && res.data.success) {
+        showToast(`Successfully moved to ${targetDay} ${targetStart}-${targetEnd}! Notification sent to Group.`);
+        fetchSchedules();
       }
     } catch (err) {
       console.error('Failed to post override', err);
-      showToast('Error creating override.', 'error');
+      const errMsg = err.response?.data?.error || 'Error creating override.';
+      showToast(errMsg, 'error');
     }
-  };
-
-  const handleReset = () => {
-    localStorage.removeItem('manar_schedules');
-    setSchedules(MOCK_SCHEDULES);
-    showToast('Mock data reset to original schedules.', 'info');
   };
 
   const handleAddSchedule = async (e) => {
@@ -260,54 +222,12 @@ export default function Dashboard() {
     };
 
     try {
-      if (backendOnline) {
-        const token = localStorage.getItem('manar_token');
-        const res = await axios.post('http://localhost:5000/api/schedules', payload, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {}
-        });
-        if (res.data && res.data.success) {
-          showToast('Schedule created successfully!');
-          setIsAddModalOpen(false);
-          setNewScheduleForm({
-            subjectName: '',
-            subjectCode: '',
-            subjectType: 'THEORY',
-            roomName: '',
-            roomCapacity: '45',
-            lecturerName: '',
-            groupName: 'Group A',
-            dayOfWeek: 'SUNDAY',
-            timeSlotIndex: '0'
-          });
-          fetchSchedules();
-        }
-      } else {
-        const newMock = {
-          id: Date.now(),
-          subjectId: Math.floor(Math.random() * 1000) + 100,
-          subject: {
-            name: payload.subjectName,
-            code: payload.subjectCode,
-            type: payload.subjectType
-          },
-          roomId: Math.floor(Math.random() * 1000) + 200,
-          room: {
-            name: payload.roomName,
-            capacity: payload.roomCapacity
-          },
-          lecturerName: payload.lecturerName,
-          groupId: payload.groupName === 'Group B' ? 2 : 1,
-          group: { name: payload.groupName },
-          dayOfWeek: payload.dayOfWeek,
-          startTime: payload.startTime,
-          endTime: payload.endTime,
-          overrides: []
-        };
-
-        const updated = [...schedules, newMock];
-        setSchedules(updated);
-        localStorage.setItem('manar_schedules', JSON.stringify(updated));
-        showToast('Created new schedule in Offline Sandbox Mode!', 'info');
+      const token = localStorage.getItem('manar_token');
+      const res = await axios.post('http://localhost:5000/api/schedules', payload, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (res.data && res.data.success) {
+        showToast('Schedule created successfully!');
         setIsAddModalOpen(false);
         setNewScheduleForm({
           subjectName: '',
@@ -320,14 +240,12 @@ export default function Dashboard() {
           dayOfWeek: 'SUNDAY',
           timeSlotIndex: '0'
         });
+        fetchSchedules();
       }
     } catch (err) {
       console.error('Failed to create schedule', err);
-      if (err.response && err.response.data && err.response.data.error) {
-        showToast(err.response.data.error, 'error');
-      } else {
-        showToast('Error creating new schedule.', 'error');
-      }
+      const errMsg = err.response?.data?.error || 'Error creating new schedule.';
+      showToast(errMsg, 'error');
     }
   };
 
@@ -404,15 +322,6 @@ export default function Dashboard() {
               {backendOnline ? 'Database Connected' : 'Offline Sandbox Mode'}
             </span>
           </div>
-
-          {!backendOnline && (
-            <button
-              onClick={handleReset}
-              className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-md transition border border-gray-700 font-medium"
-            >
-              Reset Mock Data
-            </button>
-          )}
 
           <button
             onClick={handleLogout}

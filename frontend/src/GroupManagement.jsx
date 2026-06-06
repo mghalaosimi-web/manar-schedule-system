@@ -1,36 +1,18 @@
 import React, { useState, useEffect } from 'react';
-
-const INITIAL_GROUPS = [
-  { id: 1, name: 'Group A', major: 'Software Engineering', level: 'Level 3' },
-  { id: 2, name: 'Group B', major: 'Computer Science', level: 'Level 3' },
-  { id: 3, name: 'Group C', major: 'Information Systems', level: 'Level 2' }
-];
-
-const INITIAL_ROOMS = [
-  { id: 201, name: 'Hall 3A', capacity: 60 },
-  { id: 202, name: 'Lab 5', capacity: 30 },
-  { id: 203, name: 'Hall 1B', capacity: 80 }
-];
-
-const INITIAL_LECTURERS = [
-  { id: 1, name: 'Dr. Ahmad Masri', email: 'ahmad@manar.edu' },
-  { id: 2, name: 'Eng. Sarah Taji', email: 'sarah@manar.edu' },
-  { id: 3, name: 'Dr. Manar Al-Saeed', email: 'manar@manar.edu' }
-];
+import axios from 'axios';
+import { toast } from 'react-hot-toast';
 
 export default function GroupManagement() {
   const [activeTab, setActiveTab] = useState('groups');
-  const [groups, setGroups] = useState(() => {
-    const saved = localStorage.getItem('db_groups');
-    return saved ? JSON.parse(saved) : INITIAL_GROUPS;
-  });
-  const [rooms, setRooms] = useState(() => {
-    const saved = localStorage.getItem('db_rooms');
-    return saved ? JSON.parse(saved) : INITIAL_ROOMS;
-  });
+  const [groups, setGroups] = useState([]);
+  const [rooms, setRooms] = useState([]);
   const [lecturers, setLecturers] = useState(() => {
     const saved = localStorage.getItem('db_lecturers');
-    return saved ? JSON.parse(saved) : INITIAL_LECTURERS;
+    return saved ? JSON.parse(saved) : [
+      { id: 1, name: 'Dr. Ahmad Masri', email: 'ahmad@manar.edu' },
+      { id: 2, name: 'Eng. Sarah Taji', email: 'sarah@manar.edu' },
+      { id: 3, name: 'Dr. Manar Al-Saeed', email: 'manar@manar.edu' }
+    ];
   });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -38,16 +20,35 @@ export default function GroupManagement() {
   const [formState, setFormState] = useState({});
 
   useEffect(() => {
-    localStorage.setItem('db_groups', JSON.stringify(groups));
-  }, [groups]);
-
-  useEffect(() => {
-    localStorage.setItem('db_rooms', JSON.stringify(rooms));
-  }, [rooms]);
-
-  useEffect(() => {
     localStorage.setItem('db_lecturers', JSON.stringify(lecturers));
   }, [lecturers]);
+
+  const fetchGroups = async () => {
+    try {
+      const res = await axios.get('http://localhost:5000/api/groups');
+      if (res.data && res.data.success) {
+        setGroups(res.data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching groups:', err);
+    }
+  };
+
+  const fetchRooms = async () => {
+    try {
+      const res = await axios.get('http://localhost:5000/api/rooms');
+      if (res.data && res.data.success) {
+        setRooms(res.data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching rooms:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchGroups();
+    fetchRooms();
+  }, []);
 
   const openEdit = (type, item) => {
     setEditingItem({ type, item });
@@ -55,46 +56,80 @@ export default function GroupManagement() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (type, id) => {
-    if (type === 'groups') {
-      setGroups(groups.filter(g => g.id !== id));
-    } else if (type === 'rooms') {
-      setRooms(rooms.filter(r => r.id !== id));
-    } else {
-      setLecturers(lecturers.filter(l => l.id !== id));
+  const handleDelete = async (type, id) => {
+    const token = localStorage.getItem('manar_token');
+    try {
+      if (type === 'groups') {
+        await axios.delete(`http://localhost:5000/api/groups/${id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        toast.success('Group deleted successfully');
+        fetchGroups();
+      } else if (type === 'rooms') {
+        await axios.delete(`http://localhost:5000/api/rooms/${id}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        toast.success('Room deleted successfully');
+        fetchRooms();
+      } else {
+        setLecturers(lecturers.filter(l => l.id !== id));
+        toast.success('Lecturer deleted successfully');
+      }
+    } catch (err) {
+      console.error('Delete error:', err);
+      const errMsg = err.response?.data?.error || 'Failed to delete record';
+      toast.error(errMsg);
     }
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     const type = editingItem.type;
     const isNew = !editingItem.item;
-    
-    if (type === 'groups') {
-      if (isNew) {
-        const newItem = { ...formState, id: Date.now() };
-        setGroups([...groups, newItem]);
-      } else {
-        setGroups(groups.map(g => g.id === formState.id ? formState : g));
+    const token = localStorage.getItem('manar_token');
+
+    try {
+      if (type === 'groups') {
+        const payload = {
+          name: formState.name
+        };
+        if (!isNew) {
+          payload.id = formState.id;
+        }
+        await axios.post('http://localhost:5000/api/groups', payload, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        toast.success('Group saved successfully');
+        fetchGroups();
+      } else if (type === 'rooms') {
+        const payload = {
+          name: formState.name,
+          capacity: parseInt(formState.capacity) || 30
+        };
+        if (!isNew) {
+          payload.id = formState.id;
+        }
+        await axios.post('http://localhost:5000/api/rooms', payload, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        toast.success('Room saved successfully');
+        fetchRooms();
+      } else if (type === 'lecturers') {
+        if (isNew) {
+          const newItem = { ...formState, id: Date.now() };
+          setLecturers([...lecturers, newItem]);
+        } else {
+          setLecturers(lecturers.map(l => l.id === formState.id ? formState : l));
+        }
+        toast.success('Lecturer saved successfully');
       }
-    } else if (type === 'rooms') {
-      if (isNew) {
-        const newItem = { ...formState, id: Date.now(), capacity: parseInt(formState.capacity) || 30 };
-        setRooms([...rooms, newItem]);
-      } else {
-        const updated = { ...formState, capacity: parseInt(formState.capacity) || 30 };
-        setRooms(rooms.map(r => r.id === formState.id ? updated : r));
-      }
-    } else if (type === 'lecturers') {
-      if (isNew) {
-        const newItem = { ...formState, id: Date.now() };
-        setLecturers([...lecturers, newItem]);
-      } else {
-        setLecturers(lecturers.map(l => l.id === formState.id ? formState : l));
-      }
+      setIsModalOpen(false);
+      setEditingItem(null);
+    } catch (err) {
+      console.error('Save error:', err);
+      const errMsg = err.response?.data?.error || 'Failed to save record';
+      toast.error(errMsg);
     }
-    setIsModalOpen(false);
-    setEditingItem(null);
   };
 
   return (

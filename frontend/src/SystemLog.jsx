@@ -1,53 +1,43 @@
 import React, { useState, useEffect } from 'react';
-
-const MOCK_NOTIFICATIONS = [
-  {
-    id: 1,
-    groupName: 'Group A',
-    message: 'تنبيه طارئ: تم تعديل محاضرة Database Systems الخاصة بـ Group A. يرجى مراجعة الجدول.',
-    sentTime: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
-    status: 'SENT'
-  },
-  {
-    id: 2,
-    groupName: 'Group B',
-    message: 'تنبيه: تم نقل محاضرة Artificial Intelligence إلى قاعة 2A.',
-    sentTime: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
-    status: 'SENT'
-  },
-  {
-    id: 3,
-    groupName: 'All Groups',
-    message: 'عاجل: يرجى العلم ببدء امتحانات منتصف الفصل الدراسي يوم الأحد القادم.',
-    sentTime: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-    status: 'SENT'
-  }
-];
+import axios from 'axios';
 
 export default function SystemLog() {
   const [logs, setLogs] = useState([]);
 
-  useEffect(() => {
-    const fetchLogs = () => {
-      const savedLogs = localStorage.getItem('manar_notifications');
-      if (savedLogs) {
-        try {
-          setLogs(JSON.parse(savedLogs));
-        } catch (e) {
-          setLogs(MOCK_NOTIFICATIONS);
-        }
-      } else {
-        setLogs(MOCK_NOTIFICATIONS);
-        localStorage.setItem('manar_notifications', JSON.stringify(MOCK_NOTIFICATIONS));
+  const fetchLogs = async () => {
+    try {
+      const token = localStorage.getItem('manar_token');
+      const res = await axios.get('http://localhost:5000/api/admin/logs', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (res.data && res.data.success) {
+        setLogs(res.data.data.map(log => ({
+          id: log.id,
+          groupName: log.group ? log.group.name : 'All Groups',
+          message: log.message,
+          sentTime: log.sentTime,
+          status: log.status
+        })));
       }
-    };
+    } catch (err) {
+      console.error('Failed to fetch audit logs:', err);
+    }
+  };
 
+  useEffect(() => {
     fetchLogs();
   }, []);
 
-  const handleClearLogs = () => {
-    localStorage.removeItem('manar_notifications');
-    setLogs([]);
+  const handleClearLogs = async () => {
+    try {
+      const token = localStorage.getItem('manar_token');
+      await axios.delete('http://localhost:5000/api/admin/logs', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      setLogs([]);
+    } catch (err) {
+      console.error('Failed to clear logs:', err);
+    }
   };
 
   return (

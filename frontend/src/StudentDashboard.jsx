@@ -123,10 +123,8 @@ export default function StudentDashboard() {
   };
 
   useEffect(() => {
-    // Read profile configuration
     const savedProfile = localStorage.getItem('student_profile');
     let currentGroupId = 1;
-    let currentGroupName = 'Group A';
     if (savedProfile) {
       try {
         const parsed = JSON.parse(savedProfile);
@@ -136,7 +134,6 @@ export default function StudentDashboard() {
           groupName: parsed.groupId === 1 ? 'Group A' : (parsed.groupId === 2 ? 'Group B' : 'Group C')
         });
         currentGroupId = parsed.groupId;
-        currentGroupName = parsed.groupId === 1 ? 'Group A' : (parsed.groupId === 2 ? 'Group B' : 'Group C');
       } catch (e) {
         console.error(e);
       }
@@ -153,69 +150,43 @@ export default function StudentDashboard() {
           throw new Error('API failed');
         }
       } catch (err) {
+        console.error('Failed to fetch schedules:', err);
         setBackendOnline(false);
-        const saved = localStorage.getItem('manar_schedules');
-        if (saved) {
-          const allSchedules = JSON.parse(saved);
-          setSchedules(allSchedules.filter(s => s.groupId === currentGroupId));
-        } else {
-          setSchedules(MOCK_SCHEDULES.filter(s => s.groupId === currentGroupId));
-        }
       } finally {
         setLoading(false);
       }
     };
 
-    fetchStudentSchedule();
-  }, []);
+    const fetchLatestNotificationToast = async () => {
+      const hasShown = sessionStorage.getItem('manar_welcome_toast_shown');
+      if (hasShown) return;
 
-  useEffect(() => {
-    // Show a toast with the latest notification if it hasn't been shown in this session
-    const hasShown = sessionStorage.getItem('manar_welcome_toast_shown');
-    if (!hasShown && schedules.length > 0) {
-      const savedLogs = localStorage.getItem('manar_notifications');
-      let allLogs = [
-        {
-          id: 1,
-          groupId: 1,
-          groupName: 'Group A',
-          message: 'تنبيه طارئ: تم تعديل محاضرة Database Systems الخاصة بـ Group A. يرجى مراجعة الجدول.',
-          sentTime: new Date(Date.now() - 3600000).toISOString(),
-          status: 'SENT'
-        },
-        {
-          id: 3,
-          groupId: null,
-          groupName: 'All Groups',
-          message: 'عاجل: يرجى العلم ببدء امتحانات منتصف الفصل الدراسي يوم الأحد القادم.',
-          sentTime: new Date(Date.now() - 86400000).toISOString(),
-          status: 'SENT'
-        }
-      ];
-      if (savedLogs) {
-        try {
-          allLogs = JSON.parse(savedLogs);
-        } catch (e) {}
-      }
-      
-      const currentGroupId = profile.groupId || 1;
-      const filtered = allLogs.filter(log => log.groupId === null || log.groupId === currentGroupId);
-      
-      if (filtered.length > 0) {
-        const latest = filtered[0];
-        toast(latest.message, {
-          duration: 6000,
-          icon: '📢',
-          style: {
-            background: '#1f2937',
-            color: '#f3f4f6',
-            border: '1px solid #374151',
-          }
+      try {
+        const token = localStorage.getItem('manar_token');
+        const res = await axios.get('http://localhost:5000/api/notifications/student', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
-        sessionStorage.setItem('manar_welcome_toast_shown', 'true');
+        if (res.data && res.data.success && res.data.data.length > 0) {
+          const latest = res.data.data[0];
+          toast(latest.message, {
+            duration: 6000,
+            icon: '📢',
+            style: {
+              background: '#1f2937',
+              color: '#f3f4f6',
+              border: '1px solid #374151',
+            }
+          });
+          sessionStorage.setItem('manar_welcome_toast_shown', 'true');
+        }
+      } catch (e) {
+        console.error('Failed to toast welcome notification:', e);
       }
-    }
-  }, [profile, schedules]);
+    };
+
+    fetchStudentSchedule();
+    fetchLatestNotificationToast();
+  }, []);
 
   const nextLecture = schedules.length > 0 ? schedules[0] : null;
 

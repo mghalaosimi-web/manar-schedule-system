@@ -12,27 +12,28 @@ export default function AdminOverview() {
   });
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    // Attempt to read current count of items from localStorage database if available
-    const savedSchedules = localStorage.getItem('manar_schedules');
-    if (savedSchedules) {
-      try {
-        const parsed = JSON.parse(savedSchedules);
-        setStats(prev => ({
-          ...prev,
-          lectures: parsed.length
-        }));
-      } catch (e) {
-        console.error(e);
+  const fetchMetrics = async () => {
+    try {
+      const token = localStorage.getItem('manar_token');
+      const res = await axios.get('http://localhost:5000/api/admin/metrics', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (res.data && res.data.success) {
+        setStats(res.data.data);
       }
+    } catch (err) {
+      console.error('Failed to fetch admin metrics:', err);
     }
+  };
+
+  useEffect(() => {
+    fetchMetrics();
   }, []);
 
-  const handleSync = () => {
+  const handleSync = async () => {
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-    }, 800);
+    await fetchMetrics();
+    setLoading(false);
   };
 
   return (

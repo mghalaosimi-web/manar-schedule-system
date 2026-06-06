@@ -1,18 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-
-const TARGET_OPTIONS = [
-  { id: 'ALL', label: 'All Students (General Broadcast)' },
-  { id: '1', label: 'Group A (Software Engineering)' },
-  { id: '2', label: 'Group B (Computer Science)' },
-  { id: '3', label: 'Group C (Information Systems)' }
-];
 
 export default function BroadcastCenter() {
   const [target, setTarget] = useState('ALL');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [sentStatus, setSentStatus] = useState(null);
+  const [groups, setGroups] = useState([]);
+
+  useEffect(() => {
+    const fetchGroups = async () => {
+      try {
+        const res = await axios.get('http://localhost:5000/api/groups');
+        if (res.data && res.data.success) {
+          setGroups(res.data.data);
+        }
+      } catch (err) {
+        console.error('Error fetching groups for broadcast target:', err);
+      }
+    };
+    fetchGroups();
+  }, []);
 
   const handleSend = async (e) => {
     e.preventDefault();
@@ -21,28 +29,27 @@ export default function BroadcastCenter() {
     setLoading(true);
     setSentStatus(null);
 
-    const logEntry = {
-      id: Date.now(),
-      studentId: null,
-      groupId: target === 'ALL' ? null : parseInt(target),
-      groupName: target === 'ALL' ? 'All Groups' : (target === '1' ? 'Group A' : (target === '2' ? 'Group B' : 'Group C')),
-      message: message,
-      sentTime: new Date().toISOString(),
-      status: 'SENT'
-    };
-
-    // Save to simulated localStorage database
+    const token = localStorage.getItem('manar_token');
     try {
-      const savedLogs = localStorage.getItem('manar_notifications');
-      const currentLogs = savedLogs ? JSON.parse(savedLogs) : [];
-      localStorage.setItem('manar_notifications', JSON.stringify([logEntry, ...currentLogs]));
+      const res = await axios.post('http://localhost:5000/api/broadcasts', {
+        groupId: target,
+        message: message
+      }, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
 
-      // Clear input fields and notify
-      setMessage('');
-      setSentStatus({ success: true, message: `Alert broadcasted successfully to ${logEntry.groupName}!` });
-      setTimeout(() => setSentStatus(null), 5000);
+      if (res.data && res.data.success) {
+        setMessage('');
+        const targetLabel = target === 'ALL' ? 'All Students' : (groups.find(g => g.id.toString() === target.toString())?.name || 'Selected Group');
+        setSentStatus({ success: true, message: `Alert broadcasted successfully to ${targetLabel}!` });
+        setTimeout(() => setSentStatus(null), 5000);
+      } else {
+        throw new Error('API failed');
+      }
     } catch (err) {
-      setSentStatus({ success: false, message: 'Failed to dispatch broadcast logs.' });
+      console.error(err);
+      const errMsg = err.response?.data?.error || 'Failed to dispatch broadcast logs.';
+      setSentStatus({ success: false, message: errMsg });
     } finally {
       setLoading(false);
     }
@@ -79,9 +86,12 @@ export default function BroadcastCenter() {
               onChange={(e) => setTarget(e.target.value)}
               className="w-full bg-gray-900 border border-gray-750 rounded p-2.5 text-white font-bold focus:outline-none focus:border-lime-500"
             >
-              {TARGET_OPTIONS.map(opt => (
-                <option key={opt.id} value={opt.id} className="bg-gray-900 text-white">
-                  {opt.label}
+              <option value="ALL" className="bg-gray-900 text-white">
+                All Students (General Broadcast)
+              </option>
+              {groups.map(g => (
+                <option key={g.id} value={g.id} className="bg-gray-900 text-white">
+                  {g.name}
                 </option>
               ))}
             </select>

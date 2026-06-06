@@ -111,16 +111,8 @@ export default function StudentApp() {
           throw new Error('API failed');
         }
       } catch (err) {
-        console.warn('Backend offline, loading student local mock schedule.', err);
+        console.error('Failed to fetch student schedules from database:', err);
         setBackendOnline(false);
-
-        const saved = localStorage.getItem('manar_schedules');
-        if (saved) {
-          const allSchedules = JSON.parse(saved);
-          setSchedules(allSchedules.filter(s => s.groupId === groupId));
-        } else {
-          setSchedules(MOCK_SCHEDULES);
-        }
       } finally {
         setLoading(false);
       }

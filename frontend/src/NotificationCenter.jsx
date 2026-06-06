@@ -1,62 +1,27 @@
 import React, { useState, useEffect } from 'react';
-
-const MOCK_NOTIFICATIONS = [
-  {
-    id: 1,
-    groupId: 1,
-    groupName: 'Group A',
-    message: 'تنبيه طارئ: تم تعديل محاضرة Database Systems الخاصة بـ Group A. يرجى مراجعة الجدول.',
-    sentTime: new Date(Date.now() - 3600000).toISOString(),
-    status: 'SENT'
-  },
-  {
-    id: 3,
-    groupId: null,
-    groupName: 'All Groups',
-    message: 'عاجل: يرجى العلم ببدء امتحانات منتصف الفصل الدراسي يوم الأحد القادم.',
-    sentTime: new Date(Date.now() - 86400000).toISOString(),
-    status: 'SENT'
-  }
-];
+import axios from 'axios';
 
 export default function NotificationCenter() {
   const [notifications, setNotifications] = useState([]);
-  const [profile, setProfile] = useState({ groupId: 1 });
 
   useEffect(() => {
-    // Read profile configuration to filter notifications
-    const savedProfile = localStorage.getItem('student_profile');
-    let studentGroupId = 1;
-    if (savedProfile) {
+    const fetchNotifications = async () => {
       try {
-        const parsed = JSON.parse(savedProfile);
-        setProfile(parsed);
-        studentGroupId = parsed.groupId;
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    const loadNotifications = () => {
-      const savedLogs = localStorage.getItem('manar_notifications');
-      let allLogs = [];
-      if (savedLogs) {
-        try {
-          allLogs = JSON.parse(savedLogs);
-        } catch (e) {
-          allLogs = MOCK_NOTIFICATIONS;
+        const token = localStorage.getItem('manar_token');
+        const res = await axios.get('http://localhost:5000/api/notifications/student', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        if (res.data && res.data.success) {
+          setNotifications(res.data.data);
         }
-      } else {
-        allLogs = MOCK_NOTIFICATIONS;
-        localStorage.setItem('manar_notifications', JSON.stringify(MOCK_NOTIFICATIONS));
+      } catch (err) {
+        console.error('Failed to fetch student notifications:', err);
       }
-      
-      // Filter logs to show matching group alerts or general broadcasts
-      const filtered = allLogs.filter(log => log.groupId === null || log.groupId === studentGroupId);
-      setNotifications(filtered);
     };
 
-    loadNotifications();
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   return (
