@@ -1,0 +1,129 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum SubjectType {
+  THEORY
+  PRACTICAL
+}
+
+enum DayOfWeek {
+  SUNDAY
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+}
+
+enum OverrideType {
+  TEMPORARY
+  PERMANENT
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model Department {
+  id     Int     @id @default(autoincrement())
+  name   String  @unique
+  majors Major[]
+}
+
+model Major {
+  id           Int        @id @default(autoincrement())
+  name         String
+  departmentId Int
+  department   Department @relation(fields: [departmentId], references: [id])
+  students     Student[]
+}
+
+model Level {
+  id       Int       @id @default(autoincrement())
+  name     String
+  students Student[]
+}
+
+model Group {
+  id               Int               @id @default(autoincrement())
+  name             String
+  students         Student[]
+  schedules        Schedule[]
+  notificationLogs NotificationLog[]
+}
+
+model Student {
+  id               Int               @id @default(autoincrement())
+  name             String
+  email            String            @unique
+  majorId          Int
+  major            Major             @relation(fields: [majorId], references: [id])
+  levelId          Int
+  level            Level             @relation(fields: [levelId], references: [id])
+  groupId          Int
+  group            Group             @relation(fields: [groupId], references: [id])
+  notificationLogs NotificationLog[]
+}
+
+model Subject {
+  id        Int         @id @default(autoincrement())
+  name      String
+  code      String      @unique
+  type      SubjectType
+  schedules Schedule[]
+}
+
+model Room {
+  id        Int                @id @default(autoincrement())
+  name      String             @unique
+  capacity  Int
+  schedules Schedule[]
+  overrides ScheduleOverride[]
+}
+
+model Schedule {
+  id           Int                @id @default(autoincrement())
+  subjectId    Int
+  subject      Subject            @relation(fields: [subjectId], references: [id])
+  roomId       Int
+  room         Room               @relation(fields: [roomId], references: [id])
+  lecturerName String
+  groupId      Int
+  group        Group              @relation(fields: [groupId], references: [id])
+  dayOfWeek    DayOfWeek
+  startTime    String
+  endTime      String
+  overrides    ScheduleOverride[]
+}
+
+model ScheduleOverride {
+  id           Int          @id @default(autoincrement())
+  scheduleId   Int
+  schedule     Schedule     @relation(fields: [scheduleId], references: [id])
+  newStartTime String?
+  newEndTime   String?
+  newRoomId    Int?
+  newRoom      Room?        @relation(fields: [newRoomId], references: [id])
+  date         DateTime
+  overrideType OverrideType
+}
+
+model NotificationLog {
+  id        Int                @id @default(autoincrement())
+  studentId Int?
+  student   Student?           @relation(fields: [studentId], references: [id])
+  groupId   Int?
+  group     Group?             @relation(fields: [groupId], references: [id])
+  message   String
+  sentTime  DateTime           @default(now())
+  status    NotificationStatus
+}
