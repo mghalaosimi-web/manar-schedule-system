@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useTranslation } from 'react-i18next';
 
 const DAYS = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
 
@@ -49,7 +50,17 @@ const MOCK_SCHEDULES = [
 ];
 
 export default function StudentApp() {
-  const [groupId] = useState(1); // Simulating logged-in student belonging to Group A
+  const { t } = useTranslation();
+  const [groupId, setGroupId] = useState(() => {
+    const saved = localStorage.getItem('manar_user');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.groupId || 1;
+      } catch (e) {}
+    }
+    return 1;
+  });
   const [schedules, setSchedules] = useState([]);
   const [backendOnline, setBackendOnline] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -89,7 +100,10 @@ export default function StudentApp() {
     const fetchStudentSchedule = async () => {
       try {
         setLoading(true);
-        const res = await axios.get(`http://localhost:5000/api/schedules?groupId=${groupId}`);
+        const token = localStorage.getItem('manar_token');
+        const res = await axios.get(`http://localhost:5000/api/schedules?groupId=${groupId}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
         if (res.data && res.data.success) {
           setSchedules(res.data.data);
           setBackendOnline(true);
@@ -155,16 +169,20 @@ export default function StudentApp() {
             
             {/* Top Section: Active Alert / Next Upcoming Lecture */}
             <section className="space-y-3">
-              <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Next Upcoming Lecture</h2>
+              <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t('dashboard.nextUpcoming')}</h2>
               {nextLecture ? (
-                <div className="relative overflow-hidden rounded-xl border-l-4 border-red-500 bg-gradient-to-r from-red-950/40 to-gray-850 p-5 shadow-lg flex flex-col gap-4">
+                <div className={`relative overflow-hidden rounded-xl border-l-4 p-5 shadow-lg flex flex-col gap-4 ${
+                  isOverridden(nextLecture)
+                    ? 'border-orange-500 bg-orange-950/20 text-orange-200'
+                    : 'border-red-500 bg-gradient-to-r from-red-950/40 to-gray-850'
+                }`}>
                   {/* Alert Pin Badge */}
                   <div className="self-start flex items-center gap-1.5 bg-red-500/10 border border-red-500/30 px-2 py-0.5 rounded text-[9px] font-bold text-red-400 uppercase tracking-wide">
                     <span className="relative flex h-1.5 w-1.5">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
                     </span>
-                    Starts in 15 Minutes
+                    {t('dashboard.nextStartsIn')}
                   </div>
 
                   <div>
@@ -174,39 +192,39 @@ export default function StudentApp() {
 
                   <div className="grid grid-cols-2 gap-y-3 gap-x-4 pt-3 border-t border-gray-800/80 text-xs">
                     <div>
-                      <span className="text-gray-500 block text-[10px] uppercase font-semibold">Time Slot</span>
+                      <span className="text-gray-500 block text-[10px] uppercase font-semibold">{t('dashboard.timeSlot')}</span>
                       <span className="font-bold text-gray-250 mt-0.5 block">{getActiveStartTime(nextLecture)} - {getActiveEndTime(nextLecture)}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500 block text-[10px] uppercase font-semibold">Classroom</span>
+                      <span className="text-gray-500 block text-[10px] uppercase font-semibold">{t('dashboard.classroom')}</span>
                       <span className="font-bold text-gray-250 mt-0.5 block">{nextLecture.room?.name || 'N/A'}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500 block text-[10px] uppercase font-semibold">Lecturer</span>
+                      <span className="text-gray-500 block text-[10px] uppercase font-semibold">{t('dashboard.lecturer')}</span>
                       <span className="font-bold text-gray-250 mt-0.5 block">{nextLecture.lecturerName}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500 block text-[10px] uppercase font-semibold">Day</span>
+                      <span className="text-gray-500 block text-[10px] uppercase font-semibold">{t('dashboard.day')}</span>
                       <span className="font-bold text-gray-250 mt-0.5 block">{getActiveDay(nextLecture)}</span>
                     </div>
                   </div>
 
                   {isOverridden(nextLecture) && (
-                    <div className="bg-amber-950/30 border border-amber-900/40 rounded-lg p-2.5 text-[11px] text-amber-300">
-                      ⚠️ Rescheduled Exception: Please note the updated room or time slot shown above.
+                    <div className="bg-orange-950/30 border border-orange-900/40 rounded-lg p-2.5 text-[11px] text-orange-350">
+                      {t('dashboard.rescheduledWarning')}
                     </div>
                   )}
                 </div>
               ) : (
                 <div className="bg-gray-850/40 border border-gray-800 rounded-xl p-6 text-center text-gray-500 text-xs">
-                  No upcoming lectures today.
+                  {t('dashboard.noClassesRegistered')}
                 </div>
               )}
             </section>
 
             {/* Bottom Section: Daily Schedule List */}
             <section className="space-y-4">
-              <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Weekly Timeline (Group A)</h2>
+              <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t('dashboard.weeklyTimeline')}</h2>
               <div className="space-y-4">
                 {DAYS.map(day => {
                   const daySchedules = schedules.filter(s => getActiveDay(s) === day);
@@ -216,7 +234,7 @@ export default function StudentApp() {
                     <div key={day} className="space-y-2">
                       <div className="flex items-center justify-between px-1">
                         <span className="text-[10px] font-extrabold uppercase tracking-widest text-gray-450">{day}</span>
-                        <span className="text-[9px] text-gray-650 font-bold">{daySchedules.length} class(es)</span>
+                        <span className="text-[9px] text-gray-650 font-bold">{daySchedules.length} {t('dashboard.classes')}</span>
                       </div>
 
                       <div className="space-y-2.5">
@@ -227,7 +245,9 @@ export default function StudentApp() {
                             <div
                               key={schedule.id}
                               className={`p-4 rounded-xl border flex flex-col justify-between gap-3 transition hover:scale-[1.01] duration-150 ${
-                                isTheory
+                                overridden
+                                  ? 'border-orange-500 bg-orange-950/20 text-orange-200 shadow-md shadow-orange-950/10'
+                                  : isTheory
                                   ? 'bg-blue-900/10 border-blue-800/40 text-blue-200'
                                   : 'bg-green-900/10 border-green-800/40 text-green-200'
                               }`}
@@ -238,17 +258,19 @@ export default function StudentApp() {
                                   <p className="text-[10px] font-mono mt-0.5 text-gray-450">{schedule.subject.code}</p>
                                 </div>
                                 <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                                  isTheory
+                                  overridden
+                                    ? 'bg-orange-900/40 border border-orange-850/30 text-orange-300'
+                                    : isTheory
                                     ? 'bg-blue-900/40 border border-blue-800/30 text-blue-300'
                                     : 'bg-green-900/40 border border-green-800/30 text-green-300'
                                 }`}>
-                                  {isTheory ? 'Theory' : 'Practical (Group A)'}
+                                  {isTheory ? t('dashboard.theory') : t('dashboard.practical')}
                                 </span>
                               </div>
 
                               <div className="flex justify-between items-end pt-2 border-t border-white/5 text-[11px] text-gray-400">
                                 <div>
-                                  Room: <span className="font-semibold text-gray-300">{schedule.room?.name || 'N/A'}</span> • <span className="text-gray-450">{schedule.lecturerName}</span>
+                                  {t('dashboard.classroom')}: <span className="font-semibold text-gray-300">{schedule.room?.name || 'N/A'}</span> • <span className="text-gray-450">{schedule.lecturerName}</span>
                                 </div>
                                 <div className="text-right">
                                   <span className="font-extrabold text-gray-200">
@@ -258,8 +280,8 @@ export default function StudentApp() {
                               </div>
 
                               {overridden && (
-                                <div className="bg-amber-950/25 border border-amber-900/30 text-amber-400 text-[9px] font-bold px-2 py-0.5 rounded self-start uppercase">
-                                  Rescheduled
+                                <div className="bg-orange-500/20 border border-orange-500/50 text-orange-350 text-[10px] font-extrabold px-2 py-0.5 rounded self-start uppercase tracking-wide flex items-center gap-1">
+                                  <span>⚠️</span> {t('dashboard.rescheduled') || 'Modified'}
                                 </div>
                               )}
                             </div>
@@ -272,7 +294,7 @@ export default function StudentApp() {
 
                 {schedules.length === 0 && (
                   <div className="bg-gray-850/40 border border-gray-850 rounded-xl p-8 text-center text-gray-500 text-xs">
-                    No classes registered.
+                    {t('dashboard.noClassesRegistered')}
                   </div>
                 )}
               </div>

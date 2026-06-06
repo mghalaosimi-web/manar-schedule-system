@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import ConfirmationModal from './ConfirmationModal';
 
 const DAYS = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
 const TIME_SLOTS = [
@@ -71,16 +73,41 @@ const MOCK_SCHEDULES = [
 
 export default function Dashboard() {
   const [schedules, setSchedules] = useState([]);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem('manar_token');
+    localStorage.removeItem('manar_user');
+    navigate('/login');
+  };
+
   const [selectedGroup, setSelectedGroup] = useState('ALL');
   const [backendOnline, setBackendOnline] = useState(false);
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState(null);
   const [draggedSchedule, setDraggedSchedule] = useState(null);
+  const [overrideConfirmData, setOverrideConfirmData] = useState(null);
+
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newScheduleForm, setNewScheduleForm] = useState({
+    subjectName: '',
+    subjectCode: '',
+    subjectType: 'THEORY',
+    roomName: '',
+    roomCapacity: '45',
+    lecturerName: '',
+    groupName: 'Group A',
+    dayOfWeek: 'SUNDAY',
+    timeSlotIndex: '0'
+  });
 
   const fetchSchedules = async () => {
     try {
       setLoading(true);
-      const res = await axios.get('http://localhost:5000/api/schedules');
+      const token = localStorage.getItem('manar_token');
+      const res = await axios.get('http://localhost:5000/api/schedules', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
       if (res.data && res.data.success) {
         setSchedules(res.data.data);
         setBackendOnline(true);
@@ -133,7 +160,7 @@ export default function Dashboard() {
     e.preventDefault();
   };
 
-  const handleDrop = async (e, targetDay, targetStart, targetEnd) => {
+  const handleDrop = (e, targetDay, targetStart, targetEnd) => {
     e.preventDefault();
     const scheduleIdStr = e.dataTransfer.getData('scheduleId');
     const scheduleId = parseInt(scheduleIdStr);
@@ -147,18 +174,35 @@ export default function Dashboard() {
       return;
     }
 
+    setOverrideConfirmData({
+      scheduleId,
+      targetDay,
+      targetStart,
+      targetEnd
+    });
+  };
+
+  const executeOverride = async (overrideType) => {
+    if (!overrideConfirmData) return;
+    const { scheduleId, targetDay, targetStart, targetEnd } = overrideConfirmData;
     const targetDate = getTargetDateString(targetDay);
     const payload = {
       scheduleId,
       newStartTime: targetStart,
       newEndTime: targetEnd,
       date: targetDate,
-      overrideType: 'TEMPORARY',
+      overrideType,
     };
+
+    setOverrideConfirmData(null);
+    setDraggedSchedule(null);
 
     try {
       if (backendOnline) {
-        const res = await axios.post('http://localhost:5000/api/schedules/override', payload);
+        const token = localStorage.getItem('manar_token');
+        const res = await axios.post('http://localhost:5000/api/schedules/override', payload, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
         if (res.data && res.data.success) {
           showToast(`Successfully moved to ${targetDay} ${targetStart}-${targetEnd}! Notification sent to Group.`);
           fetchSchedules();
@@ -174,7 +218,7 @@ export default function Dashboard() {
               newRoomId: s.roomId,
               newRoom: s.room,
               date: new Date(targetDate),
-              overrideType: 'TEMPORARY'
+              overrideType
             };
             return {
               ...s,
@@ -190,8 +234,6 @@ export default function Dashboard() {
     } catch (err) {
       console.error('Failed to post override', err);
       showToast('Error creating override.', 'error');
-    } finally {
-      setDraggedSchedule(null);
     }
   };
 
@@ -199,6 +241,94 @@ export default function Dashboard() {
     localStorage.removeItem('manar_schedules');
     setSchedules(MOCK_SCHEDULES);
     showToast('Mock data reset to original schedules.', 'info');
+  };
+
+  const handleAddSchedule = async (e) => {
+    e.preventDefault();
+    const slot = TIME_SLOTS[parseInt(newScheduleForm.timeSlotIndex)];
+    const payload = {
+      subjectName: newScheduleForm.subjectName,
+      subjectCode: newScheduleForm.subjectCode,
+      subjectType: newScheduleForm.subjectType,
+      roomName: newScheduleForm.roomName,
+      roomCapacity: parseInt(newScheduleForm.roomCapacity) || 45,
+      lecturerName: newScheduleForm.lecturerName,
+      groupName: newScheduleForm.groupName,
+      dayOfWeek: newScheduleForm.dayOfWeek,
+      startTime: slot.start,
+      endTime: slot.end
+    };
+
+    try {
+      if (backendOnline) {
+        const token = localStorage.getItem('manar_token');
+        const res = await axios.post('http://localhost:5000/api/schedules', payload, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        if (res.data && res.data.success) {
+          showToast('Schedule created successfully!');
+          setIsAddModalOpen(false);
+          setNewScheduleForm({
+            subjectName: '',
+            subjectCode: '',
+            subjectType: 'THEORY',
+            roomName: '',
+            roomCapacity: '45',
+            lecturerName: '',
+            groupName: 'Group A',
+            dayOfWeek: 'SUNDAY',
+            timeSlotIndex: '0'
+          });
+          fetchSchedules();
+        }
+      } else {
+        const newMock = {
+          id: Date.now(),
+          subjectId: Math.floor(Math.random() * 1000) + 100,
+          subject: {
+            name: payload.subjectName,
+            code: payload.subjectCode,
+            type: payload.subjectType
+          },
+          roomId: Math.floor(Math.random() * 1000) + 200,
+          room: {
+            name: payload.roomName,
+            capacity: payload.roomCapacity
+          },
+          lecturerName: payload.lecturerName,
+          groupId: payload.groupName === 'Group B' ? 2 : 1,
+          group: { name: payload.groupName },
+          dayOfWeek: payload.dayOfWeek,
+          startTime: payload.startTime,
+          endTime: payload.endTime,
+          overrides: []
+        };
+
+        const updated = [...schedules, newMock];
+        setSchedules(updated);
+        localStorage.setItem('manar_schedules', JSON.stringify(updated));
+        showToast('Created new schedule in Offline Sandbox Mode!', 'info');
+        setIsAddModalOpen(false);
+        setNewScheduleForm({
+          subjectName: '',
+          subjectCode: '',
+          subjectType: 'THEORY',
+          roomName: '',
+          roomCapacity: '45',
+          lecturerName: '',
+          groupName: 'Group A',
+          dayOfWeek: 'SUNDAY',
+          timeSlotIndex: '0'
+        });
+      }
+    } catch (err) {
+      console.error('Failed to create schedule', err);
+      if (err.response && err.response.data && err.response.data.error) {
+        showToast(err.response.data.error, 'error');
+      } else {
+        showToast('Error creating new schedule.', 'error');
+      }
+    }
   };
 
   const getActiveDay = (schedule) => {
@@ -283,28 +413,44 @@ export default function Dashboard() {
               Reset Mock Data
             </button>
           )}
+
+          <button
+            onClick={handleLogout}
+            className="text-xs bg-red-950/40 hover:bg-red-900/40 text-red-200 px-3 py-1.5 rounded-md transition border border-red-900/35 font-semibold"
+          >
+            Logout
+          </button>
         </div>
       </header>
 
       {/* Control Area */}
       <section className="px-6 py-6 border-b border-gray-800 bg-gray-900/40 flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
-        <div className="flex items-center gap-3">
-          <label className="text-sm font-semibold text-gray-400">Filter Group:</label>
-          <div className="flex gap-2">
-            {groupsList.map(group => (
-              <button
-                key={group}
-                onClick={() => setSelectedGroup(group)}
-                className={`px-3 py-1.5 rounded-md text-xs font-semibold border transition ${
-                  selectedGroup === group
-                    ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/30'
-                    : 'bg-gray-850 border-gray-750 hover:bg-gray-755 text-gray-300'
-                }`}
-              >
-                {group}
-              </button>
-            ))}
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-semibold text-gray-400">Filter Group:</label>
+            <div className="flex gap-2">
+              {groupsList.map(group => (
+                <button
+                  key={group}
+                  onClick={() => setSelectedGroup(group)}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold border transition ${
+                    selectedGroup === group
+                      ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/30'
+                      : 'bg-gray-850 border-gray-750 hover:bg-gray-755 text-gray-300'
+                  }`}
+                >
+                  {group}
+                </button>
+              ))}
+            </div>
           </div>
+
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="px-4 py-2 bg-lime-500 text-black font-extrabold text-xs rounded-md shadow-md shadow-lime-500/20 hover:bg-lime-400 transition"
+          >
+            ➕ Add Schedule
+          </button>
         </div>
 
         <div className="text-xs text-gray-400 bg-gray-850 border border-gray-800 px-3.5 py-1.5 rounded-lg">
@@ -441,6 +587,172 @@ export default function Dashboard() {
           <span>Targeted Notification Queue Status: <code className="text-amber-500 font-mono">ON_DEMAND</code></span>
         </div>
       </footer>
+
+      {/* Add Schedule Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+          <div className="bg-gray-850 border border-gray-800 w-full max-w-lg rounded-xl p-6 shadow-2xl space-y-4">
+            <div className="flex justify-between items-center border-b border-gray-800 pb-3">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-lime-400">
+                Add New Base Schedule
+              </h3>
+              <button
+                onClick={() => setIsAddModalOpen(false)}
+                className="text-gray-450 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleAddSchedule} className="space-y-4 text-xs text-gray-200">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-gray-405 block font-medium">Subject Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={newScheduleForm.subjectName}
+                    onChange={(e) => setNewScheduleForm({ ...newScheduleForm, subjectName: e.target.value })}
+                    placeholder="e.g. Software Engineering"
+                    className="w-full bg-gray-900 border border-gray-750 rounded p-2.5 text-white focus:outline-none focus:border-lime-500 font-medium"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-gray-405 block font-medium">Subject Code</label>
+                  <input
+                    type="text"
+                    required
+                    value={newScheduleForm.subjectCode}
+                    onChange={(e) => setNewScheduleForm({ ...newScheduleForm, subjectCode: e.target.value })}
+                    placeholder="e.g. CS-303"
+                    className="w-full bg-gray-900 border border-gray-750 rounded p-2.5 text-white focus:outline-none focus:border-lime-500 font-mono font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="text-gray-405 block font-medium">Subject Type</label>
+                  <select
+                    value={newScheduleForm.subjectType}
+                    onChange={(e) => setNewScheduleForm({ ...newScheduleForm, subjectType: e.target.value })}
+                    className="w-full bg-gray-900 border border-gray-750 rounded p-2.5 text-white focus:outline-none focus:border-lime-500 font-medium"
+                  >
+                    <option value="THEORY">Theory</option>
+                    <option value="PRACTICAL">Practical</option>
+                  </select>
+                </div>
+                <div className="space-y-1 col-span-2">
+                  <label className="text-gray-405 block font-medium">Lecturer Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={newScheduleForm.lecturerName}
+                    onChange={(e) => setNewScheduleForm({ ...newScheduleForm, lecturerName: e.target.value })}
+                    placeholder="e.g. Dr. Manar Al-Saeed"
+                    className="w-full bg-gray-900 border border-gray-750 rounded p-2.5 text-white focus:outline-none focus:border-lime-500 font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-gray-405 block font-medium">Room Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={newScheduleForm.roomName}
+                    onChange={(e) => setNewScheduleForm({ ...newScheduleForm, roomName: e.target.value })}
+                    placeholder="e.g. Hall 1B"
+                    className="w-full bg-gray-900 border border-gray-750 rounded p-2.5 text-white focus:outline-none focus:border-lime-500 font-bold"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-gray-405 block font-medium">Room Capacity</label>
+                  <input
+                    type="number"
+                    required
+                    value={newScheduleForm.roomCapacity}
+                    onChange={(e) => setNewScheduleForm({ ...newScheduleForm, roomCapacity: e.target.value })}
+                    placeholder="e.g. 45"
+                    className="w-full bg-gray-900 border border-gray-750 rounded p-2.5 text-white focus:outline-none focus:border-lime-500 font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-1">
+                  <label className="text-gray-405 block font-medium">Group Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={newScheduleForm.groupName}
+                    onChange={(e) => setNewScheduleForm({ ...newScheduleForm, groupName: e.target.value })}
+                    placeholder="e.g. Group A"
+                    className="w-full bg-gray-900 border border-gray-750 rounded p-2.5 text-white focus:outline-none focus:border-lime-500 font-bold"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-gray-405 block font-medium">Day of Week</label>
+                  <select
+                    value={newScheduleForm.dayOfWeek}
+                    onChange={(e) => setNewScheduleForm({ ...newScheduleForm, dayOfWeek: e.target.value })}
+                    className="w-full bg-gray-900 border border-gray-750 rounded p-2.5 text-white focus:outline-none focus:border-lime-500 font-medium"
+                  >
+                    {DAYS.map(day => (
+                      <option key={day} value={day}>{day}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-gray-405 block font-medium">Time Slot</label>
+                  <select
+                    value={newScheduleForm.timeSlotIndex}
+                    onChange={(e) => setNewScheduleForm({ ...newScheduleForm, timeSlotIndex: e.target.value })}
+                    className="w-full bg-gray-900 border border-gray-750 rounded p-2.5 text-white focus:outline-none focus:border-lime-500 font-medium"
+                  >
+                    {TIME_SLOTS.map((slot, index) => (
+                      <option key={index} value={index}>{slot.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-gray-800 font-sans">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-4 py-2 bg-gray-800 hover:bg-gray-750 text-gray-300 font-semibold rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-lime-500 hover:bg-lime-400 text-black font-extrabold rounded shadow-md shadow-lime-500/10"
+                >
+                  Create Schedule
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Confirmation Modal for Drag and Drop Exception */}
+      <ConfirmationModal
+        isOpen={!!overrideConfirmData}
+        title="Confirm Schedule Change"
+        message="Please select the override type for this change. Temporary applies to the current week only; Permanent reschedules all future weeks."
+        onConfirm={executeOverride}
+        onCancel={() => {
+          setOverrideConfirmData(null);
+          setDraggedSchedule(null);
+        }}
+        cancelText="Cancel"
+        options={[
+          { label: '📅 Temporary Exception', value: 'TEMPORARY' },
+          { label: '🔒 Permanent Reschedule', value: 'PERMANENT' }
+        ]}
+      />
     </div>
   );
 }

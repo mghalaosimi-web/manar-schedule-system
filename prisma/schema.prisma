@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum SubjectType {
@@ -65,6 +64,7 @@ model Student {
   id               Int               @id @default(autoincrement())
   name             String
   email            String            @unique
+  password         String
   majorId          Int
   major            Major             @relation(fields: [majorId], references: [id])
   levelId          Int
@@ -127,3 +127,11 @@ model NotificationLog {
   sentTime  DateTime           @default(now())
   status    NotificationStatus
 }
+
+model Admin {
+  id       Int    @id @default(autoincrement())
+  name     String
+  email    String @unique
+  password String
+}
+

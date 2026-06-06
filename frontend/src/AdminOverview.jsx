@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 export default function AdminOverview() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     students: 245,
     lectures: 12,
@@ -116,13 +118,13 @@ export default function AdminOverview() {
           
           <div className="space-y-2.5">
             <button
-              onClick={() => window.location.hash = '#/admin/broadcast'}
+              onClick={() => navigate('/admin/broadcast')}
               className="w-full py-2 bg-gray-800 hover:bg-gray-750 text-xs font-semibold rounded-md border border-gray-750 hover:border-sky-500/40 text-sky-300 transition text-center"
             >
               📢 Open Broadcast Center
             </button>
             <button
-              onClick={() => window.location.hash = '#/admin/groups'}
+              onClick={() => navigate('/admin/groups')}
               className="w-full py-2 bg-gray-800 hover:bg-gray-750 text-xs font-semibold rounded-md border border-gray-750 hover:border-lime-500/40 text-lime-300 transition text-center"
             >
               🛠️ Manage Academic Groups

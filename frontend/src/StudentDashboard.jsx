@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
+import { motion } from 'framer-motion';
 
 const DAYS = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
 
@@ -49,11 +53,40 @@ const MOCK_SCHEDULES = [
 ];
 
 export default function StudentDashboard() {
-  const [profile, setProfile] = useState({
-    name: 'Mohammad Al-Otaibi',
-    groupId: 1,
-    groupName: 'Group A'
-  });
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+
+  const getInitialProfile = () => {
+    const userJson = localStorage.getItem('manar_user');
+    let loggedInName = 'Student Account';
+    let loggedInGroupId = 1;
+    if (userJson) {
+      try {
+        const user = JSON.parse(userJson);
+        loggedInName = user.name || 'Student Account';
+        loggedInGroupId = user.groupId || 1;
+      } catch (e) {}
+    }
+
+    const savedProfile = localStorage.getItem('student_profile');
+    if (savedProfile) {
+      try {
+        const parsed = JSON.parse(savedProfile);
+        return {
+          name: parsed.name || loggedInName,
+          groupId: parsed.groupId || loggedInGroupId,
+          groupName: parsed.groupId === 1 ? 'Group A' : (parsed.groupId === 2 ? 'Group B' : 'Group C')
+        };
+      } catch (e) {}
+    }
+    return {
+      name: loggedInName,
+      groupId: loggedInGroupId,
+      groupName: loggedInGroupId === 1 ? 'Group A' : (loggedInGroupId === 2 ? 'Group B' : 'Group C')
+    };
+  };
+
+  const [profile, setProfile] = useState(getInitialProfile);
   const [schedules, setSchedules] = useState([]);
   const [backendOnline, setBackendOnline] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -136,6 +169,54 @@ export default function StudentDashboard() {
     fetchStudentSchedule();
   }, []);
 
+  useEffect(() => {
+    // Show a toast with the latest notification if it hasn't been shown in this session
+    const hasShown = sessionStorage.getItem('manar_welcome_toast_shown');
+    if (!hasShown && schedules.length > 0) {
+      const savedLogs = localStorage.getItem('manar_notifications');
+      let allLogs = [
+        {
+          id: 1,
+          groupId: 1,
+          groupName: 'Group A',
+          message: 'تنبيه طارئ: تم تعديل محاضرة Database Systems الخاصة بـ Group A. يرجى مراجعة الجدول.',
+          sentTime: new Date(Date.now() - 3600000).toISOString(),
+          status: 'SENT'
+        },
+        {
+          id: 3,
+          groupId: null,
+          groupName: 'All Groups',
+          message: 'عاجل: يرجى العلم ببدء امتحانات منتصف الفصل الدراسي يوم الأحد القادم.',
+          sentTime: new Date(Date.now() - 86400000).toISOString(),
+          status: 'SENT'
+        }
+      ];
+      if (savedLogs) {
+        try {
+          allLogs = JSON.parse(savedLogs);
+        } catch (e) {}
+      }
+      
+      const currentGroupId = profile.groupId || 1;
+      const filtered = allLogs.filter(log => log.groupId === null || log.groupId === currentGroupId);
+      
+      if (filtered.length > 0) {
+        const latest = filtered[0];
+        toast(latest.message, {
+          duration: 6000,
+          icon: '📢',
+          style: {
+            background: '#1f2937',
+            color: '#f3f4f6',
+            border: '1px solid #374151',
+          }
+        });
+        sessionStorage.setItem('manar_welcome_toast_shown', 'true');
+      }
+    }
+  }, [profile, schedules]);
+
   const nextLecture = schedules.length > 0 ? schedules[0] : null;
 
   // Determine current day of the week
@@ -144,36 +225,41 @@ export default function StudentDashboard() {
   const todayLectures = schedules.filter(s => getActiveDay(s) === todayName);
 
   return (
-    <div className="flex-1 bg-gray-900 text-gray-100 p-5 flex flex-col items-center">
-      <div className="w-full max-w-md space-y-6">
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+      className="flex-1 w-full p-5 flex flex-col items-center"
+    >
+      <div className="w-full max-w-md space-y-6 pb-20">
         
         {/* Profile Card Summary */}
-        <div className="bg-gray-850 border border-gray-800 rounded-xl p-4 flex items-center justify-between">
+        <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 flex items-center justify-between shadow-2xl">
           <div>
-            <span className="text-[10px] text-lime-400 font-bold uppercase tracking-widest">Active Profile</span>
-            <h3 className="text-sm font-extrabold text-white mt-0.5">{profile.name}</h3>
-            <span className="text-[10px] text-gray-500 font-semibold">{profile.groupName}</span>
+            <span className="text-[10px] text-lime-400 font-extrabold uppercase tracking-widest">{t('dashboard.activeProfile')}</span>
+            <h3 className="text-sm font-black text-white mt-0.5">{profile.name}</h3>
+            <span className="text-[10px] text-gray-400 font-semibold">{profile.groupName}</span>
           </div>
 
           <button
-            onClick={() => window.location.hash = '#/student/settings'}
-            className="px-2.5 py-1 bg-gray-800 hover:bg-gray-750 text-[10px] font-bold text-gray-300 rounded border border-gray-700 transition"
+            onClick={() => navigate('/student/settings')}
+            className="px-3 py-1.5 bg-lime-500 hover:bg-lime-400 text-black font-extrabold text-[10px] rounded-xl shadow-lg shadow-lime-500/15 hover:shadow-[0_0_15px_rgba(132,204,22,0.45)] transition duration-200"
           >
-            Manage Group
+            {t('dashboard.manageGroup')}
           </button>
         </div>
 
         {/* Top Section: Glowing Alert Card for Next Lecture */}
         <section className="space-y-3">
-          <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Pre-Lecture Active Alert</h2>
+          <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t('dashboard.activeAlert')}</h2>
           {nextLecture ? (
-            <div className="relative overflow-hidden rounded-xl border-l-4 border-red-500 bg-gradient-to-r from-red-950/40 to-gray-850 p-5 shadow-lg flex flex-col gap-4">
-              <div className="self-start flex items-center gap-1.5 bg-red-500/10 border border-red-500/30 px-2 py-0.5 rounded text-[9px] font-bold text-red-400 uppercase tracking-wide">
+            <div className="relative overflow-hidden rounded-2xl border border-red-500/35 bg-red-950/20 backdrop-blur-md p-5 shadow-2xl flex flex-col gap-4 shadow-[0_0_20px_rgba(239,68,68,0.2)] animate-[pulse_2s_infinite]">
+              <div className="self-start flex items-center gap-1.5 bg-red-500/10 border border-red-500/30 px-2.5 py-0.5 rounded-full text-[9px] font-bold text-red-400 uppercase tracking-wide">
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
                 </span>
-                Next Class Starts in 15 Minutes
+                {t('dashboard.nextStartsIn')}
               </div>
 
               <div>
@@ -181,28 +267,28 @@ export default function StudentDashboard() {
                 <p className="text-xs font-mono text-red-300 mt-1 font-semibold">{nextLecture.subject.code}</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-y-3 gap-x-4 pt-3 border-t border-gray-800/80 text-xs">
+              <div className="grid grid-cols-2 gap-y-3 gap-x-4 pt-3 border-t border-white/10 text-xs">
                 <div>
-                  <span className="text-gray-500 block text-[10px] uppercase font-semibold">Time Slot</span>
+                  <span className="text-gray-500 block text-[10px] uppercase font-semibold">{t('dashboard.timeSlot')}</span>
                   <span className="font-bold text-gray-250 mt-0.5 block">{getActiveStartTime(nextLecture)} - {getActiveEndTime(nextLecture)}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500 block text-[10px] uppercase font-semibold">Classroom</span>
+                  <span className="text-gray-500 block text-[10px] uppercase font-semibold">{t('dashboard.classroom')}</span>
                   <span className="font-bold text-gray-250 mt-0.5 block">{nextLecture.room?.name || 'N/A'}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500 block text-[10px] uppercase font-semibold">Lecturer</span>
+                  <span className="text-gray-500 block text-[10px] uppercase font-semibold">{t('dashboard.lecturer')}</span>
                   <span className="font-bold text-gray-250 mt-0.5 block">{nextLecture.lecturerName}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500 block text-[10px] uppercase font-semibold">Day</span>
+                  <span className="text-gray-500 block text-[10px] uppercase font-semibold">{t('dashboard.day')}</span>
                   <span className="font-bold text-gray-250 mt-0.5 block">{getActiveDay(nextLecture)}</span>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="bg-gray-850/40 border border-gray-800 rounded-xl p-6 text-center text-gray-500 text-xs">
-              No classes scheduled on record.
+            <div className="bg-white/5 backdrop-blur-md border border-white/5 rounded-2xl p-6 text-center text-gray-500 text-xs shadow-xl">
+              {t('dashboard.noClassesRegistered')}
             </div>
           )}
         </section>
@@ -210,9 +296,9 @@ export default function StudentDashboard() {
         {/* Current Day Status Section */}
         <section className="space-y-3">
           <div className="flex justify-between items-center px-1">
-            <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Today's Class Schedule ({todayName})</h2>
-            <span className="text-[9px] bg-sky-950 text-sky-400 font-bold px-2 py-0.5 rounded-full">
-              {todayLectures.length} Classes
+            <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t('dashboard.todaySchedule')} ({todayName})</h2>
+            <span className="text-[9px] bg-white/5 border border-white/10 text-gray-300 font-bold px-2 py-0.5 rounded-full">
+              {todayLectures.length} {t('dashboard.classes')}
             </span>
           </div>
 
@@ -222,14 +308,16 @@ export default function StudentDashboard() {
               return (
                 <div
                   key={schedule.id}
-                  className={`p-4 rounded-xl border flex justify-between items-center gap-3 ${
-                    isTheory ? 'bg-blue-900/10 border-blue-800/40 text-blue-200' : 'bg-green-900/10 border-green-800/40 text-green-200'
+                  className={`p-4 rounded-2xl border flex justify-between items-center gap-3 transition hover:scale-[1.02] duration-200 ${
+                    isTheory
+                      ? 'bg-blue-950/20 backdrop-blur-md border-blue-500/30 text-blue-200 hover:shadow-[0_0_15px_rgba(59,130,246,0.25)]'
+                      : 'bg-green-950/20 backdrop-blur-md border-green-500/30 text-green-200 hover:shadow-[0_0_15px_rgba(34,197,94,0.25)]'
                   }`}
                 >
                   <div className="space-y-1">
                     <h4 className="text-sm font-bold text-white">{schedule.subject.name}</h4>
                     <p className="text-[10px] text-gray-400">
-                      Room: <span className="text-gray-300 font-semibold">{schedule.room?.name || 'N/A'}</span> • {schedule.lecturerName}
+                      {t('dashboard.classroom')}: <span className="text-gray-300 font-semibold">{schedule.room?.name || 'N/A'}</span> • {schedule.lecturerName}
                     </p>
                   </div>
 
@@ -237,8 +325,8 @@ export default function StudentDashboard() {
                     <span className="text-xs font-extrabold text-gray-200 block">
                       {getActiveStartTime(schedule)} - {getActiveEndTime(schedule)}
                     </span>
-                    <span className="text-[9px] text-gray-500 uppercase tracking-wider block mt-0.5">
-                      {isTheory ? 'Theory' : 'Lab'}
+                    <span className="text-[9px] text-gray-500 uppercase tracking-wider block mt-0.5 font-bold">
+                      {isTheory ? t('dashboard.theory') : t('dashboard.practical')}
                     </span>
                   </div>
                 </div>
@@ -246,14 +334,14 @@ export default function StudentDashboard() {
             })}
 
             {todayLectures.length === 0 && (
-              <div className="bg-gray-850/40 border border-gray-800 rounded-xl p-8 text-center text-gray-500 text-xs">
-                🎉 No classes scheduled for today. Enjoy your day off!
+              <div className="bg-white/5 backdrop-blur-md border border-white/5 rounded-2xl p-8 text-center text-gray-500 text-xs shadow-xl">
+                <span className="text-xl block mb-2">🎉</span>
+                {t('dashboard.noClassesToday')}
               </div>
             )}
           </div>
         </section>
-
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -1,7 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import UserSettings from './UserSettings';
+import { useTranslation } from 'react-i18next';
 
 export default function Settings() {
+  const { t, i18n } = useTranslation();
+  
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('manar_theme') || 'dark';
+  });
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('manar_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
+
   const [toggles, setToggles] = useState(() => {
     const saved = localStorage.getItem('student_alert_toggles');
     return saved ? JSON.parse(saved) : {
@@ -29,6 +49,73 @@ export default function Settings() {
       
       {/* 1. Reuse/Integrate UserSettings for Academic Group Configuration */}
       <UserSettings />
+
+      {/* Preferences (Language & Theme Toggle) */}
+      <div className="w-full max-w-md bg-gray-850 border border-gray-800 rounded-xl p-6 shadow-xl space-y-6">
+        <div>
+          <h2 className="text-lg font-bold text-white tracking-tight">{t('settings.title')}</h2>
+          <p className="text-xs text-gray-400 mt-1">Configure language and interface color settings.</p>
+        </div>
+
+        <div className="space-y-4 text-xs">
+          {/* Language Switcher */}
+          <div className="flex items-center justify-between p-3 bg-gray-900 rounded-lg border border-gray-800">
+            <div>
+              <span className="font-bold block text-gray-250">{t('settings.language')}</span>
+              <span className="text-[10px] text-gray-500 block mt-0.5">App Language / لغة التطبيق</span>
+            </div>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => i18n.changeLanguage('en')}
+                className={`px-3 py-1.5 rounded text-xs font-bold border transition ${
+                  i18n.language === 'en'
+                    ? 'bg-lime-500 text-black border-lime-500 shadow-md shadow-lime-500/20'
+                    : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-750'
+                }`}
+              >
+                English
+              </button>
+              <button
+                type="button"
+                onClick={() => i18n.changeLanguage('ar')}
+                className={`px-3 py-1.5 rounded text-xs font-bold border transition ${
+                  i18n.language === 'ar'
+                    ? 'bg-lime-500 text-black border-lime-500 shadow-md shadow-lime-500/20'
+                    : 'bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-750'
+                }`}
+              >
+                العربية
+              </button>
+            </div>
+          </div>
+
+          {/* Theme Toggle */}
+          <div className="flex items-center justify-between p-3 bg-gray-900 rounded-lg border border-gray-800">
+            <div>
+              <span className="font-bold block text-gray-250">{t('settings.theme')}</span>
+              <span className="text-[10px] text-gray-500 block mt-0.5">Toggle interface style</span>
+            </div>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="px-4 py-2 bg-gray-800 hover:bg-gray-750 border border-gray-700 rounded-lg flex items-center gap-2 font-bold text-gray-300 transition"
+            >
+              {theme === 'dark' ? (
+                <>
+                  <span>☀️</span>
+                  <span>{t('settings.light')}</span>
+                </>
+              ) : (
+                <>
+                  <span>🌙</span>
+                  <span>{t('settings.dark')}</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* 2. Notification Preferences Toggles */}
       <div className="w-full max-w-md bg-gray-850 border border-gray-800 rounded-xl p-6 shadow-xl space-y-6">
@@ -109,6 +196,10 @@ export default function Settings() {
         </form>
       </div>
 
+      {/* Developer Branding Signature */}
+      <div className="w-full max-w-md text-center pt-4 pb-12 text-gray-500 text-xs font-medium">
+        Developed by <a href="https://github.com/mghalaosimi-web" target="_blank" rel="noopener noreferrer" className="bg-gradient-to-r from-lime-400 to-emerald-500 bg-clip-text text-transparent font-extrabold tracking-widest hover:drop-shadow-[0_0_10px_rgba(132,204,22,0.8)] hover:scale-105 hover:text-white transition-all duration-300 cursor-pointer inline-block">M.GH.AL</a>
+      </div>
     </div>
   );
 }
