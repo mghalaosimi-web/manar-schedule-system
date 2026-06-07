@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_URL } from './config';
 
 const DEPARTMENTS = ['Computer Science', 'Information Systems', 'Software Engineering'];
 const LEVELS = ['Level 1', 'Level 2', 'Level 3', 'Level 4'];
@@ -44,7 +45,7 @@ export default function UserSettings() {
 
     const fetchGroups = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/groups');
+        const res = await axios.get(`${API_URL}/api/groups`);
         if (res.data && res.data.success) {
           setGroups(res.data.data);
         }
@@ -59,7 +60,7 @@ export default function UserSettings() {
     e.preventDefault();
     const token = localStorage.getItem('manar_token');
     try {
-      const res = await axios.put('http://localhost:5000/api/student/settings', {
+      const res = await axios.put(`${API_URL}/api/student/settings`, {
         name: profile.name,
         groupId: profile.groupId,
         departmentName: profile.department,
@@ -100,14 +101,14 @@ export default function UserSettings() {
   };
 
   return (
-    <div className="w-full max-w-md bg-gray-850 border border-gray-800 rounded-xl p-6 shadow-xl space-y-6">
+    <div className="w-full max-w-md frosted-panel rounded-2xl p-6 space-y-6">
       <div>
         <h2 className="text-lg font-bold text-white tracking-tight">Academic Group Config</h2>
         <p className="text-xs text-gray-400 mt-1">Configure your department, level, and group for custom schedule feeds.</p>
       </div>
 
       {savedStatus && (
-        <div className="p-3 bg-green-950/40 border border-green-600/50 text-green-200 text-xs font-semibold rounded-lg">
+        <div className="p-3 bg-green-950/40 border border-green-600/50 text-green-200 text-xs font-semibold rounded-xl">
           ✓ Academic profile configuration updated successfully!
         </div>
       )}

@@ -3,3 +3,10 @@ node_modules
 .env
 
 /generated/prisma
+
+# Runtime log files (generated on the server, never committed)
+verification_codes.log
+*.log
+
+# Frontend build output
+frontend/dist

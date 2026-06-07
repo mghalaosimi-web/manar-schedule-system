@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
+import { API_URL } from './config';
 
 const DAYS = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
 
@@ -101,7 +102,7 @@ export default function StudentApp() {
       try {
         setLoading(true);
         const token = localStorage.getItem('manar_token');
-        const res = await axios.get(`http://localhost:5000/api/schedules?groupId=${groupId}`, {
+        const res = await axios.get(`${API_URL}/api/schedules?groupId=${groupId}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
         if (res.data && res.data.success) {

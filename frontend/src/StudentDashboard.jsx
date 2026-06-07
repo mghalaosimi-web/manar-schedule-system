@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { motion } from 'framer-motion';
+import { API_URL } from './config';
 
 const DAYS = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
 
@@ -142,7 +143,7 @@ export default function StudentDashboard() {
     const fetchStudentSchedule = async () => {
       try {
         setLoading(true);
-        const res = await axios.get(`http://localhost:5000/api/schedules?groupId=${currentGroupId}`);
+        const res = await axios.get(`${API_URL}/api/schedules?groupId=${currentGroupId}`);
         if (res.data && res.data.success) {
           setSchedules(res.data.data);
           setBackendOnline(true);
@@ -163,7 +164,7 @@ export default function StudentDashboard() {
 
       try {
         const token = localStorage.getItem('manar_token');
-        const res = await axios.get('http://localhost:5000/api/notifications/student', {
+        const res = await axios.get(`${API_URL}/api/notifications/student`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
         if (res.data && res.data.success && res.data.data.length > 0) {
@@ -188,7 +189,34 @@ export default function StudentDashboard() {
     fetchLatestNotificationToast();
   }, []);
 
-  const nextLecture = schedules.length > 0 ? schedules[0] : null;
+  const getNextLecture = () => {
+    if (schedules.length === 0) return null;
+    const now = new Date();
+    const currentDayName = DAYS[now.getDay()];
+    const currentTimeStr = now.toTimeString().substring(0, 5);
+
+    const todayRemaining = schedules.filter(s => {
+      if (getActiveDay(s) !== currentDayName) return false;
+      return getActiveStartTime(s) > currentTimeStr;
+    });
+
+    if (todayRemaining.length > 0) {
+      return todayRemaining.sort((a, b) => getActiveStartTime(a).localeCompare(getActiveStartTime(b)))[0];
+    }
+
+    let checkDayIndex = (now.getDay() + 1) % 7;
+    for (let i = 0; i < 7; i++) {
+      const nextDayName = DAYS[checkDayIndex];
+      const nextDayLectures = schedules.filter(s => getActiveDay(s) === nextDayName);
+      if (nextDayLectures.length > 0) {
+        return nextDayLectures.sort((a, b) => getActiveStartTime(a).localeCompare(getActiveStartTime(b)))[0];
+      }
+      checkDayIndex = (checkDayIndex + 1) % 7;
+    }
+    return schedules[0];
+  };
+
+  const nextLecture = getNextLecture();
 
   // Determine current day of the week
   const todayIndex = new Date().getDay();

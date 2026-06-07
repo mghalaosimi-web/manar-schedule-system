@@ -61,17 +61,23 @@ model Group {
 }
 
 model Student {
-  id               Int               @id @default(autoincrement())
+  id               Int                @id @default(autoincrement())
   name             String
-  email            String            @unique
+  email            String             @unique
   password         String
+  idNumber         String             @unique
+  idPhotoUrl       String?
+  phone            String             @unique
+  isEmailVerified  Boolean            @default(false)
+  isPhoneVerified  Boolean            @default(false)
   majorId          Int
-  major            Major             @relation(fields: [majorId], references: [id])
+  major            Major              @relation(fields: [majorId], references: [id])
   levelId          Int
-  level            Level             @relation(fields: [levelId], references: [id])
+  level            Level              @relation(fields: [levelId], references: [id])
   groupId          Int
-  group            Group             @relation(fields: [groupId], references: [id])
+  group            Group              @relation(fields: [groupId], references: [id])
   notificationLogs NotificationLog[]
+  verificationCodes VerificationCode[]
 }
 
 model Subject {
@@ -128,10 +134,30 @@ model NotificationLog {
   status    NotificationStatus
 }
 
+enum AdminRole {
+  ADMIN
+  SUPER_ADMIN
+}
+
 model Admin {
-  id       Int    @id @default(autoincrement())
+  id       Int       @id @default(autoincrement())
   name     String
-  email    String @unique
+  email    String    @unique
   password String
+  role     AdminRole @default(ADMIN)
+}
+
+enum VerificationType {
+  EMAIL
+  PHONE
+}
+
+model VerificationCode {
+  id        Int              @id @default(autoincrement())
+  studentId Int
+  student   Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  code      String
+  type      VerificationType
+  expiresAt DateTime
 }
 

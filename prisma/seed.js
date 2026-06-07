@@ -1,94 +1,140 @@
+require('dotenv').config();
 const { PrismaClient } = require('@prisma/client');
 const { PrismaPg } = require('@prisma/adapter-pg');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 
-const connectionString = process.env.DATABASE_URL || "postgresql://user:password@localhost:5432/manardb?schema=public";
-const pool = new Pool({ connectionString });
+const connectionString = process.env.DATABASE_URL;
+const pool = new Pool({
+  connectionString,
+  ssl: { rejectUnauthorized: false }
+});
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-async function main() {
-  console.log('Seeding database...');
-  
-  // 1. Create Default Admin
-  const adminPasswordHash = await bcrypt.hash('admin123', 10);
-  const admin = await prisma.admin.upsert({
-    where: { email: 'admin@manar.edu' },
-    update: {},
-    create: {
-      name: 'System Administrator',
-      email: 'admin@manar.edu',
-      password: adminPasswordHash
-    }
+async function upsertMajor(name, departmentId) {
+  let major = await prisma.major.findFirst({
+    where: { name, departmentId }
   });
-  console.log(`Created admin: ${admin.email}`);
-
-  // 2. Create Department
-  const dept = await prisma.department.upsert({
-    where: { name: 'IT' },
-    update: {},
-    create: {
-      name: 'IT'
-    }
-  });
-  console.log(`Created department: ${dept.name}`);
-
-  // 3. Create Major (idempotent check)
-  let major = await prisma.major.findFirst({ where: { name: 'Cyber Security' } });
   if (!major) {
     major = await prisma.major.create({
-      data: {
-        name: 'Cyber Security',
-        departmentId: dept.id
-      }
+      data: { name, departmentId }
     });
   }
-  console.log(`Created major: ${major.name}`);
+  return major;
+}
 
-  // 4. Create Level
-  let level = await prisma.level.findFirst({ where: { name: 'Level 3' } });
-  if (!level) {
-    level = await prisma.level.create({
-      data: {
-        name: 'Level 3'
-      }
-    });
+async function upsertLevel(name) {
+  let lvl = await prisma.level.findFirst({ where: { name } });
+  if (!lvl) {
+    lvl = await prisma.level.create({ data: { name } });
   }
-  console.log(`Created level: ${level.name}`);
+  return lvl;
+}
 
-  // 5. Create Group
-  let group = await prisma.group.findFirst({ where: { name: 'Group A' } });
-  if (!group) {
-    group = await prisma.group.create({
-      data: {
-        name: 'Group A'
-      }
-    });
+async function upsertGroup(name) {
+  let grp = await prisma.group.findFirst({ where: { name } });
+  if (!grp) {
+    grp = await prisma.group.create({ data: { name } });
   }
-  console.log(`Created group: ${group.name}`);
+  return grp;
+}
 
-  // 6. Create Room
-  let room = await prisma.room.findUnique({ where: { name: 'Room 101' } });
-  if (!room) {
-    room = await prisma.room.create({
-      data: {
-        name: 'Room 101',
-        capacity: 45
-      }
-    });
+async function main() {
+  console.log('Seeding database with academic data...');
+
+  // 1. Create Departments
+  const itDept = await prisma.department.upsert({
+    where: { name: 'كلية الحاسبات وتكنولوجيا المعلومات' },
+    update: {},
+    create: { name: 'كلية الحاسبات وتكنولوجيا المعلومات' }
+  });
+  console.log(`Department upserted: ${itDept.name}`);
+
+  const humDept = await prisma.department.upsert({
+    where: { name: 'كلية العلوم الإدارية والإنسانية' },
+    update: {},
+    create: { name: 'كلية العلوم الإدارية والإنسانية' }
+  });
+  console.log(`Department upserted: ${humDept.name}`);
+
+  // 2. Create 6 Majors
+  // IT Dept
+  const itMajors = ['تقنية المعلومات', 'أمن سيبراني'];
+  for (const majorName of itMajors) {
+    const maj = await upsertMajor(majorName, itDept.id);
+    console.log(`Major upserted: ${maj.name} (IT Department)`);
   }
-  console.log(`Created room: ${room.name}`);
+
+  // Humanities Dept
+  const humMajors = ['شريعة وقانون', 'محاسبة', 'إدارة صحية', 'إدارة أعمال'];
+  for (const majorName of humMajors) {
+    const maj = await upsertMajor(majorName, humDept.id);
+    console.log(`Major upserted: ${maj.name} (Humanities Department)`);
+  }
+
+  // 3. Create 8 Rooms (6 Lecture Rooms, 2 Labs)
+  const rooms = [
+    { name: 'قاعة 1', capacity: 45 },
+    { name: 'قاعة 2', capacity: 45 },
+    { name: 'قاعة 3', capacity: 45 },
+    { name: 'قاعة 4', capacity: 45 },
+    { name: 'قاعة 5', capacity: 45 },
+    { name: 'قاعة 6', capacity: 45 },
+    { name: 'مختبر الحاسوب 1', capacity: 30 },
+    { name: 'مختبر الشبكات 2', capacity: 30 }
+  ];
+
+  for (const roomData of rooms) {
+    const rm = await prisma.room.upsert({
+      where: { name: roomData.name },
+      update: { capacity: roomData.capacity },
+      create: { name: roomData.name, capacity: roomData.capacity }
+    });
+    console.log(`Room upserted: ${rm.name} (Capacity: ${rm.capacity})`);
+  }
+
+  // 4. Create Levels 1 to 4
+  for (let i = 1; i <= 4; i++) {
+    const lvlName = `Level ${i}`;
+    const lvl = await upsertLevel(lvlName);
+    console.log(`Level upserted: ${lvl.name}`);
+  }
+
+  // 5. Create Groups
+  const groupNames = ['مجموعة أ (نظري)', 'مجموعة ب (عملي 1)', 'مجموعة ج (عملي 2)'];
+  for (const gName of groupNames) {
+    const grp = await upsertGroup(gName);
+    console.log(`Group upserted: ${grp.name}`);
+  }
+
+  // 6. Create SUPER_ADMIN Account
+  const superAdminPasswordHash = await bcrypt.hash('securepassword', 10);
+  const superAdmin = await prisma.admin.upsert({
+    where: { email: 'developer@mghal.com' },
+    update: {
+      password: superAdminPasswordHash,
+      role: 'SUPER_ADMIN'
+    },
+    create: {
+      name: 'Chief Architect',
+      email: 'developer@mghal.com',
+      password: superAdminPasswordHash,
+      role: 'SUPER_ADMIN'
+    }
+  });
+  console.log(`SUPER_ADMIN upserted: ${superAdmin.email}`);
+
+  console.log('Seeding process completed successfully.');
 }
 
 main()
   .then(async () => {
     await prisma.$disconnect();
     await pool.end();
-    console.log('Seeding complete.');
   })
   .catch(async (e) => {
-    console.error(e);
+    console.error('Error during seeding:', e);
     await prisma.$disconnect();
     await pool.end();
     process.exit(1);

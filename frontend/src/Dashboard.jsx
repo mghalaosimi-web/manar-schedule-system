@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import ConfirmationModal from './ConfirmationModal';
+import { API_URL } from './config';
 
 const DAYS = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
 const TIME_SLOTS = [
@@ -105,7 +106,7 @@ export default function Dashboard() {
     try {
       setLoading(true);
       const token = localStorage.getItem('manar_token');
-      const res = await axios.get('http://localhost:5000/api/schedules', {
+      const res = await axios.get(`${API_URL}/api/schedules`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       if (res.data && res.data.success) {
@@ -191,7 +192,7 @@ export default function Dashboard() {
 
     try {
       const token = localStorage.getItem('manar_token');
-      const res = await axios.post('http://localhost:5000/api/schedules/override', payload, {
+      const res = await axios.post(`${API_URL}/api/schedules/override`, payload, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       if (res.data && res.data.success) {
@@ -223,7 +224,7 @@ export default function Dashboard() {
 
     try {
       const token = localStorage.getItem('manar_token');
-      const res = await axios.post('http://localhost:5000/api/schedules', payload, {
+      const res = await axios.post(`${API_URL}/api/schedules`, payload, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       if (res.data && res.data.success) {
@@ -492,7 +493,7 @@ export default function Dashboard() {
           © 2026 Manar Smart Schedule & Alert System. All rights reserved.
         </div>
         <div className="flex gap-4">
-          <span>Backend URL: <code className="text-blue-500 font-mono">http://localhost:5000</code></span>
+          <span>Backend URL: <code className="text-blue-500 font-mono">{API_URL}</code></span>
           <span>Targeted Notification Queue Status: <code className="text-amber-500 font-mono">ON_DEMAND</code></span>
         </div>
       </footer>

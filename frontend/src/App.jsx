@@ -4,6 +4,9 @@ import ConfirmationModal from './ConfirmationModal';
 import { Toaster } from 'react-hot-toast';
 import Welcome from './Welcome';
 import Login from './Login';
+import Register from './Register';
+import Verification from './Verification';
+import Students from './Students';
 import AdminOverview from './AdminOverview';
 import Dashboard from './Dashboard';
 import GroupManagement from './GroupManagement';
@@ -51,7 +54,7 @@ function AppLayout() {
   };
 
   if (isAdminPath) {
-    if (!token || !user || user.role !== 'ADMIN') {
+    if (!token || !user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
       return <Navigate to="/login" replace />;
     }
 
@@ -96,7 +99,7 @@ function AppLayout() {
                   path === '/admin/overview' ? 'bg-lime-500/10 text-lime-400 border-l-2 border-lime-500 shadow-[0_0_15px_rgba(132,204,22,0.06)]' : 'hover:bg-white/5 hover:text-white'
                 }`}
               >
-                📊 Dashboard Overview
+                📊 {t('nav.overview')}
               </Link>
               <Link
                 to="/admin/schedule"
@@ -104,7 +107,7 @@ function AppLayout() {
                   path === '/admin/schedule' ? 'bg-lime-500/10 text-lime-400 border-l-2 border-lime-500 shadow-[0_0_15px_rgba(132,204,22,0.06)]' : 'hover:bg-white/5 hover:text-white'
                 }`}
               >
-                📅 Weekly Grid (Drag/Drop)
+                📅 {t('nav.weeklyTimeline')}
               </Link>
               <Link
                 to="/admin/groups"
@@ -112,7 +115,15 @@ function AppLayout() {
                   path === '/admin/groups' ? 'bg-lime-500/10 text-lime-400 border-l-2 border-lime-500 shadow-[0_0_15px_rgba(132,204,22,0.06)]' : 'hover:bg-white/5 hover:text-white'
                 }`}
               >
-                👥 Groups & Classrooms
+                👥 {t('nav.groups')}
+              </Link>
+              <Link
+                to="/admin/students"
+                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition ${
+                  path === '/admin/students' ? 'bg-lime-500/10 text-lime-400 border-l-2 border-lime-500 shadow-[0_0_15px_rgba(132,204,22,0.06)]' : 'hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                🎓 {t('nav.students')}
               </Link>
               <Link
                 to="/admin/broadcast"
@@ -120,7 +131,7 @@ function AppLayout() {
                   path === '/admin/broadcast' ? 'bg-lime-500/10 text-lime-400 border-l-2 border-lime-500 shadow-[0_0_15px_rgba(132,204,22,0.06)]' : 'hover:bg-white/5 hover:text-white'
                 }`}
               >
-                📢 Broadcast Center
+                📢 {t('nav.broadcast')}
               </Link>
               <Link
                 to="/admin/logs"
@@ -128,7 +139,7 @@ function AppLayout() {
                   path === '/admin/logs' ? 'bg-lime-500/10 text-lime-400 border-l-2 border-lime-500 shadow-[0_0_15px_rgba(132,204,22,0.06)]' : 'hover:bg-white/5 hover:text-white'
                 }`}
               >
-                📜 System Audit Logs
+                📜 {t('nav.logs')}
               </Link>
             </nav>
           </div>
@@ -138,7 +149,7 @@ function AppLayout() {
               onClick={handleLogoutClick}
               className="w-full flex items-center justify-center py-2 bg-gray-900 hover:bg-gray-850 border border-gray-800 text-xs font-semibold rounded-lg text-gray-400 hover:text-white transition"
             >
-              🚪 Leave Admin Panel
+              🚪 {t('nav.leaveAdmin')}
             </button>
             
             <div className="border-t border-white/10 pt-4 text-center text-gray-500 text-xs font-medium">
@@ -153,6 +164,7 @@ function AppLayout() {
             <Route path="/admin/overview" element={<AdminOverview />} />
             <Route path="/admin/schedule" element={<Dashboard />} />
             <Route path="/admin/groups" element={<GroupManagement />} />
+            <Route path="/admin/students" element={<Students />} />
             <Route path="/admin/broadcast" element={<BroadcastCenter />} />
             <Route path="/admin/logs" element={<SystemLog />} />
             <Route path="*" element={<Navigate to="/admin/overview" replace />} />
@@ -280,6 +292,8 @@ function AppLayout() {
     <Routes>
       <Route path="/" element={<Welcome />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/verify" element={<Verification />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

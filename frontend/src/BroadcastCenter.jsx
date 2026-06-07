@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_URL } from './config';
 
 export default function BroadcastCenter() {
   const [target, setTarget] = useState('ALL');
@@ -11,7 +12,7 @@ export default function BroadcastCenter() {
   useEffect(() => {
     const fetchGroups = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/groups');
+        const res = await axios.get(`${API_URL}/api/groups`);
         if (res.data && res.data.success) {
           setGroups(res.data.data);
         }
@@ -31,7 +32,7 @@ export default function BroadcastCenter() {
 
     const token = localStorage.getItem('manar_token');
     try {
-      const res = await axios.post('http://localhost:5000/api/broadcasts', {
+      const res = await axios.post(`${API_URL}/api/broadcasts`, {
         groupId: target,
         message: message
       }, {

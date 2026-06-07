@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import { API_URL } from './config';
 
 export default function GroupManagement() {
   const [activeTab, setActiveTab] = useState('groups');
@@ -25,7 +26,7 @@ export default function GroupManagement() {
 
   const fetchGroups = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/groups');
+      const res = await axios.get(`${API_URL}/api/groups`);
       if (res.data && res.data.success) {
         setGroups(res.data.data);
       }
@@ -36,7 +37,7 @@ export default function GroupManagement() {
 
   const fetchRooms = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/rooms');
+      const res = await axios.get(`${API_URL}/api/rooms`);
       if (res.data && res.data.success) {
         setRooms(res.data.data);
       }
@@ -60,13 +61,13 @@ export default function GroupManagement() {
     const token = localStorage.getItem('manar_token');
     try {
       if (type === 'groups') {
-        await axios.delete(`http://localhost:5000/api/groups/${id}`, {
+        await axios.delete(`${API_URL}/api/groups/${id}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
         toast.success('Group deleted successfully');
         fetchGroups();
       } else if (type === 'rooms') {
-        await axios.delete(`http://localhost:5000/api/rooms/${id}`, {
+        await axios.delete(`${API_URL}/api/rooms/${id}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
         toast.success('Room deleted successfully');
@@ -96,7 +97,7 @@ export default function GroupManagement() {
         if (!isNew) {
           payload.id = formState.id;
         }
-        await axios.post('http://localhost:5000/api/groups', payload, {
+        await axios.post(`${API_URL}/api/groups`, payload, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
         toast.success('Group saved successfully');
@@ -109,7 +110,7 @@ export default function GroupManagement() {
         if (!isNew) {
           payload.id = formState.id;
         }
-        await axios.post('http://localhost:5000/api/rooms', payload, {
+        await axios.post(`${API_URL}/api/rooms`, payload, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
         toast.success('Room saved successfully');

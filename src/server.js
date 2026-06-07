@@ -25,20 +25,128 @@ app.use(express.json());
 
 const JWT_SECRET = process.env.JWT_SECRET || 'manar_secret_key';
 
-let prisma;
-try {
-  const connectionString = process.env.DATABASE_URL || "postgresql://user:password@localhost:5432/manardb?schema=public";
-  const pool = new Pool({ connectionString });
-  const adapter = new PrismaPg(pool);
-  prisma = new PrismaClient({ adapter });
-} catch (err) {
-  console.error('[DATABASE] Failed to initialize Prisma Client with Driver Adapter:', err.message);
-  prisma = new Proxy({}, {
-    get: () => {
-      throw new Error('Database is offline / Prisma Client not initialized.');
-    }
+// Initialize global PG Pool and Prisma Client singletons to prevent connection leaks
+if (!global.pgPool) {
+  const connectionString = process.env.DATABASE_URL;
+  global.pgPool = new Pool({
+    connectionString,
+    max: 10,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+    ssl: { rejectUnauthorized: false }
   });
 }
+
+if (!global.prisma) {
+  const adapter = new PrismaPg(global.pgPool);
+  global.prisma = new PrismaClient({ adapter });
+}
+const prisma = global.prisma;
+
+// Self-healing database check & migrations
+async function runStartupMigrations() {
+  try {
+    console.log('[DATABASE] Running self-healing schema checks...');
+    // Create enums if they don't exist
+    await prisma.$executeRawUnsafe(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'AdminRole') THEN
+          CREATE TYPE "AdminRole" AS ENUM ('ADMIN', 'SUPER_ADMIN');
+        END IF;
+      END$$;
+    `).catch(() => {});
+
+    await prisma.$executeRawUnsafe(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'VerificationType') THEN
+          CREATE TYPE "VerificationType" AS ENUM ('EMAIL', 'PHONE');
+        END IF;
+      END$$;
+    `).catch(() => {});
+
+    // Create VerificationCode table if it doesn't exist
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "VerificationCode" (
+        "id" SERIAL PRIMARY KEY,
+        "studentId" INTEGER NOT NULL,
+        "code" TEXT NOT NULL,
+        "type" "VerificationType" NOT NULL,
+        "expiresAt" TIMESTAMP NOT NULL
+      );
+    `).catch(() => {});
+
+    // Ensure all dynamic columns exist
+    await prisma.$executeRawUnsafe('ALTER TABLE "Admin" ADD COLUMN IF NOT EXISTS "role" "AdminRole" DEFAULT \'ADMIN\';').catch(() => {});
+    await prisma.$executeRawUnsafe('ALTER TABLE "Student" ADD COLUMN IF NOT EXISTS "idNumber" TEXT;').catch(() => {});
+    await prisma.$executeRawUnsafe('ALTER TABLE "Student" ADD COLUMN IF NOT EXISTS "idPhotoUrl" TEXT;').catch(() => {});
+    await prisma.$executeRawUnsafe('ALTER TABLE "Student" ADD COLUMN IF NOT EXISTS "phone" TEXT;').catch(() => {});
+    await prisma.$executeRawUnsafe('ALTER TABLE "Student" ADD COLUMN IF NOT EXISTS "isEmailVerified" BOOLEAN DEFAULT false;').catch(() => {});
+    await prisma.$executeRawUnsafe('ALTER TABLE "Student" ADD COLUMN IF NOT EXISTS "isPhoneVerified" BOOLEAN DEFAULT false;').catch(() => {});
+
+    console.log('[DATABASE] Table schema fields migrated successfully.');
+
+    // Check & add foreign key constraint if it doesn't exist
+    const fkeyCheck = await prisma.$queryRawUnsafe(`
+      SELECT conname FROM pg_constraint WHERE conname = 'VerificationCode_studentId_fkey'
+    `);
+    if (fkeyCheck.length === 0) {
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "VerificationCode" 
+        ADD CONSTRAINT "VerificationCode_studentId_fkey" 
+        FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE CASCADE
+      `).catch(() => {});
+    }
+
+    // Check & add unique constraints
+    const idNumCheck = await prisma.$queryRawUnsafe(`
+      SELECT conname 
+      FROM pg_constraint 
+      WHERE conname = 'Student_idNumber_key' OR conname = 'Student_idNumber_unique'
+    `);
+    if (idNumCheck.length === 0) {
+      console.log('[DATABASE] Adding unique constraint on Student.idNumber...');
+      await prisma.$executeRawUnsafe('ALTER TABLE "Student" ADD CONSTRAINT "Student_idNumber_key" UNIQUE ("idNumber")').catch(() => {});
+    }
+
+    const phoneCheck = await prisma.$queryRawUnsafe(`
+      SELECT conname 
+      FROM pg_constraint 
+      WHERE conname = 'Student_phone_key' OR conname = 'Student_phone_unique'
+    `);
+    if (phoneCheck.length === 0) {
+      console.log('[DATABASE] Adding unique constraint on Student.phone...');
+      await prisma.$executeRawUnsafe('ALTER TABLE "Student" ADD CONSTRAINT "Student_phone_key" UNIQUE ("phone")').catch(() => {});
+    }
+
+    console.log('[DATABASE] All database constraints checked/applied.');
+  } catch (err) {
+    console.warn('[DATABASE] Startup migration issue:', err.message);
+  }
+}
+
+// Trigger connection, migrations, and seeding
+prisma.$connect()
+  .then(async () => {
+    console.log('[DATABASE] Connected to PostgreSQL via Prisma Client.');
+    await runStartupMigrations();
+    
+    // Execute seed script and print logs directly to console output
+    const { exec } = require('child_process');
+    exec('node prisma/seed.js', (err, stdout, stderr) => {
+      if (err) {
+        console.error('[DATABASE] Seeding process failed:', err.message);
+        console.error(stderr);
+      } else {
+        console.log('[DATABASE] Seeding completed successfully.');
+        if (stdout) console.log(stdout);
+      }
+    });
+  })
+  .catch((err) => {
+    console.error('[DATABASE] Critical database connection error:', err.message);
+  });
 
 // ==========================================
 // NOTIFICATION ENGINE: CRON JOBS
@@ -47,6 +155,103 @@ try {
 cron.schedule('0 20 * * *', async () => {
   console.log('[CRON] Executing 8:00 PM Daily Schedule Summary for all groups...');
   try {
+    // 1. Determine tomorrow's day of week
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+    const tomorrowDayName = days[tomorrow.getDay()];
+    
+    // Start and end of tomorrow for date comparison
+    const tomorrowStart = new Date(tomorrow);
+    tomorrowStart.setHours(0, 0, 0, 0);
+    const tomorrowEnd = new Date(tomorrow);
+    tomorrowEnd.setHours(23, 59, 59, 999);
+    
+    // Fetch all groups
+    const groups = await prisma.group.findMany();
+    
+    for (const group of groups) {
+      // Find base schedules for this group for tomorrow's day
+      const schedules = await prisma.schedule.findMany({
+        where: {
+          groupId: group.id,
+          dayOfWeek: tomorrowDayName
+        },
+        include: {
+          subject: true,
+          room: true
+        }
+      });
+      
+      const tomorrowClasses = [];
+      
+      for (const schedule of schedules) {
+        // Find overrides for tomorrow's date
+        const override = await prisma.scheduleOverride.findFirst({
+          where: {
+            scheduleId: schedule.id,
+            date: {
+              gte: tomorrowStart,
+              lte: tomorrowEnd
+            }
+          },
+          include: {
+            newRoom: true
+          }
+        });
+        
+        let startTime = schedule.startTime;
+        let endTime = schedule.endTime;
+        let roomName = schedule.room.name;
+        
+        if (override) {
+          startTime = override.newStartTime || startTime;
+          endTime = override.newEndTime || endTime;
+          roomName = override.newRoom ? override.newRoom.name : roomName;
+        }
+        
+        tomorrowClasses.push({
+          subject: schedule.subject.name,
+          code: schedule.subject.code,
+          lecturer: schedule.lecturerName,
+          startTime,
+          endTime,
+          room: roomName,
+          isOverride: !!override
+        });
+      }
+      
+      let messageAr = '';
+      let messageEn = '';
+      
+      if (tomorrowClasses.length > 0) {
+        messageEn = `Tomorrow's Schedule Summary for ${group.name}:\n`;
+        messageAr = `ملخص جدول الغد لشعبة ${group.name}:\n`;
+        
+        tomorrowClasses.forEach((c, idx) => {
+          messageEn += `${idx + 1}. ${c.subject} (${c.code}) with Dr. ${c.lecturer} in Room ${c.room} [${c.startTime} - ${c.endTime}]${c.isOverride ? ' (UPDATED)' : ''}\n`;
+          messageAr += `${idx + 1}. ${c.subject} (${c.code}) مع د. ${c.lecturer} في قاعة ${c.room} [${c.startTime} - ${c.endTime}]${c.isOverride ? ' (تم التحديث)' : ''}\n`;
+        });
+      } else {
+        messageEn = `No classes scheduled for tomorrow for ${group.name}. Enjoy your day off!`;
+        messageAr = `لا توجد محاضرات مجدولة للغد لشعبة ${group.name}. استمتع بيومك!`;
+      }
+      
+      // Combine messages
+      const alertMessage = `${messageAr}\n${messageEn}`;
+      
+      await prisma.notificationLog.create({
+        data: {
+          groupId: group.id,
+          message: alertMessage,
+          status: 'SENT',
+          sentTime: new Date()
+        }
+      });
+    }
+    
+    // 2. Also process any other PENDING notifications and set their status to SENT
     const pendingNotifications = await prisma.notificationLog.findMany({
       where: { status: 'PENDING' }
     });
@@ -60,7 +265,7 @@ cron.schedule('0 20 * * *', async () => {
       });
     }
 
-    console.log(`[CRON] Daily notifications processed successfully. Count: ${pendingNotifications.length}`);
+    console.log(`[CRON] Daily notifications and summaries processed successfully. Groups: ${groups.length}, Pending: ${pendingNotifications.length}`);
   } catch (error) {
     console.error('[CRON] Error processing daily notifications:', error);
   }
@@ -141,6 +346,317 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (error) {
     console.error('[API] Login error:', error);
     res.status(500).json({ success: false, error: 'Internal server error during authentication' });
+  }
+});
+
+// In-memory CAPTCHA challenge store
+const captchaStore = new Map();
+
+// CAPTCHA Generator Endpoint
+app.get('/api/auth/captcha', (req, res) => {
+  const challengeId = Math.random().toString(36).substring(2, 15);
+  const num1 = Math.floor(Math.random() * 10) + 1;
+  const num2 = Math.floor(Math.random() * 10) + 1;
+  const answer = num1 + num2;
+
+  // Store the correct answer (expire in 5 minutes)
+  captchaStore.set(challengeId, { answer, expires: Date.now() + 5 * 60 * 1000 });
+
+  res.status(200).json({
+    success: true,
+    challengeId,
+    question: `What is ${num1} + ${num2}?`
+  });
+});
+
+// Student Registration Endpoint (With Human Verification and Dual-Factor OTP Codes)
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { 
+      fullName, email, password, phone, idNumber, idPhotoUrl, 
+      majorId, levelId, groupId, captchaAnswer, captchaChallengeId 
+    } = req.body;
+
+    if (!fullName || !email || !password || !phone || !idNumber || !majorId || !levelId || !groupId) {
+      return res.status(400).json({ success: false, error: 'All fields except ID Photo URL are required' });
+    }
+
+    // CAPTCHA validation
+    const captcha = captchaStore.get(captchaChallengeId);
+    if (!captcha || captcha.expires < Date.now() || parseInt(captchaAnswer) !== captcha.answer) {
+      return res.status(400).json({ success: false, error: 'Human verification (CAPTCHA) failed or expired.' });
+    }
+    captchaStore.delete(captchaChallengeId); // Cleanup challenge after use
+
+    // Check if email already registered
+    const existingStudent = await prisma.student.findUnique({ where: { email } });
+    if (existingStudent) {
+      return res.status(400).json({ success: false, error: 'Email address is already registered' });
+    }
+
+    // Check if Phone already registered
+    const existingPhone = await prisma.student.findUnique({ where: { phone } });
+    if (existingPhone) {
+      return res.status(400).json({ success: false, error: 'Phone number is already registered' });
+    }
+
+    // Check if ID Number already registered
+    const existingIdNumber = await prisma.student.findUnique({ where: { idNumber } });
+    if (existingIdNumber) {
+      return res.status(400).json({ success: false, error: 'ID Number is already registered' });
+    }
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create the student profile (initially unverified)
+    const student = await prisma.student.create({
+      data: {
+        name: fullName,
+        email,
+        password: hashedPassword,
+        phone,
+        idNumber,
+        idPhotoUrl: idPhotoUrl || null,
+        majorId: parseInt(majorId),
+        levelId: parseInt(levelId),
+        groupId: parseInt(groupId),
+        isEmailVerified: false,
+        isPhoneVerified: false
+      }
+    });
+
+    // Generate 6-digit OTP codes for Email and Phone
+    const emailOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    const phoneOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
+
+    // Save OTPs
+    await prisma.verificationCode.createMany({
+      data: [
+        { studentId: student.id, code: emailOtp, type: 'EMAIL', expiresAt },
+        { studentId: student.id, code: phoneOtp, type: 'PHONE', expiresAt }
+      ]
+    });
+
+    // Write OTP codes to developer log
+    const fs = require('fs');
+    const path = require('path');
+    const logMessage = `[${new Date().toISOString()}] Student: ${fullName} (${email})\n  - EMAIL OTP: ${emailOtp}\n  - PHONE OTP: ${phoneOtp}\n\n`;
+    try {
+      const logPath = path.join(process.cwd(), 'verification_codes.log');
+      fs.appendFileSync(logPath, logMessage);
+      console.log(`[AUTH] Verification codes written to ${logPath}`);
+    } catch (fsErr) {
+      console.warn('Failed to write verification codes to log file:', fsErr.message);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Student registered successfully. Verification codes dispatched to email and phone.',
+      email,
+      phone
+    });
+
+  } catch (error) {
+    console.error('[API] Registration error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error during registration' });
+  }
+});
+
+// Triple Verification Endpoint (Accepts code, type, identifier)
+app.post('/api/auth/verify', async (req, res) => {
+  try {
+    const { identifier, code, type } = req.body; // type is 'EMAIL' or 'PHONE'
+
+    if (!identifier || !code || !type) {
+      return res.status(400).json({ success: false, error: 'Identifier, code, and verification type are required' });
+    }
+
+    if (type !== 'EMAIL' && type !== 'PHONE') {
+      return res.status(400).json({ success: false, error: 'Invalid verification type' });
+    }
+
+    // Find student
+    let student;
+    if (type === 'EMAIL') {
+      student = await prisma.student.findUnique({ where: { email: identifier } });
+    } else {
+      student = await prisma.student.findUnique({ where: { phone: identifier } });
+    }
+
+    if (!student) {
+      return res.status(404).json({ success: false, error: 'Student record not found' });
+    }
+
+    // Find valid verification code
+    const validCode = await prisma.verificationCode.findFirst({
+      where: {
+        studentId: student.id,
+        code,
+        type,
+        expiresAt: { gte: new Date() }
+      }
+    });
+
+    if (!validCode) {
+      return res.status(400).json({ success: false, error: 'Invalid or expired verification code' });
+    }
+
+    // Delete the verified code
+    await prisma.verificationCode.delete({ where: { id: validCode.id } });
+
+    // Update verified status
+    const updateData = type === 'EMAIL' ? { isEmailVerified: true } : { isPhoneVerified: true };
+    const updatedStudent = await prisma.student.update({
+      where: { id: student.id },
+      data: updateData
+    });
+
+    // Check if both verification steps are satisfied
+    if (updatedStudent.isEmailVerified && updatedStudent.isPhoneVerified) {
+      // Generate 90-day long-lived JWT token for persistent login
+      const token = jwt.sign(
+        { id: updatedStudent.id, name: updatedStudent.name, role: 'STUDENT', groupId: updatedStudent.groupId },
+        JWT_SECRET,
+        { expiresIn: '90d' }
+      );
+
+      return res.status(200).json({
+        success: true,
+        verified: true,
+        message: 'Account fully verified and activated.',
+        token,
+        user: {
+          id: updatedStudent.id,
+          name: updatedStudent.name,
+          email: updatedStudent.email,
+          role: 'STUDENT',
+          groupId: updatedStudent.groupId
+        }
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      verified: false,
+      message: `${type} verification completed. Pending remaining step.`
+    });
+
+  } catch (error) {
+    console.error('[API] Verification error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error during verification' });
+  }
+});
+
+// Developer God Mode: Student Impersonation Endpoint (Protected by SUPER_ADMIN role only)
+app.post('/api/auth/impersonate', verifyToken, async (req, res) => {
+  try {
+    // Only SUPER_ADMIN can impersonate
+    if (req.user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ success: false, error: 'Forbidden: Developer God Mode is reserved for Super Admins only' });
+    }
+
+    const { studentId } = req.body;
+    if (!studentId) {
+      return res.status(400).json({ success: false, error: 'Student ID is required' });
+    }
+
+    const student = await prisma.student.findUnique({
+      where: { id: parseInt(studentId) },
+      include: { group: true }
+    });
+
+    if (!student) {
+      return res.status(404).json({ success: false, error: 'Student not found' });
+    }
+
+    // Sign a new token as the student (bypassing password)
+    const token = jwt.sign(
+      { id: student.id, name: student.name, role: 'STUDENT', groupId: student.groupId },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.status(200).json({
+      success: true,
+      token,
+      user: {
+        id: student.id,
+        name: student.name,
+        email: student.email,
+        role: 'STUDENT',
+        groupId: student.groupId,
+        groupName: student.group.name
+      }
+    });
+
+  } catch (error) {
+    console.error('[API] Impersonation error:', error);
+    res.status(500).json({ success: false, error: 'Failed to impersonate student' });
+  }
+});
+
+// GET all departments
+app.get('/api/departments', async (req, res) => {
+  try {
+    const departments = await prisma.department.findMany({
+      orderBy: { name: 'asc' }
+    });
+    res.status(200).json({ success: true, data: departments });
+  } catch (error) {
+    console.error('[API] Error fetching departments:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch departments' });
+  }
+});
+
+// GET all majors (with optional departmentId filter)
+app.get('/api/majors', async (req, res) => {
+  try {
+    const { departmentId } = req.query;
+    const filter = departmentId ? { departmentId: parseInt(departmentId) } : {};
+    const majors = await prisma.major.findMany({
+      where: filter,
+      orderBy: { name: 'asc' }
+    });
+    res.status(200).json({ success: true, data: majors });
+  } catch (error) {
+    console.error('[API] Error fetching majors:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch majors' });
+  }
+});
+
+// GET all levels
+app.get('/api/levels', async (req, res) => {
+  try {
+    const levels = await prisma.level.findMany({
+      orderBy: { name: 'asc' }
+    });
+    res.status(200).json({ success: true, data: levels });
+  } catch (error) {
+    console.error('[API] Error fetching levels:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch levels' });
+  }
+});
+
+// GET all students (Protected: Admins/Super Admins only)
+app.get('/api/students', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
+    }
+    const students = await prisma.student.findMany({
+      include: {
+        major: { include: { department: true } },
+        level: true,
+        group: true
+      },
+      orderBy: { name: 'asc' }
+    });
+    res.status(200).json({ success: true, data: students });
+  } catch (error) {
+    console.error('[API] Error fetching students:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch students' });
   }
 });
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { API_URL } from './config';
 
 export default function AdminOverview() {
   const navigate = useNavigate();
@@ -15,7 +16,7 @@ export default function AdminOverview() {
   const fetchMetrics = async () => {
     try {
       const token = localStorage.getItem('manar_token');
-      const res = await axios.get('http://localhost:5000/api/admin/metrics', {
+      const res = await axios.get(`${API_URL}/api/admin/metrics`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       if (res.data && res.data.success) {
