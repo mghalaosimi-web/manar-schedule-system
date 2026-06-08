@@ -7,6 +7,7 @@ if (!process.env.DATABASE_URL || !process.env.JWT_SECRET) {
 }
 
 const express = require('express');
+const path = require('path');
 const cors = require('cors');
 const helmet = require('helmet');
 const jwt = require('jsonwebtoken');
@@ -1200,6 +1201,40 @@ app.put('/api/student/settings', verifyToken, async (req, res) => {
   }
 });
 
+
+// ==========================================
+// STATIC SERVING & ROUTING FOR SPA
+// ==========================================
+
+// Serve static files from the React frontend app build directory
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
+
+// Handle invalid API routes gracefully (return 404 JSON, don't fallback to index.html or throw 500)
+app.all('/api/*', (req, res) => {
+  res.status(404).json({ success: false, error: 'API route not found' });
+});
+
+// Catch-all route to serve the React frontend index.html for SPA routing (must be last)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+});
+
+// ==========================================
+// GLOBAL ERROR HANDLING MIDDLEWARE
+// ==========================================
+app.use((err, req, res, next) => {
+  console.error('[SERVER ERROR]', err);
+  
+  if (req.originalUrl.startsWith('/api/')) {
+    return res.status(err.status || 500).json({
+      success: false,
+      error: err.message || 'Internal Server Error'
+    });
+  }
+  
+  // Fallback for non-API requests
+  res.status(500).sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

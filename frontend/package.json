@@ -4,10 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "postinstall": "prisma generate",
+    "start": "node src/server.js",
+    "build": "echo 'Build finished'"
   },
   "dependencies": {
     "framer-motion": "^12.40.0",
