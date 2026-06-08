@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: manar-schedule-backend
+    runtime: node
+    plan: starter
+    buildCommand: npm install && npm run build:frontend && npx prisma generate
+    startCommand: node src/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: manar-schedule-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+
+databases:
+  - name: manar-schedule-db
+    databaseName: manar_schedule
+    user: postgres
+    plan: starter

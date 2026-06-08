@@ -702,7 +702,7 @@ app.get('/api/schedules', async (req, res) => {
 app.post('/api/schedules/override', verifyToken, async (req, res) => {
   try {
     // Role Authorization Check
-    if (req.user.role !== 'ADMIN') {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN') {
       return res.status(403).json({ success: false, error: 'Forbidden: Only administrators can modify schedules' });
     }
 
@@ -750,7 +750,7 @@ app.post('/api/schedules/override', verifyToken, async (req, res) => {
     });
 
     // B. Trigger the Targeted Notification Log for the specific Group
-    const alertMessage = `تنبيه طارئ: تم تعديل محاضرة ${override.schedule.subject.name} الخاصة بـ ${override.schedule.group.name}. يرجى مراجعة الجدول.`;
+    const alertMessage = `تنبيه طارئ: تم تعديل محاضرة ${override.schedule.subject.name} الخاصة بـ ${override.schedule.group.name}. يرجى مراجعة الجدول المحدث.`;
     
     await prisma.notificationLog.create({
       data: {
@@ -776,7 +776,7 @@ app.post('/api/schedules/override', verifyToken, async (req, res) => {
 app.post('/api/schedules', verifyToken, async (req, res) => {
   try {
     // Role Authorization Check
-    if (req.user.role !== 'ADMIN') {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN') {
       return res.status(403).json({ success: false, error: 'Forbidden: Only administrators can add schedules' });
     }
 
@@ -892,7 +892,7 @@ app.get('/api/groups', async (req, res) => {
 
 app.post('/api/groups', verifyToken, async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN') {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN') {
       return res.status(403).json({ success: false, error: 'Forbidden' });
     }
     const { id, name } = req.body;
@@ -920,7 +920,7 @@ app.post('/api/groups', verifyToken, async (req, res) => {
 
 app.delete('/api/groups/:id', verifyToken, async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN') {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN') {
       return res.status(403).json({ success: false, error: 'Forbidden' });
     }
     const { id } = req.params;
@@ -969,7 +969,7 @@ app.get('/api/rooms', async (req, res) => {
 
 app.post('/api/rooms', verifyToken, async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN') {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN') {
       return res.status(403).json({ success: false, error: 'Forbidden' });
     }
     const { id, name, capacity } = req.body;
@@ -997,7 +997,7 @@ app.post('/api/rooms', verifyToken, async (req, res) => {
 
 app.delete('/api/rooms/:id', verifyToken, async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN') {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN') {
       return res.status(403).json({ success: false, error: 'Forbidden' });
     }
     const { id } = req.params;
@@ -1031,7 +1031,7 @@ app.delete('/api/rooms/:id', verifyToken, async (req, res) => {
 // ==========================================
 app.get('/api/admin/metrics', verifyToken, async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN') {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN') {
       return res.status(403).json({ success: false, error: 'Forbidden' });
     }
     const students = await prisma.student.count();
@@ -1051,7 +1051,7 @@ app.get('/api/admin/metrics', verifyToken, async (req, res) => {
 
 app.post('/api/broadcasts', verifyToken, async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN') {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN') {
       return res.status(403).json({ success: false, error: 'Forbidden' });
     }
     const { groupId, message } = req.body;
@@ -1078,7 +1078,7 @@ app.post('/api/broadcasts', verifyToken, async (req, res) => {
 
 app.get('/api/admin/logs', verifyToken, async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN') {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN') {
       return res.status(403).json({ success: false, error: 'Forbidden' });
     }
     const logs = await prisma.notificationLog.findMany({
@@ -1098,7 +1098,7 @@ app.get('/api/admin/logs', verifyToken, async (req, res) => {
 
 app.delete('/api/admin/logs', verifyToken, async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN') {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN') {
       return res.status(403).json({ success: false, error: 'Forbidden' });
     }
     await prisma.notificationLog.deleteMany({});
@@ -1248,5 +1248,4 @@ app.use((err, req, res, next) => {
   // Fallback for non-API requests
   res.status(500).sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
-
 
