@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import ConfirmationModal from './ConfirmationModal';
 import { Toaster, toast } from 'react-hot-toast';
@@ -27,7 +27,31 @@ import CommandPalette from './CommandPalette';
 function AppLayout() {
   const { t, i18n } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
   const path = location.pathname;
+
+  // ── Session Restoration: Auto-redirect on cold load ──────────────────────
+  useEffect(() => {
+    const token = localStorage.getItem('manar_token');
+    const userJson = localStorage.getItem('manar_user');
+    if (!token || !userJson) return;
+
+    let user = null;
+    try { user = JSON.parse(userJson); } catch { return; }
+    if (!user) return;
+
+    // Only auto-redirect from public / root paths
+    const isPublicPath = ['/', '/login', '/register', '/verify'].includes(path);
+    if (!isPublicPath) return; // Already on a protected route, let route guards handle it
+
+    if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
+      navigate('/admin/overview', { replace: true });
+    } else if (user.role === 'STUDENT') {
+      navigate('/student/home', { replace: true });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // ─────────────────────────────────────────────────────────────────────────
 
   const isAdminPath = path.startsWith('/admin');
   const isStudentPath = path.startsWith('/student');
@@ -44,7 +68,6 @@ function AppLayout() {
   }
 
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-  const navigate = useNavigate();
 
   const handleLogoutClick = (e) => {
     e?.preventDefault();

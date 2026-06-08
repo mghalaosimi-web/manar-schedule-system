@@ -352,11 +352,11 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Invalid name, email, ID or password' });
     }
 
-    // 3. Sign JWT Token
+    // 3. Sign JWT Token (90-day persistent session)
     const token = jwt.sign(
       { id: user.id, name: user.name, role, groupId },
       JWT_SECRET,
-      { expiresIn: '24h' }
+      { expiresIn: '90d' }
     );
 
     res.status(200).json({
