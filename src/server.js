@@ -1,20 +1,5 @@
 require('dotenv').config();
 
-// Debugging block - لنرى ما يراه Render
-console.log('--- DEBUG START ---');
-console.log('DATABASE_URL present:', !!process.env.DATABASE_URL);
-console.log('JWT_SECRET present:', !!process.env.JWT_SECRET);
-console.log('PORT:', process.env.PORT);
-console.log('--- DEBUG END ---');
-
-if (!process.env.DATABASE_URL || !process.env.JWT_SECRET) {
-  console.error('CRITICAL CONFIGURATION ERROR: Missing required environment variables.');
-  // بدلاً من الخروج، نريد رؤية الخطأ في الـ Logs
-  process.exit(1);
-}
-
-require('dotenv').config();
-
 // Environment Validation Check
 if (!process.env.DATABASE_URL || !process.env.JWT_SECRET) {
   console.error('CRITICAL CONFIGURATION ERROR: Missing required environment variables (DATABASE_URL and JWT_SECRET).');
@@ -142,9 +127,8 @@ async function runStartupMigrations() {
   }
 }
 
-// Trigger connection, migrations, and seeding
-// Database startup & port binding sequencing
-async function startServer() {
+// Database startup, migrations, seeding, and port binding sequencing
+async function boot() {
   try {
     console.log('[DATABASE] Connecting to PostgreSQL via Prisma Client...');
     await prisma.$connect();
@@ -175,7 +159,7 @@ async function startServer() {
   }
 }
 
-startServer();
+boot();
 
 // ==========================================
 // NOTIFICATION ENGINE: CRON JOBS
@@ -1343,7 +1327,15 @@ app.use((req, res, next) => {
 app.use((err, req, res, next) => {
   console.error('[SERVER ERROR]', err);
 
-  if (req.originalUrl.startsWith('/api/')) {
+  // Catch ENOENT (File Not Found) errors for missing static assets
+  if (err.code === 'ENOENT') {
+    return res.status(404).json({
+      success: false,
+      error: 'File not found'
+    });
+  }
+
+  if (req.originalUrl && req.originalUrl.startsWith('/api/')) {
     return res.status(err.status || 500).json({
       success: false,
       error: err.message || 'Internal Server Error'
