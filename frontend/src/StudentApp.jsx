@@ -65,6 +65,7 @@ export default function StudentApp() {
   const [schedules, setSchedules] = useState([]);
   const [backendOnline, setBackendOnline] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState('list');
 
   const getActiveDay = (schedule) => {
     if (schedule.overrides && schedule.overrides.length > 0) {
@@ -158,146 +159,251 @@ export default function StudentApp() {
             <span className="text-xs text-gray-500">Syncing with schedule engine...</span>
           </div>
         ) : (
-          <div className="flex-1 p-5 space-y-6">
+          <div className="flex-1 p-5 space-y-6 print-area">
             
-            {/* Top Section: Active Alert / Next Upcoming Lecture */}
-            <section className="space-y-3">
-              <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t('dashboard.nextUpcoming')}</h2>
-              {nextLecture ? (
-                <div className={`relative overflow-hidden rounded-xl border-l-4 p-5 shadow-lg flex flex-col gap-4 ${
-                  isOverridden(nextLecture)
-                    ? 'border-orange-500 bg-orange-950/20 text-orange-200'
-                    : 'border-red-500 bg-gradient-to-r from-red-950/40 to-gray-850'
-                }`}>
-                  {/* Alert Pin Badge */}
-                  <div className="self-start flex items-center gap-1.5 bg-red-500/10 border border-red-500/30 px-2 py-0.5 rounded text-[9px] font-bold text-red-400 uppercase tracking-wide">
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
-                    </span>
-                    {t('dashboard.nextStartsIn')}
-                  </div>
+            {/* View Selection Toggle */}
+            <div className="flex justify-between items-center bg-white/5 border border-white/10 p-2 rounded-xl mb-4 no-print">
+              <span className="text-xs font-bold text-gray-300">
+                {viewMode === 'list' ? 'القائمة الأسبوعية' : 'الجدول الشبكي'}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`px-3 py-1 text-[10px] font-black rounded-lg transition ${
+                    viewMode === 'list' ? 'bg-lime-500 text-black' : 'bg-gray-800 text-gray-400 hover:text-white'
+                  }`}
+                >
+                  📝 List
+                </button>
+                <button
+                  onClick={() => setViewMode('calendar')}
+                  className={`px-3 py-1 text-[10px] font-black rounded-lg transition ${
+                    viewMode === 'calendar' ? 'bg-lime-500 text-black' : 'bg-gray-800 text-gray-400 hover:text-white'
+                  }`}
+                >
+                  📅 Calendar
+                </button>
+              </div>
+            </div>
 
-                  <div>
-                    <h3 className="text-xl font-bold text-white leading-tight">{nextLecture.subject.name}</h3>
-                    <p className="text-xs font-mono text-red-300 mt-1 font-semibold">{nextLecture.subject.code}</p>
-                  </div>
+            {viewMode === 'list' ? (
+              <>
+                {/* Top Section: Active Alert / Next Upcoming Lecture */}
+                <section className="space-y-3 no-print">
+                  <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t('dashboard.nextUpcoming')}</h2>
+                  {nextLecture ? (
+                    <div className={`relative overflow-hidden rounded-xl border-l-4 p-5 shadow-lg flex flex-col gap-4 ${
+                      isOverridden(nextLecture)
+                        ? 'border-orange-500 bg-orange-950/20 text-orange-200'
+                        : 'border-red-500 bg-gradient-to-r from-red-950/40 to-gray-850'
+                    }`}>
+                      {/* Alert Pin Badge */}
+                      <div className="self-start flex items-center gap-1.5 bg-red-500/10 border border-red-500/30 px-2 py-0.5 rounded text-[9px] font-bold text-red-400 uppercase tracking-wide">
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-red-500"></span>
+                        </span>
+                        {t('dashboard.nextStartsIn')}
+                      </div>
 
-                  <div className="grid grid-cols-2 gap-y-3 gap-x-4 pt-3 border-t border-gray-800/80 text-xs">
-                    <div>
-                      <span className="text-gray-500 block text-[10px] uppercase font-semibold">{t('dashboard.timeSlot')}</span>
-                      <span className="font-bold text-gray-250 mt-0.5 block">{getActiveStartTime(nextLecture)} - {getActiveEndTime(nextLecture)}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500 block text-[10px] uppercase font-semibold">{t('dashboard.classroom')}</span>
-                      <span className="font-bold text-gray-250 mt-0.5 block">{nextLecture.room?.name || 'N/A'}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500 block text-[10px] uppercase font-semibold">{t('dashboard.lecturer')}</span>
-                      <span className="font-bold text-gray-250 mt-0.5 block">{nextLecture.lecturerName}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-500 block text-[10px] uppercase font-semibold">{t('dashboard.day')}</span>
-                      <span className="font-bold text-gray-250 mt-0.5 block">{getActiveDay(nextLecture)}</span>
-                    </div>
-                  </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-white leading-tight">{nextLecture.subject.name}</h3>
+                        <p className="text-xs font-mono text-red-300 mt-1 font-semibold">{nextLecture.subject.code}</p>
+                      </div>
 
-                  {isOverridden(nextLecture) && (
-                    <div className="bg-orange-950/30 border border-orange-900/40 rounded-lg p-2.5 text-[11px] text-orange-350">
-                      {t('dashboard.rescheduledWarning')}
+                      <div className="grid grid-cols-2 gap-y-3 gap-x-4 pt-3 border-t border-gray-800/80 text-xs">
+                        <div>
+                          <span className="text-gray-500 block text-[10px] uppercase font-semibold">{t('dashboard.timeSlot')}</span>
+                          <span className="font-bold text-gray-250 mt-0.5 block">{getActiveStartTime(nextLecture)} - {getActiveEndTime(nextLecture)}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500 block text-[10px] uppercase font-semibold">{t('dashboard.classroom')}</span>
+                          <span className="font-bold text-gray-250 mt-0.5 block">{nextLecture.room?.name || 'N/A'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500 block text-[10px] uppercase font-semibold">{t('dashboard.lecturer')}</span>
+                          <span className="font-bold text-gray-250 mt-0.5 block">{nextLecture.lecturerName}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500 block text-[10px] uppercase font-semibold">{t('dashboard.day')}</span>
+                          <span className="font-bold text-gray-250 mt-0.5 block">{getActiveDay(nextLecture)}</span>
+                        </div>
+                      </div>
+
+                      {isOverridden(nextLecture) && (
+                        <div className="bg-orange-950/30 border border-orange-900/40 rounded-lg p-2.5 text-[11px] text-orange-350">
+                          {t('dashboard.rescheduledWarning')}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="bg-gray-850/40 border border-gray-800 rounded-xl p-6 text-center text-gray-500 text-xs">
+                      {t('dashboard.noClassesRegistered')}
                     </div>
                   )}
-                </div>
-              ) : (
-                <div className="bg-gray-850/40 border border-gray-800 rounded-xl p-6 text-center text-gray-500 text-xs">
-                  {t('dashboard.noClassesRegistered')}
-                </div>
-              )}
-            </section>
+                </section>
 
-            {/* Bottom Section: Daily Schedule List */}
-            <section className="space-y-4">
-              <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t('dashboard.weeklyTimeline')}</h2>
-              <div className="space-y-4">
-                {DAYS.map(day => {
-                  const daySchedules = schedules.filter(s => getActiveDay(s) === day);
-                  if (daySchedules.length === 0) return null;
-
-                  return (
-                    <div key={day} className="space-y-2">
-                      <div className="flex items-center justify-between px-1">
-                        <span className="text-[10px] font-extrabold uppercase tracking-widest text-gray-450">{day}</span>
-                        <span className="text-[9px] text-gray-650 font-bold">{daySchedules.length} {t('dashboard.classes')}</span>
-                      </div>
-
-                      <div className="space-y-2.5">
-                        {daySchedules.map(schedule => {
-                          const overridden = isOverridden(schedule);
-                          const isTheory = schedule.subject.type === 'THEORY';
-                          return (
-                            <div
-                              key={schedule.id}
-                              className={`p-4 rounded-xl border flex flex-col justify-between gap-3 transition hover:scale-[1.01] duration-150 ${
-                                overridden
-                                  ? 'border-orange-500 bg-orange-950/20 text-orange-200 shadow-md shadow-orange-950/10'
-                                  : isTheory
-                                  ? 'bg-blue-900/10 border-blue-800/40 text-blue-200'
-                                  : 'bg-green-900/10 border-green-800/40 text-green-200'
-                              }`}
-                            >
-                              <div className="flex justify-between items-start gap-1">
-                                <div>
-                                  <h4 className="text-sm font-bold text-white">{schedule.subject.name}</h4>
-                                  <p className="text-[10px] font-mono mt-0.5 text-gray-450">{schedule.subject.code}</p>
-                                </div>
-                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                                  overridden
-                                    ? 'bg-orange-900/40 border border-orange-850/30 text-orange-300'
-                                    : isTheory
-                                    ? 'bg-blue-900/40 border border-blue-800/30 text-blue-300'
-                                    : 'bg-green-900/40 border border-green-800/30 text-green-300'
-                                }`}>
-                                  {isTheory ? t('dashboard.theory') : t('dashboard.practical')}
-                                </span>
-                              </div>
-
-                              <div className="flex justify-between items-end pt-2 border-t border-white/5 text-[11px] text-gray-400">
-                                <div>
-                                  {t('dashboard.classroom')}: <span className="font-semibold text-gray-300">{schedule.room?.name || 'N/A'}</span> • <span className="text-gray-450">{schedule.lecturerName}</span>
-                                </div>
-                                <div className="text-right">
-                                  <span className="font-extrabold text-gray-200">
-                                    {getActiveStartTime(schedule)} - {getActiveEndTime(schedule)}
-                                  </span>
-                                </div>
-                              </div>
-
-                              {overridden && (
-                                <div className="bg-orange-500/20 border border-orange-500/50 text-orange-350 text-[10px] font-extrabold px-2 py-0.5 rounded self-start uppercase tracking-wide flex items-center gap-1">
-                                  <span>⚠️</span> {t('dashboard.rescheduled') || 'Modified'}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {schedules.length === 0 && (
-                  <div className="bg-gray-850/40 border border-gray-850 rounded-xl p-8 text-center text-gray-500 text-xs">
-                    {t('dashboard.noClassesRegistered')}
+                {/* Bottom Section: Daily Schedule List */}
+                <section className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t('dashboard.weeklyTimeline')}</h2>
+                    <button
+                      onClick={() => window.print()}
+                      className="px-2.5 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-[10px] font-black text-gray-300 no-print transition-all"
+                    >
+                      🖨️ PDF
+                    </button>
                   </div>
-                )}
+                  <div className="space-y-4">
+                    {DAYS.map(day => {
+                      const daySchedules = schedules.filter(s => getActiveDay(s) === day);
+                      if (daySchedules.length === 0) return null;
+
+                      return (
+                        <div key={day} className="space-y-2 print-card">
+                          <div className="flex items-center justify-between px-1">
+                            <span className="text-[10px] font-extrabold uppercase tracking-widest text-gray-450">{day}</span>
+                            <span className="text-[9px] text-gray-650 font-bold">{daySchedules.length} {t('dashboard.classes')}</span>
+                          </div>
+
+                          <div className="space-y-2.5">
+                            {daySchedules.map(schedule => {
+                              const overridden = isOverridden(schedule);
+                              const isTheory = schedule.subject.type === 'THEORY';
+                              return (
+                                <div
+                                  key={schedule.id}
+                                  className={`p-4 rounded-xl border flex flex-col justify-between gap-3 transition hover:scale-[1.01] duration-150 ${
+                                    overridden
+                                      ? 'border-orange-500 bg-orange-950/20 text-orange-200 shadow-md shadow-orange-950/10'
+                                      : isTheory
+                                      ? 'bg-blue-900/10 border-blue-800/40 text-blue-200'
+                                      : 'bg-green-900/10 border-green-800/40 text-green-200'
+                                  }`}
+                                >
+                                  <div className="flex justify-between items-start gap-1">
+                                    <div>
+                                      <h4 className="text-sm font-bold text-white">{schedule.subject.name}</h4>
+                                      <p className="text-[10px] font-mono mt-0.5 text-gray-450">{schedule.subject.code}</p>
+                                    </div>
+                                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                                      overridden
+                                        ? 'bg-orange-900/40 border border-orange-850/30 text-orange-300'
+                                        : isTheory
+                                        ? 'bg-blue-900/40 border border-blue-800/30 text-blue-300'
+                                        : 'bg-green-900/40 border border-green-800/30 text-green-300'
+                                    }`}>
+                                      {isTheory ? t('dashboard.theory') : t('dashboard.practical')}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex justify-between items-end pt-2 border-t border-white/5 text-[11px] text-gray-400">
+                                    <div>
+                                      {t('dashboard.classroom')}: <span className="font-semibold text-gray-300">{schedule.room?.name || 'N/A'}</span> • <span className="text-gray-450">{schedule.lecturerName}</span>
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="font-extrabold text-gray-200">
+                                        {getActiveStartTime(schedule)} - {getActiveEndTime(schedule)}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {overridden && (
+                                    <div className="bg-orange-500/20 border border-orange-500/50 text-orange-350 text-[10px] font-extrabold px-2 py-0.5 rounded self-start uppercase tracking-wide flex items-center gap-1">
+                                      <span>⚠️</span> {t('dashboard.rescheduled') || 'Modified'}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {schedules.length === 0 && (
+                      <div className="bg-gray-850/40 border border-gray-850 rounded-xl p-8 text-center text-gray-500 text-xs">
+                        {t('dashboard.noClassesRegistered')}
+                      </div>
+                    )}
+                  </div>
+                </section>
+              </>
+            ) : (
+              /* Weekly Calendar Grid View */
+              <div className="space-y-4">
+                <button
+                  onClick={() => window.print()}
+                  className="w-full mb-2 py-2.5 bg-gradient-to-r from-lime-500 to-emerald-500 hover:from-lime-400 hover:to-emerald-400 text-black font-extrabold text-[11px] rounded-xl shadow-lg no-print flex items-center justify-center gap-2"
+                >
+                  🖨️ PDF / Print Schedule
+                </button>
+
+                <div className="overflow-x-auto border border-white/10 rounded-2xl bg-gray-950/40 p-3 shadow-2xl">
+                  <table className="w-full border-collapse text-[10px] text-center min-w-[500px]">
+                    <thead>
+                      <tr className="border-b border-white/10 bg-white/5 text-[9px] text-gray-400 uppercase font-black">
+                        <th className="p-3 border-r border-white/5 text-left text-gray-300">Time / Day</th>
+                        {['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY'].map(day => (
+                          <th key={day} className="p-3 border-r border-white/5 text-gray-200 font-extrabold">
+                            {day === 'SUNDAY' ? 'الأحد' : day === 'MONDAY' ? 'الاثنين' : day === 'TUESDAY' ? 'الثلاثاء' : day === 'WEDNESDAY' ? 'الأربعاء' : 'الخميس'}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        { start: '08:00', end: '10:00' },
+                        { start: '10:00', end: '12:00' },
+                        { start: '12:00', end: '14:00' },
+                        { start: '14:00', end: '16:00' }
+                      ].map(slot => (
+                        <tr key={slot.start} className="border-b border-white/5 hover:bg-white/2 transition">
+                          <td className="p-3 font-mono font-bold text-gray-400 border-r border-white/5 text-left bg-white/2">
+                            {slot.start} - {slot.end}
+                          </td>
+                          {['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY'].map(day => {
+                            const cellLectures = schedules.filter(
+                              s => getActiveDay(s) === day && getActiveStartTime(s).substring(0, 5) === slot.start
+                            );
+                            return (
+                              <td key={day} className="p-2 border-r border-white/5 align-middle h-24">
+                                {cellLectures.map(lecture => {
+                                  const isTheory = lecture.subject.type === 'THEORY';
+                                  const overridden = isOverridden(lecture);
+                                  return (
+                                    <div
+                                      key={lecture.id}
+                                      className={`p-2 rounded-xl border text-[8px] font-bold leading-tight space-y-1 shadow-md ${
+                                        overridden
+                                          ? 'border-orange-500/40 bg-orange-950/20 text-orange-300'
+                                          : isTheory
+                                          ? 'bg-blue-950/20 border-blue-500/20 text-blue-300'
+                                          : 'bg-green-950/20 border-green-500/20 text-green-300'
+                                      }`}
+                                    >
+                                      <div className="text-white truncate max-w-[80px] font-extrabold">{lecture.subject.name}</div>
+                                      <div className="font-mono opacity-70 text-[7px]">{lecture.subject.code}</div>
+                                      <div className="opacity-90">{lecture.room?.name || 'N/A'}</div>
+                                    </div>
+                                  );
+                                })}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </section>
+            )}
 
           </div>
         )}
 
         {/* Footer */}
-        <footer className="border-t border-gray-800 bg-gray-950/60 p-4 text-center text-[10px] text-gray-600">
+        <footer className="border-t border-gray-800 bg-gray-950/60 p-4 text-center text-[10px] text-gray-600 no-print">
           <div>© 2026 Manar Student Alert Portal. All rights reserved.</div>
         </footer>
 

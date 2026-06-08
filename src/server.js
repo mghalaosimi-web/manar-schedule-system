@@ -769,7 +769,13 @@ app.get('/api/schedules', async (req, res) => {
       include: {
         subject: true,
         room: true,
-        group: true,
+        group: {
+          include: {
+            _count: {
+              select: { students: true }
+            }
+          }
+        },
         overrides: {
           where: { date: { gte: new Date() } } // Fetch only relevant future overrides
         }
@@ -1227,12 +1233,33 @@ app.put('/api/student/settings', verifyToken, async (req, res) => {
     if (req.user.role !== 'STUDENT') {
       return res.status(403).json({ success: false, error: 'Forbidden' });
     }
-    const { name, password, groupId, departmentName, levelName } = req.body;
+    const { name, password, groupId, departmentName, levelName, phone, email, idPhotoUrl } = req.body;
     const studentId = req.user.id;
 
     const updateData = {};
     if (name) updateData.name = name;
     if (groupId) updateData.groupId = parseInt(groupId);
+    if (idPhotoUrl !== undefined) updateData.idPhotoUrl = idPhotoUrl;
+
+    if (email) {
+      const emailClash = await prisma.student.findFirst({
+        where: { email, id: { not: studentId } }
+      });
+      if (emailClash) {
+        return res.status(400).json({ success: false, error: 'Email address is already in use by another student.' });
+      }
+      updateData.email = email;
+    }
+
+    if (phone) {
+      const phoneClash = await prisma.student.findFirst({
+        where: { phone, id: { not: studentId } }
+      });
+      if (phoneClash) {
+        return res.status(400).json({ success: false, error: 'Phone number is already in use by another student.' });
+      }
+      updateData.phone = phone;
+    }
 
     if (password) {
       const salt = await bcrypt.genSalt(10);
@@ -1286,6 +1313,8 @@ app.put('/api/student/settings', verifyToken, async (req, res) => {
         id: updatedStudent.id,
         name: updatedStudent.name,
         email: updatedStudent.email,
+        phone: updatedStudent.phone,
+        idPhotoUrl: updatedStudent.idPhotoUrl,
         groupId: updatedStudent.groupId,
         role: 'STUDENT',
         groupName: updatedStudent.group.name,

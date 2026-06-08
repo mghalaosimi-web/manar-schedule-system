@@ -334,7 +334,7 @@ export default function Dashboard() {
       </header>
 
       {/* Control Area */}
-      <section className="px-6 py-6 border-b border-gray-800 bg-gray-900/40 flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
+      <section className="no-print px-6 py-6 border-b border-gray-800 bg-gray-900/40 flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-3">
             <label className="text-sm font-semibold text-gray-400">Filter Group:</label>
@@ -360,6 +360,13 @@ export default function Dashboard() {
             className="px-4 py-2 bg-lime-500 text-black font-extrabold text-xs rounded-md shadow-md shadow-lime-500/20 hover:bg-lime-400 transition"
           >
             ➕ Add Schedule
+          </button>
+
+          <button
+            onClick={() => window.print()}
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs rounded-md shadow-md shadow-purple-500/20 transition flex items-center gap-1.5"
+          >
+            🖨️ Print Master Schedule
           </button>
         </div>
 
@@ -439,7 +446,24 @@ export default function Dashboard() {
                               </div>
 
                               <div className="text-[10px] text-gray-300 space-y-1">
-                                <div>Room: <span className="font-bold">{schedule.room?.name || 'N/A'}</span></div>
+                                <div className="flex items-center gap-1.5">
+                                  <span>Room:</span>
+                                  <span className="font-bold">{schedule.room?.name || 'N/A'}</span>
+                                  {schedule.room && schedule.group?._count && (
+                                    <span 
+                                      title={`Capacity Status: ${schedule.group._count.students || 0} students in group / ${schedule.room.capacity} seat capacity`}
+                                      className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
+                                        (schedule.group._count.students || 0) > schedule.room.capacity
+                                          ? 'bg-red-500 text-white animate-pulse'
+                                          : (schedule.group._count.students || 0) >= schedule.room.capacity * 0.8
+                                          ? 'bg-amber-500 text-black'
+                                          : 'bg-emerald-500/20 text-emerald-300'
+                                      }`}
+                                    >
+                                      {schedule.group._count.students || 0}/{schedule.room.capacity}
+                                    </span>
+                                  )}
+                                </div>
                                 <div>Lecturer: <span>{schedule.lecturerName}</span></div>
                                 <div>Group: <span className="font-bold">{schedule.group?.name}</span></div>
                               </div>

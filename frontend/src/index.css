@@ -91,3 +91,32 @@ body {
   animation: pulseGlow 15s infinite ease-in-out;
   will-change: transform;
 }
+
+/* Print Media Styles for clean PDF export */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  header, nav, aside, button, .no-print, .theme-switcher-btn {
+    display: none !important;
+  }
+  .print-area {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: transparent !important;
+    color: black !important;
+  }
+  .print-area * {
+    color: black !important;
+    border-color: #d1d5db !important;
+  }
+  /* Ensure page breaks don't split cards */
+  .print-card {
+    page-break-inside: avoid;
+  }
+}
