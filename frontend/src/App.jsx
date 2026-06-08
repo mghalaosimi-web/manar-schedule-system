@@ -17,6 +17,8 @@ import StudentApp from './StudentApp';
 import NotificationCenter from './NotificationCenter';
 import Settings from './Settings';
 import GodMode from './GodMode';
+import ThemeSwitcher from './ThemeSwitcher';
+import Logo from './Logo';
 import { useTranslation } from 'react-i18next';
 
 function AppLayout() {
@@ -63,30 +65,28 @@ function AppLayout() {
       <div dir={i18n.language === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black text-white flex pt-16">
         {/* Global Institution Header */}
         <header className="fixed top-0 left-0 right-0 h-16 bg-gray-900/60 backdrop-blur-lg border-b border-white/10 shadow-sm z-40 flex items-center justify-between px-6">
-          <div className="flex items-center gap-2">
-            <div className="p-1 bg-lime-500/10 rounded border border-lime-500/20 flex items-center justify-center">
-              <svg className="w-5 h-5 text-lime-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-                <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/>
-              </svg>
-            </div>
+          <div className="flex items-center gap-3">
+            <Logo size="sm" />
             <span className="text-lg md:text-xl font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-lime-400 to-emerald-400">
               كلية المنار الجامعية
             </span>
           </div>
-          <button
-            onClick={() => i18n.changeLanguage(i18n.language === 'ar' ? 'en' : 'ar')}
-            className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-bold text-gray-300 transition-all duration-200"
-          >
-            {i18n.language === 'ar' ? 'English' : 'العربية'}
-          </button>
+          <div className="flex items-center gap-3">
+            <ThemeSwitcher />
+            <button
+              onClick={() => i18n.changeLanguage(i18n.language === 'ar' ? 'en' : 'ar')}
+              className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-bold text-gray-300 transition-all duration-200"
+            >
+              {i18n.language === 'ar' ? 'English' : 'العربية'}
+            </button>
+          </div>
         </header>
 
         {/* Admin Left Sidebar */}
         <aside className="w-64 m-4 mr-0 bg-gray-950/45 backdrop-blur-md border border-gray-850 rounded-2xl flex flex-col justify-between shrink-0 shadow-2xl relative">
           <div className="p-6 space-y-8">
             <div className="flex items-center gap-3">
-              <span className="bg-lime-500 text-black font-black px-2.5 py-1 rounded text-sm shadow-md shadow-lime-500/20">M</span>
+              <Logo size="sm" />
               <div>
                 <h1 className="font-extrabold text-sm tracking-tight">MANAR</h1>
                 <p className="text-[10px] text-gray-500 font-semibold uppercase">Admin Panel</p>
@@ -206,22 +206,20 @@ function AppLayout() {
           {/* Global Institution Header */}
           <header className="absolute top-0 left-0 right-0 h-16 bg-gray-900/60 backdrop-blur-lg border-b border-white/10 shadow-sm z-40 flex items-center justify-between px-6">
             <div className="flex items-center gap-2">
-              <div className="p-1 bg-lime-500/10 rounded border border-lime-500/20 flex items-center justify-center">
-                <svg className="w-4 h-4 text-lime-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-                  <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/>
-                </svg>
-              </div>
+              <Logo size="sm" />
               <span className="text-base font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-lime-400 to-emerald-400">
                 كلية المنار الجامعية
               </span>
             </div>
-            <button
-              onClick={() => i18n.changeLanguage(i18n.language === 'ar' ? 'en' : 'ar')}
-              className="px-2 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[10px] font-bold text-gray-300 transition-all duration-200"
-            >
-              {i18n.language === 'ar' ? 'English' : 'العربية'}
-            </button>
+            <div className="flex items-center gap-2">
+              <ThemeSwitcher />
+              <button
+                onClick={() => i18n.changeLanguage(i18n.language === 'ar' ? 'en' : 'ar')}
+                className="px-2 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-[10px] font-bold text-gray-300 transition-all duration-200"
+              >
+                {i18n.language === 'ar' ? 'English' : 'العربية'}
+              </button>
+            </div>
           </header>
           
           {/* Main App Content */}

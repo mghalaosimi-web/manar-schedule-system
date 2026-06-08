@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
+import Logo from './Logo';
 
 export default function Login() {
   const { t, i18n } = useTranslation();
@@ -95,8 +96,8 @@ export default function Login() {
         
         {/* Logo and title */}
         <div className="text-center space-y-3">
-          <div className="mx-auto h-12 w-12 bg-gradient-to-tr from-lime-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-lime-500/10">
-            <span className="text-2xl font-black text-black">M</span>
+          <div className="flex justify-center">
+            <Logo size="lg" />
           </div>
           <div>
             <h2 className="text-xl font-extrabold text-white tracking-tight">{t('login.title')}</h2>

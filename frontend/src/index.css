@@ -11,8 +11,32 @@
   --border-color: rgba(255, 255, 255, 0.08);
   --text-primary: #f3f4f6;
   --text-secondary: #9ca3af;
-  --glow-lime: rgba(132, 204, 22, 0.12);
-  --glow-emerald: rgba(16, 185, 129, 0.12);
+
+  /* Theme color configuration - Default: Emerald Oasis */
+  --primary-color-rgb: 132, 204, 22; /* lime-500 */
+  --primary-hover-rgb: 163, 230, 53; /* lime-400 */
+  --secondary-color-rgb: 16, 185, 129; /* emerald-500 */
+
+  --glow-lime: rgba(var(--primary-color-rgb), 0.12);
+  --glow-emerald: rgba(var(--secondary-color-rgb), 0.12);
+}
+
+:root.theme-purple {
+  --primary-color-rgb: 168, 85, 247; /* purple-500 */
+  --primary-hover-rgb: 192, 132, 252; /* purple-400 */
+  --secondary-color-rgb: 236, 72, 153; /* pink-500 */
+}
+
+:root.theme-blue {
+  --primary-color-rgb: 59, 130, 246; /* blue-500 */
+  --primary-hover-rgb: 96, 165, 250; /* blue-400 */
+  --secondary-color-rgb: 6, 182, 212; /* cyan-500 */
+}
+
+:root.theme-amber {
+  --primary-color-rgb: 245, 158, 11; /* amber-500 */
+  --primary-hover-rgb: 251, 191, 36; /* amber-400 */
+  --secondary-color-rgb: 249, 115, 22; /* orange-500 */
 }
 
 :root.light {
@@ -21,8 +45,8 @@
   --border-color: rgba(0, 0, 0, 0.08);
   --text-primary: #111827;
   --text-secondary: #4b5563;
-  --glow-lime: rgba(132, 204, 22, 0.06);
-  --glow-emerald: rgba(16, 185, 129, 0.06);
+  --glow-lime: rgba(var(--primary-color-rgb), 0.06);
+  --glow-emerald: rgba(var(--secondary-color-rgb), 0.06);
 }
 
 html {

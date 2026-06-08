@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { API_URL } from './config';
+import Logo from './Logo';
+import ThemeSwitcher from './ThemeSwitcher';
 
 export default function Register() {
   const { t, i18n } = useTranslation();
@@ -186,23 +188,21 @@ export default function Register() {
 
       {/* Global Institution Header */}
       <header className="fixed top-0 left-0 right-0 h-16 bg-gray-900/60 backdrop-blur-lg border-b border-white/10 shadow-sm z-40 flex items-center justify-between px-6">
-        <div className="flex items-center gap-2">
-          <div className="p-1 bg-lime-500/10 rounded border border-lime-500/20 flex items-center justify-center">
-            <svg className="w-5 h-5 text-lime-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-              <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/>
-            </svg>
-          </div>
+        <div className="flex items-center gap-3">
+          <Logo size="sm" />
           <span className="text-lg md:text-xl font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-lime-400 to-emerald-400">
             كلية المنار الجامعية
           </span>
         </div>
-        <button
-          onClick={() => i18n.changeLanguage(i18n.language === 'ar' ? 'en' : 'ar')}
-          className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-bold text-gray-300 transition-all duration-200"
-        >
-          {i18n.language === 'ar' ? 'English' : 'العربية'}
-        </button>
+        <div className="flex items-center gap-3">
+          <ThemeSwitcher />
+          <button
+            onClick={() => i18n.changeLanguage(i18n.language === 'ar' ? 'en' : 'ar')}
+            className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-bold text-gray-300 transition-all duration-200"
+          >
+            {i18n.language === 'ar' ? 'English' : 'العربية'}
+          </button>
+        </div>
       </header>
 
       <motion.div 
@@ -214,8 +214,8 @@ export default function Register() {
         
         {/* Header title */}
         <div className="text-center space-y-2">
-          <div className="mx-auto h-12 w-12 bg-gradient-to-tr from-lime-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-lime-500/10">
-            <span className="text-2xl font-black text-black">M</span>
+          <div className="flex justify-center">
+            <Logo size="lg" />
           </div>
           <div>
             <h2 className="text-xl font-extrabold text-white tracking-tight">{t('register.title')}</h2>

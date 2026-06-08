@@ -7,7 +7,18 @@ export default {
   darkMode: 'class',
 
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        lime: {
+          400: 'rgb(var(--primary-hover-rgb))',
+          500: 'rgb(var(--primary-color-rgb))',
+        },
+        emerald: {
+          400: 'rgb(var(--primary-hover-rgb))',
+          500: 'rgb(var(--secondary-color-rgb))',
+        }
+      }
+    },
   },
   plugins: [],
 }
