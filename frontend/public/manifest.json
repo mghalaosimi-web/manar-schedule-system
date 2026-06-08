@@ -1,0 +1,29 @@
+{
+  "short_name": "المنار",
+  "name": "نظام جداول كلية المنار",
+  "description": "نظام الجداول الذكي والإشعارات الفورية لكلية المنار الجامعية",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#030712",
+  "theme_color": "#84cc16",
+  "display": "standalone",
+  "orientation": "portrait"
+}

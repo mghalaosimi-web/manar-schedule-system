@@ -3,6 +3,8 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import ConfirmationModal from './ConfirmationModal';
 import { API_URL } from './config';
+import AnalyticsPanel from './AnalyticsPanel';
+import { useTranslation } from 'react-i18next';
 
 const DAYS = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
 const TIME_SLOTS = [
@@ -73,8 +75,22 @@ const MOCK_SCHEDULES = [
 ];
 
 export default function Dashboard() {
+  const { i18n } = useTranslation();
   const [schedules, setSchedules] = useState([]);
   const navigate = useNavigate();
+
+  const translateDay = (dayName) => {
+    const map = {
+      SUNDAY: 'الأحد',
+      MONDAY: 'الإثنين',
+      TUESDAY: 'الثلاثاء',
+      WEDNESDAY: 'الأربعاء',
+      THURSDAY: 'الخميس',
+      FRIDAY: 'الجمعة',
+      SATURDAY: 'السبت'
+    };
+    return i18n.language === 'ar' ? (map[dayName] || dayName) : dayName;
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('manar_token');
@@ -375,6 +391,11 @@ export default function Dashboard() {
         </div>
       </section>
 
+      {/* Analytics Dashboard Overview */}
+      <section className="no-print px-6 pt-6">
+        <AnalyticsPanel />
+      </section>
+
       {/* Main Grid View */}
       <main className="flex-1 p-6 overflow-x-auto">
         {loading ? (
@@ -391,7 +412,7 @@ export default function Dashboard() {
               </div>
               {DAYS.map(day => (
                 <div key={day} className="flex items-center justify-center">
-                  {day}
+                  {translateDay(day)}
                 </div>
               ))}
             </div>

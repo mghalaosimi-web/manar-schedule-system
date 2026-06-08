@@ -51,7 +51,7 @@ const MOCK_SCHEDULES = [
 ];
 
 export default function StudentApp() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [groupId, setGroupId] = useState(() => {
     const saved = localStorage.getItem('manar_user');
     if (saved) {
@@ -262,7 +262,11 @@ export default function StudentApp() {
                       return (
                         <div key={day} className="space-y-2 print-card">
                           <div className="flex items-center justify-between px-1">
-                            <span className="text-[10px] font-extrabold uppercase tracking-widest text-gray-450">{day}</span>
+                            <span className="text-[10px] font-extrabold uppercase tracking-widest text-gray-450">
+                              {i18n.language === 'ar'
+                                ? (day === 'SUNDAY' ? 'الأحد' : day === 'MONDAY' ? 'الاثنين' : day === 'TUESDAY' ? 'الثلاثاء' : day === 'WEDNESDAY' ? 'الأربعاء' : day === 'THURSDAY' ? 'الخميس' : day === 'FRIDAY' ? 'الجمعة' : 'السبت')
+                                : day}
+                            </span>
                             <span className="text-[9px] text-gray-650 font-bold">{daySchedules.length} {t('dashboard.classes')}</span>
                           </div>
 

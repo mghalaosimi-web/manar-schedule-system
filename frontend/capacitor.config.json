@@ -1,0 +1,6 @@
+{
+  "appId": "com.manar.schedule",
+  "appName": "نظام جداول المنار",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}

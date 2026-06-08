@@ -20,6 +20,7 @@ import GodMode from './GodMode';
 import ThemeSwitcher from './ThemeSwitcher';
 import Logo from './Logo';
 import { useTranslation } from 'react-i18next';
+import CommandPalette from './CommandPalette';
 
 function AppLayout() {
   const { t, i18n } = useTranslation();
@@ -313,6 +314,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AppLayout />
+      <CommandPalette />
       <Toaster position="top-right" toastOptions={{ className: 'bg-gray-800 text-white border border-gray-700' }} />
     </BrowserRouter>
   );

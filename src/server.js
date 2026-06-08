@@ -643,8 +643,8 @@ app.get('/api/levels', async (req, res) => {
 // God Mode - Get Metrics (Protected: SUPER_ADMIN only)
 app.get('/api/admin/god-mode/metrics', verifyToken, async (req, res) => {
   try {
-    if (req.user.role !== 'SUPER_ADMIN') {
-      return res.status(403).json({ success: false, error: 'Access denied. Super Admin role required.' });
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ success: false, error: 'Access denied. Administrator role required.' });
     }
 
     const totalStudents = await prisma.student.count();
