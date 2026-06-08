@@ -54,7 +54,7 @@ const MOCK_SCHEDULES = [
 ];
 
 export default function StudentDashboard() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
 
   const getInitialProfile = () => {
@@ -91,6 +91,21 @@ export default function StudentDashboard() {
   const [schedules, setSchedules] = useState([]);
   const [backendOnline, setBackendOnline] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (i18n.language === 'ar') {
+      if (hour >= 5 && hour < 12) return '🌅 صباح الخير، طاب صباحك!';
+      if (hour >= 12 && hour < 17) return '☀️ طاب يومك، مرحباً بك!';
+      if (hour >= 17 && hour < 22) return '🌇 مساء الخير، مرحباً بك!';
+      return '🌙 مساء الخير، أتمنى لك ليلة هادئة!';
+    } else {
+      if (hour >= 5 && hour < 12) return '🌅 Good morning, have a great day!';
+      if (hour >= 12 && hour < 17) return '☀️ Good afternoon, welcome back!';
+      if (hour >= 17 && hour < 22) return '🌇 Good evening, welcome!';
+      return '🌙 Good night, rest well!';
+    }
+  };
 
   const getActiveDay = (schedule) => {
     if (schedule.overrides && schedule.overrides.length > 0) {
@@ -234,6 +249,53 @@ export default function StudentDashboard() {
     return schedules[0];
   };
 
+  const getGreetingData = () => {
+    const hour = new Date().getHours();
+    const isAr = i18n.language === 'ar';
+    
+    if (hour >= 5 && hour < 12) {
+      return {
+        title: isAr ? 'صباح الخير والبركات 🌅' : 'Good Morning 🌅',
+        subtitle: isAr ? 'طاب صباحك وأسعد الله يومك بالنشاط والنجاح!' : 'Have a wonderful day filled with productivity!',
+        gradient: 'from-amber-500/20 via-orange-500/10 to-transparent',
+        border: 'border-orange-500/20',
+        text: 'text-orange-400',
+        bgGlow: 'bg-orange-500/5',
+        shadowGlow: 'shadow-[0_0_30px_rgba(249,115,22,0.15)]'
+      };
+    } else if (hour >= 12 && hour < 17) {
+      return {
+        title: isAr ? 'طاب يومك السعيد ☀️' : 'Good Afternoon ☀️',
+        subtitle: isAr ? 'أهلاً بك مجدداً في يوم مليء بالفرص والإنجازات!' : 'Welcome back! Let\'s make this afternoon count.',
+        gradient: 'from-cyan-500/20 via-blue-500/10 to-transparent',
+        border: 'border-cyan-500/20',
+        text: 'text-cyan-400',
+        bgGlow: 'bg-cyan-500/5',
+        shadowGlow: 'shadow-[0_0_30px_rgba(6,182,212,0.15)]'
+      };
+    } else if (hour >= 17 && hour < 22) {
+      return {
+        title: isAr ? 'مساء الخير والجمال 🌇' : 'Good Evening 🌇',
+        subtitle: isAr ? 'مساء مفعم بالهدوء والراحة بعد يوم دراسي حافل!' : 'Hope you are having a pleasant and relaxing evening.',
+        gradient: 'from-pink-500/20 via-purple-500/10 to-transparent',
+        border: 'border-pink-500/20',
+        text: 'text-pink-400',
+        bgGlow: 'bg-pink-500/5',
+        shadowGlow: 'shadow-[0_0_30px_rgba(236,72,153,0.15)]'
+      };
+    } else {
+      return {
+        title: isAr ? 'مساء الخير والهدوء 🌙' : 'Good Night 🌙',
+        subtitle: isAr ? 'نتمنى لك ليلة هادئة ومريحة ونوماً هنيئاً!' : 'Rest well and recharge for another bright day tomorrow.',
+        gradient: 'from-indigo-950/20 via-violet-600/10 to-transparent',
+        border: 'border-violet-500/20',
+        text: 'text-violet-400',
+        bgGlow: 'bg-violet-500/5',
+        shadowGlow: 'shadow-[0_0_30px_rgba(139,92,246,0.15)]'
+      };
+    }
+  };
+
   const nextLecture = getNextLecture();
 
   // Determine current day of the week
@@ -250,21 +312,40 @@ export default function StudentDashboard() {
     >
       <div className="w-full max-w-md space-y-6 pb-20">
         
-        {/* Profile Card Summary */}
-        <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 flex items-center justify-between shadow-2xl">
-          <div>
-            <span className="text-[10px] text-lime-400 font-extrabold uppercase tracking-widest">{t('dashboard.activeProfile')}</span>
-            <h3 className="text-sm font-black text-white mt-0.5">{profile.name}</h3>
-            <span className="text-[10px] text-gray-400 font-semibold">{profile.groupName}</span>
-          </div>
+        {/* Profile Card Summary - Redesigned to be massive, premium and dynamic based on time */}
+        {(() => {
+          const g = getGreetingData();
+          return (
+            <div className={`relative overflow-hidden rounded-3xl border ${g.border} bg-[var(--bg-card)] bg-gradient-to-br ${g.gradient} ${g.shadowGlow} p-6 flex flex-col gap-4 backdrop-blur-xl transition-all duration-500`}>
+              <div className="absolute -right-10 -top-10 w-32 h-32 rounded-full bg-white/5 blur-3xl pointer-events-none" />
+              
+              <div className="flex justify-between items-start">
+                <div className="space-y-1">
+                  <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${g.bgGlow} ${g.text} border ${g.border}`}>
+                    {g.title}
+                  </span>
+                  <h3 className="text-xl font-black text-[var(--text-primary)] mt-3 leading-tight">
+                    {profile.name}
+                  </h3>
+                  <p className="text-[11px] text-[var(--text-secondary)] font-bold mt-1">
+                    {profile.groupName}
+                  </p>
+                </div>
 
-          <button
-            onClick={() => navigate('/student/settings')}
-            className="px-3 py-1.5 bg-lime-500 hover:bg-lime-400 text-black font-extrabold text-[10px] rounded-xl shadow-lg shadow-lime-500/15 hover:shadow-[0_0_15px_rgba(132,204,22,0.45)] transition duration-200"
-          >
-            {t('dashboard.manageGroup')}
-          </button>
-        </div>
+                <button
+                  onClick={() => navigate('/student/settings')}
+                  className="px-4 py-2 bg-lime-500 hover:bg-lime-400 text-black font-extrabold text-xs rounded-2xl shadow-lg shadow-lime-500/15 hover:shadow-lime-500/30 transition-all duration-300"
+                >
+                  {t('dashboard.manageGroup')}
+                </button>
+              </div>
+
+              <div className="text-xs text-[var(--text-secondary)]/80 leading-relaxed font-semibold border-t border-[var(--border-color)] pt-3.5 mt-1">
+                {g.subtitle}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Top Section: Glowing Alert Card for Next Lecture */}
         <section className="space-y-3">

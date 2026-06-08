@@ -109,15 +109,16 @@ async function main() {
   }
 
   // 6. Create SUPER_ADMIN Account
-  const superAdminPasswordHash = await bcrypt.hash('securepassword', 10);
+  const superAdminPasswordHash = await bcrypt.hash('708090', 10);
   const superAdmin = await prisma.admin.upsert({
     where: { email: 'developer@mghal.com' },
     update: {
+      name: 'mohammed',
       password: superAdminPasswordHash,
       role: 'SUPER_ADMIN'
     },
     create: {
-      name: 'Chief Architect',
+      name: 'mohammed',
       email: 'developer@mghal.com',
       password: superAdminPasswordHash,
       role: 'SUPER_ADMIN'

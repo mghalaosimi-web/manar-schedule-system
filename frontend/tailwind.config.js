@@ -10,12 +10,12 @@ export default {
     extend: {
       colors: {
         lime: {
-          400: 'rgb(var(--primary-hover-rgb))',
-          500: 'rgb(var(--primary-color-rgb))',
+          400: 'rgb(var(--primary-hover-rgb) / <alpha-value>)',
+          500: 'rgb(var(--primary-color-rgb) / <alpha-value>)',
         },
         emerald: {
-          400: 'rgb(var(--primary-hover-rgb))',
-          500: 'rgb(var(--secondary-color-rgb))',
+          400: 'rgb(var(--primary-hover-rgb) / <alpha-value>)',
+          500: 'rgb(var(--secondary-color-rgb) / <alpha-value>)',
         }
       }
     },

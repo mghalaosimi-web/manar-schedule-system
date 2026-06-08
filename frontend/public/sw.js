@@ -1,4 +1,4 @@
-const CACHE_NAME = 'manar-cache-v1';
+const CACHE_NAME = 'manar-cache-v2';
 const ASSETS = [
   '/',
   '/index.html',
@@ -32,29 +32,21 @@ self.addEventListener('activate', (e) => {
   self.clients.claim();
 });
 
-// Fetch Event - network first with cache fallback
+// Fetch Event - network first for API, cache first for static assets
 self.addEventListener('fetch', (e) => {
-  const url = new URL(e.request.url);
-
-  // If calling local schedule APIs, try network first, fallback to cached API response
-  if (url.pathname.includes('/api/schedules') || url.pathname.includes('/api/notifications')) {
-    e.respondWith(
-      fetch(e.request)
-        .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(e.request, clone);
-          });
-          return response;
-        })
-        .catch(() => {
-          return caches.match(e.request);
-        })
-    );
+  // 1. Bypass Service Worker for non-GET requests (POST register/login, etc.)
+  if (e.request.method !== 'GET') {
     return;
   }
 
-  // Otherwise, use cache first, then network fallback for assets
+  const url = new URL(e.request.url);
+
+  // 2. Bypass Service Worker for ALL API requests to prevent network/CORS/state issues
+  if (url.pathname.includes('/api/')) {
+    return;
+  }
+
+  // 3. Otherwise, use cache first, then network fallback for assets
   e.respondWith(
     caches.match(e.request).then((cachedResponse) => {
       if (cachedResponse) return cachedResponse;

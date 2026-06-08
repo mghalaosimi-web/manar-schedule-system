@@ -7,20 +7,37 @@ export default function Settings() {
   const { t, i18n } = useTranslation();
   
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('manar_theme') || 'dark';
+    return localStorage.getItem('manar_theme_mode') || 'dark';
   });
 
   useEffect(() => {
     if (theme === 'light') {
       document.documentElement.classList.add('light');
+      localStorage.setItem('manar_theme_mode', 'light');
     } else {
       document.documentElement.classList.remove('light');
+      localStorage.setItem('manar_theme_mode', 'dark');
     }
-    localStorage.setItem('manar_theme', theme);
+    window.dispatchEvent(new Event('themeModeChanged'));
+  }, [theme]);
+
+  useEffect(() => {
+    const handleModeChange = () => {
+      const currentMode = localStorage.getItem('manar_theme_mode') || 'dark';
+      if (currentMode !== theme) {
+        setTheme(currentMode);
+      }
+    };
+    window.addEventListener('themeModeChanged', handleModeChange);
+    return () => window.removeEventListener('themeModeChanged', handleModeChange);
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+    setTheme(prev => {
+      if (prev === 'dark') return 'light';
+      if (prev === 'light') return 'system';
+      return 'dark';
+    });
   };
 
   const [toggles, setToggles] = useState(() => {
@@ -109,13 +126,18 @@ export default function Settings() {
             >
               {theme === 'dark' ? (
                 <>
+                  <span>🌙</span>
+                  <span>{i18n.language === 'ar' ? 'الليل (داكن)' : 'Night (Dark)'}</span>
+                </>
+              ) : theme === 'light' ? (
+                <>
                   <span>☀️</span>
-                  <span>{t('settings.light')}</span>
+                  <span>{i18n.language === 'ar' ? 'النهار (فاتح)' : 'Day (Light)'}</span>
                 </>
               ) : (
                 <>
-                  <span>🌙</span>
-                  <span>{t('settings.dark')}</span>
+                  <span>💻</span>
+                  <span>{i18n.language === 'ar' ? 'تلقائي (نظام)' : 'System (Auto)'}</span>
                 </>
               )}
             </button>

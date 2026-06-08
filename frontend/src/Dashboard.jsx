@@ -327,8 +327,12 @@ export default function Dashboard() {
         <div className="flex items-center gap-3">
           <div className="bg-blue-600 text-white font-extrabold p-2 rounded-lg text-lg tracking-wider shadow-lg shadow-blue-900/30">M</div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-white">Manar Admin Dashboard</h1>
-            <p className="text-xs text-gray-400">Schedule exceptions & smart notification dispatcher</p>
+            <h1 className="text-xl font-bold tracking-tight text-white">
+              {i18n.language === 'ar' ? 'لوحة تحكم المنار للمسؤول' : 'Manar Admin Dashboard'}
+            </h1>
+            <p className="text-xs text-gray-400">
+              {i18n.language === 'ar' ? 'جدولة التعديلات الطارئة وإرسال التنبيهات الذكية' : 'Schedule exceptions & smart notification dispatcher'}
+            </p>
           </div>
         </div>
 
@@ -336,7 +340,9 @@ export default function Dashboard() {
           <div className="flex items-center gap-2 bg-gray-800 px-3 py-1.5 rounded-full border border-gray-700 text-xs">
             <span className={`h-2 w-2 rounded-full ${backendOnline ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
             <span className="font-semibold text-gray-300">
-              {backendOnline ? 'Database Connected' : 'Offline Sandbox Mode'}
+              {backendOnline 
+                ? (i18n.language === 'ar' ? 'قاعدة البيانات متصلة' : 'Database Connected') 
+                : (i18n.language === 'ar' ? 'وضع العمل المنفصل (التجريبي)' : 'Offline Sandbox Mode')}
             </span>
           </div>
 
@@ -344,7 +350,7 @@ export default function Dashboard() {
             onClick={handleLogout}
             className="text-xs bg-red-950/40 hover:bg-red-900/40 text-red-200 px-3 py-1.5 rounded-md transition border border-red-900/35 font-semibold"
           >
-            Logout
+            {i18n.language === 'ar' ? 'تسجيل الخروج' : 'Logout'}
           </button>
         </div>
       </header>
@@ -353,7 +359,9 @@ export default function Dashboard() {
       <section className="no-print px-6 py-6 border-b border-gray-800 bg-gray-900/40 flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-3">
-            <label className="text-sm font-semibold text-gray-400">Filter Group:</label>
+            <label className="text-sm font-semibold text-gray-400">
+              {i18n.language === 'ar' ? 'تصفية حسب الشعبة:' : 'Filter Group:'}
+            </label>
             <div className="flex gap-2">
               {groupsList.map(group => (
                 <button
@@ -375,19 +383,21 @@ export default function Dashboard() {
             onClick={() => setIsAddModalOpen(true)}
             className="px-4 py-2 bg-lime-500 text-black font-extrabold text-xs rounded-md shadow-md shadow-lime-500/20 hover:bg-lime-400 transition"
           >
-            ➕ Add Schedule
+            ➕ {i18n.language === 'ar' ? 'إضافة موعد' : 'Add Schedule'}
           </button>
 
           <button
             onClick={() => window.print()}
             className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs rounded-md shadow-md shadow-purple-500/20 transition flex items-center gap-1.5"
           >
-            🖨️ Print Master Schedule
+            🖨️ {i18n.language === 'ar' ? 'طباعة الجدول الرئيسي' : 'Print Master Schedule'}
           </button>
         </div>
 
         <div className="text-xs text-gray-400 bg-gray-850 border border-gray-800 px-3.5 py-1.5 rounded-lg">
-          💡 Drag any card and drop it into a different cell to dynamically reschedule it.
+          {i18n.language === 'ar' 
+            ? '💡 اسحب أي بطاقة وأسقطها في خلية أخرى لتعديل موعدها تلقائياً وإخطار الطلاب.' 
+            : '💡 Drag any card and drop it into a different cell to dynamically reschedule it.'}
         </div>
       </section>
 
@@ -401,14 +411,16 @@ export default function Dashboard() {
         {loading ? (
           <div className="h-full flex items-center justify-center flex-col gap-3 py-20">
             <div className="h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm text-gray-450">Loading schedules...</span>
+            <span className="text-sm text-gray-455">
+              {i18n.language === 'ar' ? 'جاري تحميل الجداول الأكاديمية...' : 'Loading schedules...'}
+            </span>
           </div>
         ) : (
           <div className="min-w-[1000px] border border-gray-800 rounded-xl overflow-hidden bg-gray-900/20 shadow-2xl">
             {/* Header row: Days of the week (Strict CSS Grid of 8 columns: Time + 7 Days) */}
             <div className="grid grid-cols-8 bg-gray-850 border-b border-gray-800 text-center font-bold text-xs tracking-wider text-gray-300 uppercase py-4">
               <div className="flex items-center justify-center text-gray-400 border-r border-gray-800 font-bold">
-                Time Slot
+                {i18n.language === 'ar' ? 'الوقت / الحصص' : 'Time Slot'}
               </div>
               {DAYS.map(day => (
                 <div key={day} className="flex items-center justify-center">
@@ -423,7 +435,9 @@ export default function Dashboard() {
                 {/* Time Indicator cell */}
                 <div className="flex flex-col items-center justify-center bg-gray-950/40 border-r border-gray-800 p-3 text-center">
                   <span className="text-xs font-bold text-gray-200">{slot.start} - {slot.end}</span>
-                  <span className="text-[10px] text-gray-500 mt-1.5 uppercase font-semibold tracking-wider">Theory / Lab</span>
+                  <span className="text-[10px] text-gray-500 mt-1.5 uppercase font-semibold tracking-wider">
+                    {i18n.language === 'ar' ? 'نظري / عملي' : 'Theory / Lab'}
+                  </span>
                 </div>
 
                 {/* Day cells (CSS Grid drop targets) */}
@@ -444,7 +458,7 @@ export default function Dashboard() {
                             key={schedule.id}
                             draggable
                             onDragStart={(e) => handleDragStart(e, schedule)}
-                            className={`p-3.5 rounded-lg text-left cursor-grab active:cursor-grabbing hover:scale-105 transition-all duration-200 shadow-md flex flex-col justify-between ${
+                            className={`p-3.5 rounded-lg text-right cursor-grab active:cursor-grabbing hover:scale-105 transition-all duration-200 shadow-md flex flex-col justify-between ${
                               isTheory
                                 ? 'bg-blue-900/40 border border-blue-700 text-blue-100'
                                 : 'bg-green-900/40 border border-green-700 text-green-100'
@@ -468,7 +482,7 @@ export default function Dashboard() {
 
                               <div className="text-[10px] text-gray-300 space-y-1">
                                 <div className="flex items-center gap-1.5">
-                                  <span>Room:</span>
+                                  <span>{i18n.language === 'ar' ? 'القاعة:' : 'Room:'}</span>
                                   <span className="font-bold">{schedule.room?.name || 'N/A'}</span>
                                   {schedule.room && schedule.group?._count && (
                                     <span 
@@ -485,8 +499,8 @@ export default function Dashboard() {
                                     </span>
                                   )}
                                 </div>
-                                <div>Lecturer: <span>{schedule.lecturerName}</span></div>
-                                <div>Group: <span className="font-bold">{schedule.group?.name}</span></div>
+                                <div>{i18n.language === 'ar' ? 'المحاضر: ' : 'Lecturer: '}<span>{schedule.lecturerName}</span></div>
+                                <div>{i18n.language === 'ar' ? 'الشعبة: ' : 'Group: '}<span className="font-bold">{schedule.group?.name}</span></div>
                               </div>
                             </div>
 
@@ -496,7 +510,9 @@ export default function Dashboard() {
                                   ? 'bg-blue-550/30 text-blue-300'
                                   : 'bg-green-550/30 text-green-300'
                               }`}>
-                                {isTheory ? 'Theory' : 'Practical'}
+                                {isTheory 
+                                  ? (i18n.language === 'ar' ? 'نظري' : 'Theory') 
+                                  : (i18n.language === 'ar' ? 'عملي' : 'Practical')}
                               </span>
 
                               {!isTheory && (
@@ -507,7 +523,7 @@ export default function Dashboard() {
 
                               {overridden && (
                                 <span className="text-[8px] bg-amber-900/40 text-amber-300 font-bold px-1.5 py-0.5 rounded uppercase tracking-wide">
-                                  Rescheduled
+                                  {i18n.language === 'ar' ? 'تم التعديل' : 'Rescheduled'}
                                 </span>
                               )}
                             </div>

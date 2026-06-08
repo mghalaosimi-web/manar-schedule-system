@@ -6,10 +6,11 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import Logo from './Logo';
+import ThemeSwitcher from './ThemeSwitcher';
 
 export default function Login() {
   const { t, i18n } = useTranslation();
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -21,7 +22,7 @@ export default function Login() {
     setError(null);
 
     try {
-      const res = await axios.post(`${API_URL}/api/auth/login`, { email, password });
+      const res = await axios.post(`${API_URL}/api/auth/login`, { identifier, password });
       if (res.data && res.data.success) {
         const { token, user } = res.data;
         
@@ -60,14 +61,14 @@ export default function Login() {
   };
 
   return (
-    <div dir={i18n.language === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-6 relative pt-24 pb-20 overflow-x-hidden">
+    <div dir={i18n.language === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] flex items-center justify-center p-6 relative pt-24 pb-20 overflow-x-hidden transition-colors duration-300">
       
       {/* Background ambient glowing circles */}
       <div className="absolute top-1/4 left-1/4 h-72 w-72 bg-lime-500/10 rounded-full blur-[80px] -z-10 animate-pulse" />
       <div className="absolute bottom-1/4 right-1/4 h-72 w-72 bg-emerald-500/10 rounded-full blur-[80px] -z-10 animate-pulse" />
 
       {/* Global Institution Header */}
-      <header className="fixed top-0 left-0 right-0 h-16 bg-gray-900/60 backdrop-blur-lg border-b border-white/10 shadow-sm z-40 flex items-center justify-between px-6">
+      <header className="fixed top-0 left-0 right-0 h-16 bg-[var(--bg-card)] backdrop-blur-lg border-b border-[var(--border-color)] shadow-sm z-40 flex items-center justify-between px-6 transition-all duration-300">
         <div className="flex items-center gap-2">
           <div className="p-1 bg-lime-500/10 rounded border border-lime-500/20 flex items-center justify-center">
             <svg className="w-5 h-5 text-lime-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -79,19 +80,22 @@ export default function Login() {
             كلية المنار الجامعية
           </span>
         </div>
-        <button
-          onClick={() => i18n.changeLanguage(i18n.language === 'ar' ? 'en' : 'ar')}
-          className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-bold text-gray-300 transition-all duration-200"
-        >
-          {i18n.language === 'ar' ? 'English' : 'العربية'}
-        </button>
+        <div className="flex items-center gap-3">
+          <ThemeSwitcher />
+          <button
+            onClick={() => i18n.changeLanguage(i18n.language === 'ar' ? 'en' : 'ar')}
+            className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-bold text-gray-300 transition-all duration-200"
+          >
+            {i18n.language === 'ar' ? 'English' : 'العربية'}
+          </button>
+        </div>
       </header>
 
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md bg-gray-900/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl space-y-6"
+        className="w-full max-w-md bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-8 shadow-2xl space-y-6 transition-all duration-300"
       >
         
         {/* Logo and title */}
@@ -100,8 +104,8 @@ export default function Login() {
             <Logo size="lg" />
           </div>
           <div>
-            <h2 className="text-xl font-extrabold text-white tracking-tight">{t('login.title')}</h2>
-            <p className="text-xs text-gray-400 mt-1">{t('login.subtitle')}</p>
+            <h2 className="text-xl font-extrabold text-[var(--text-primary)] tracking-tight">{t('login.title')}</h2>
+            <p className="text-xs text-[var(--text-secondary)] mt-1">{t('login.subtitle')}</p>
           </div>
         </div>
 
@@ -112,34 +116,36 @@ export default function Login() {
         )}
 
         {/* Credentials Tip */}
-        <div className="bg-gray-950/65 border border-white/5 p-3 rounded-lg text-[10px] text-gray-405 space-y-1">
+        <div className="bg-black/20 border border-[var(--border-color)] p-3 rounded-lg text-[10px] text-[var(--text-secondary)] space-y-1 transition-all duration-300">
           <span className="font-bold text-lime-400 uppercase tracking-wide block mb-1">{t('login.sandboxDemo')}</span>
-          <div>Admin: <code className="text-gray-250 font-mono">admin@manar.edu</code> / <code className="text-gray-250 font-mono">admin123</code></div>
-          <div>Student: <code className="text-gray-250 font-mono">student@manar.edu</code> / <code className="text-gray-250 font-mono">student123</code></div>
+          <div>Admin: <code className="text-[var(--text-primary)] font-mono">mohammed</code> / <code className="text-[var(--text-primary)] font-mono">708090</code></div>
+          <div>Student: <code className="text-[var(--text-primary)] font-mono">student@manar.edu</code> / <code className="text-[var(--text-primary)] font-mono">student123</code></div>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4 text-xs">
           <div className="space-y-1">
-            <label className="text-gray-450 block font-medium">{t('login.emailLabel')}</label>
+            <label className="text-[var(--text-secondary)] block font-medium">
+              {i18n.language === 'ar' ? 'الاسم أو البريد الإلكتروني أو الرقم الأكاديمي' : 'Name, Email, or Student ID'}
+            </label>
             <input
-              type="email"
+              type="text"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder={t('login.emailPlaceholder')}
-              className="w-full bg-gray-950/50 border border-white/10 rounded p-2.5 text-white focus:outline-none focus:border-lime-500 focus:ring-1 focus:ring-lime-500/30 font-medium"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              placeholder={i18n.language === 'ar' ? 'أدخل اسم الحساب، البريد، أو الرقم الدراسي' : 'Enter your name, email, or student ID'}
+              className="w-full bg-black/10 border border-[var(--border-color)] rounded p-2.5 text-[var(--text-primary)] focus:outline-none focus:border-lime-500 focus:ring-1 focus:ring-lime-500/30 font-medium transition-all"
             />
           </div>
 
           <div className="space-y-1">
-            <label className="text-gray-450 block font-medium">{t('login.passwordLabel')}</label>
+            <label className="text-[var(--text-secondary)] block font-medium">{t('login.passwordLabel')}</label>
             <input
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder={t('login.passwordPlaceholder')}
-              className="w-full bg-gray-950/50 border border-white/10 rounded p-2.5 text-white focus:outline-none focus:border-lime-500 focus:ring-1 focus:ring-lime-500/30 font-mono"
+              className="w-full bg-black/10 border border-[var(--border-color)] rounded p-2.5 text-[var(--text-primary)] focus:outline-none focus:border-lime-500 focus:ring-1 focus:ring-lime-500/30 font-mono transition-all"
             />
           </div>
 
@@ -158,8 +164,8 @@ export default function Login() {
           </div>
         </form>
 
-        <div className="text-center pt-4 border-t border-white/5">
-          <p className="text-gray-400 text-[11px] font-medium">
+        <div className="text-center pt-4 border-t border-[var(--border-color)] transition-all">
+          <p className="text-[var(--text-secondary)] text-[11px] font-medium">
             {t('login.newStudent')}{' '}
             <button
               type="button"
@@ -174,7 +180,7 @@ export default function Login() {
       </motion.div>
       
       {/* Developer Branding */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 text-gray-500 text-[10px] font-semibold tracking-wider uppercase">
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 text-[var(--text-secondary)] text-[10px] font-semibold tracking-wider uppercase transition-colors">
         Developed by <a href="https://github.com/mghalaosimi-web" target="_blank" rel="noopener noreferrer" className="bg-gradient-to-r from-lime-400 to-emerald-500 bg-clip-text text-transparent font-extrabold tracking-widest hover:scale-105 transition duration-300 inline-block">M.GH.AL</a>
       </div>
     </div>

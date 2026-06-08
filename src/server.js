@@ -296,9 +296,9 @@ app.get('/api/health', (req, res) => {
 // Authentication Endpoint
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ success: false, error: 'Email and password are required' });
+    const { identifier, password } = req.body;
+    if (!identifier || !password) {
+      return res.status(400).json({ success: false, error: 'Identifier (Name/Email/ID) and password are required' });
     }
 
     // 1. Try to find user in database
@@ -308,18 +308,33 @@ app.post('/api/auth/login', async (req, res) => {
 
     try {
       // Check Admin first
-      const adminUser = await prisma.admin.findUnique({ where: { email } });
+      const adminUser = await prisma.admin.findFirst({
+        where: {
+          OR: [
+            { email: identifier },
+            { name: identifier }
+          ]
+        }
+      });
       if (adminUser) {
         const isMatch = await bcrypt.compare(password, adminUser.password);
         if (isMatch) {
           user = adminUser;
-          role = 'ADMIN';
+          role = adminUser.role; // Use actual role (ADMIN or SUPER_ADMIN)
         }
       }
 
       if (!user) {
         // Check Student
-        const studentUser = await prisma.student.findUnique({ where: { email } });
+        const studentUser = await prisma.student.findFirst({
+          where: {
+            OR: [
+              { email: identifier },
+              { name: identifier },
+              { idNumber: identifier }
+            ]
+          }
+        });
         if (studentUser) {
           const isMatch = await bcrypt.compare(password, studentUser.password);
           if (isMatch) {
@@ -330,11 +345,11 @@ app.post('/api/auth/login', async (req, res) => {
         }
       }
     } catch (dbError) {
-      console.warn('Database offline/not seeded, falling back to sandbox credentials.');
+      console.warn('Database connection error:', dbError.message);
     }
 
     if (!user) {
-      return res.status(401).json({ success: false, error: 'Invalid email or password' });
+      return res.status(401).json({ success: false, error: 'Invalid name, email, ID or password' });
     }
 
     // 3. Sign JWT Token
@@ -1341,7 +1356,7 @@ app.use('/api', (req, res) => {
   res.status(404).json({ success: false, error: 'API route not found' });
 });
 
-// Catch-all for React SPA without wildcards
+  // Static Catch-all middleware for client routing (Express 5 safe) wildcards
 app.use((req, res, next) => {
   if (req.method === 'GET') {
     res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));

@@ -10,14 +10,14 @@ export default function Welcome() {
   const navigate = useNavigate();
 
   return (
-    <div dir={i18n.language === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-6 relative pt-24 pb-20 overflow-x-hidden">
+    <div dir={i18n.language === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] flex items-center justify-center p-6 relative pt-24 pb-20 overflow-x-hidden transition-colors duration-300">
       
       {/* Background ambient glowing circles */}
       <div className="absolute top-1/4 left-1/4 h-[350px] w-[350px] bg-lime-500/10 rounded-full blur-[90px] -z-10 animate-pulse" />
       <div className="absolute bottom-1/4 right-1/4 h-[350px] w-[350px] bg-emerald-500/10 rounded-full blur-[90px] -z-10 animate-pulse" />
 
       {/* Global Institution Header */}
-      <header className="fixed top-0 left-0 right-0 h-16 bg-gray-900/60 backdrop-blur-lg border-b border-white/10 shadow-sm z-40 flex items-center justify-between px-6">
+      <header className="fixed top-0 left-0 right-0 h-16 bg-[var(--bg-card)] backdrop-blur-lg border-b border-[var(--border-color)] shadow-sm z-40 flex items-center justify-between px-6 transition-all duration-300">
         <div className="flex items-center gap-3">
           <Logo size="sm" />
           <span className="text-lg md:text-xl font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-lime-400 to-emerald-400">
@@ -39,7 +39,7 @@ export default function Welcome() {
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-lg bg-gray-900/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 md:p-10 shadow-2xl text-center space-y-8"
+        className="w-full max-w-lg bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-8 md:p-10 shadow-2xl text-center space-y-8 transition-all duration-300"
       >
         
         {/* Logo Icon */}
@@ -49,10 +49,10 @@ export default function Welcome() {
 
         {/* Branding header */}
         <div className="space-y-3">
-          <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight leading-tight">
+          <h2 className="text-2xl md:text-3xl font-extrabold text-[var(--text-primary)] tracking-tight leading-tight">
             {t('welcome.title')}
           </h2>
-          <p className="text-xs md:text-sm text-gray-400 max-w-md mx-auto leading-relaxed">
+          <p className="text-xs md:text-sm text-[var(--text-secondary)] max-w-md mx-auto leading-relaxed">
             {t('welcome.subtitle')}
           </p>
         </div>

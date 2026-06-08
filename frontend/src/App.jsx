@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import ConfirmationModal from './ConfirmationModal';
-import { Toaster } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast';
+import axios from 'axios';
+import { API_URL } from './config';
 import Welcome from './Welcome';
 import Login from './Login';
 import Register from './Register';
@@ -63,9 +65,9 @@ function AppLayout() {
     }
 
     return (
-      <div dir={i18n.language === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black text-white flex pt-16">
+      <div dir={i18n.language === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] flex pt-16 transition-colors duration-300">
         {/* Global Institution Header */}
-        <header className="fixed top-0 left-0 right-0 h-16 bg-gray-900/60 backdrop-blur-lg border-b border-white/10 shadow-sm z-40 flex items-center justify-between px-6">
+        <header className="fixed top-0 left-0 right-0 h-16 bg-[var(--bg-card)] backdrop-blur-lg border-b border-[var(--border-color)] shadow-sm z-40 flex items-center justify-between px-6 transition-all duration-300">
           <div className="flex items-center gap-3">
             <Logo size="sm" />
             <span className="text-lg md:text-xl font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-lime-400 to-emerald-400">
@@ -84,7 +86,7 @@ function AppLayout() {
         </header>
 
         {/* Admin Left Sidebar */}
-        <aside className="w-64 m-4 mr-0 bg-gray-950/45 backdrop-blur-md border border-gray-850 rounded-2xl flex flex-col justify-between shrink-0 shadow-2xl relative">
+        <aside className="w-64 m-4 mr-0 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl flex flex-col justify-between shrink-0 shadow-2xl relative transition-all duration-300">
           <div className="p-6 space-y-8">
             <div className="flex items-center gap-3">
               <Logo size="sm" />
@@ -144,14 +146,58 @@ function AppLayout() {
                 📜 {t('nav.logs')}
               </Link>
               {user?.role === 'SUPER_ADMIN' && (
-                <Link
-                  to="/admin/god-mode"
-                  className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition ${
-                    path === '/admin/god-mode' ? 'bg-purple-500/10 text-purple-400 border-l-2 border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.06)]' : 'hover:bg-white/5 hover:text-white'
-                  }`}
-                >
-                  👑 {i18n.language === 'ar' ? 'وضع المطور (God Mode)' : 'God Mode'}
-                </Link>
+                <>
+                  <Link
+                    to="/admin/god-mode"
+                    className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition ${
+                      path === '/admin/god-mode' ? 'bg-purple-500/10 text-purple-400 border-l-2 border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.06)]' : 'hover:bg-white/5 hover:text-white'
+                    }`}
+                  >
+                    👑 {i18n.language === 'ar' ? 'وضع المطور (God Mode)' : 'God Mode'}
+                  </Link>
+
+                  <button
+                    onClick={async () => {
+                      try {
+                        const token = localStorage.getItem('manar_token');
+                        const studentsRes = await axios.get(`${API_URL}/api/students`, {
+                          headers: token ? { Authorization: `Bearer ${token}` } : {}
+                        });
+                        if (studentsRes.data?.success && studentsRes.data.data.length > 0) {
+                          const firstStudent = studentsRes.data.data[0];
+                          const res = await axios.post(
+                            `${API_URL}/api/auth/impersonate`,
+                            { studentId: firstStudent.id },
+                            { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+                          );
+                          if (res.data?.success) {
+                            const { token: studentToken, user: studentUser } = res.data;
+                            localStorage.setItem('manar_token', studentToken);
+                            localStorage.setItem('manar_user', JSON.stringify(studentUser));
+                            localStorage.setItem('student_profile', JSON.stringify({
+                              name: firstStudent.name,
+                              email: firstStudent.email,
+                              department: firstStudent.major?.department?.name || (i18n.language === 'ar' ? 'قسم الهندسة البرمجية' : 'Software Engineering'),
+                              level: firstStudent.level?.name || 'Level 1',
+                              groupId: firstStudent.groupId
+                            }));
+                            toast.success(i18n.language === 'ar' ? `وضع المعاينة: دخول باسم ${firstStudent.name}` : `Preview Mode: Entered as ${firstStudent.name}`);
+                            navigate('/student/home');
+                          }
+                        } else {
+                          toast.error(i18n.language === 'ar' ? 'لم يتم العثور على أي طالب مسجل في النظام للمعاينة.' : 'No registered student found in system for simulation preview.');
+                        }
+                      } catch (e) {
+                        console.error('Failed to trigger student preview:', e);
+                        toast.error(i18n.language === 'ar' ? 'فشل بدء معاينة واجهة الطالب. يرجى التحقق من اتصال قاعدة البيانات.' : 'Failed to start student preview. Check database connection.');
+                      }
+                    }}
+                    className="w-full text-right flex items-center justify-between px-4 py-2.5 bg-lime-500/10 hover:bg-lime-500/20 text-lime-400 rounded-xl text-xs font-bold transition border border-lime-500/25 mt-2"
+                  >
+                    <span>{i18n.language === 'ar' ? '🔑 دخول مباشر كطالب' : '🔑 Quick Student View'}</span>
+                    <span>➜</span>
+                  </button>
+                </>
               )}
             </nav>
           </div>
@@ -202,10 +248,10 @@ function AppLayout() {
     }
 
     return (
-      <div dir={i18n.language === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-black text-white flex flex-col items-center">
-        <div className="w-full max-w-md bg-gray-900/60 backdrop-blur-md min-h-screen flex flex-col border-x border-gray-850 shadow-2xl relative pb-24 pt-16">
+      <div dir={i18n.language === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] flex flex-col items-center transition-colors duration-300">
+        <div className="w-full max-w-md bg-[var(--bg-card)] border-x border-[var(--border-color)] min-h-screen flex flex-col shadow-2xl relative pb-24 pt-16 transition-all duration-300">
           {/* Global Institution Header */}
-          <header className="absolute top-0 left-0 right-0 h-16 bg-gray-900/60 backdrop-blur-lg border-b border-white/10 shadow-sm z-40 flex items-center justify-between px-6">
+          <header className="absolute top-0 left-0 right-0 h-16 bg-[var(--bg-card)] backdrop-blur-lg border-b border-[var(--border-color)] shadow-sm z-40 flex items-center justify-between px-6 transition-all duration-300">
             <div className="flex items-center gap-2">
               <Logo size="sm" />
               <span className="text-base font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-lime-400 to-emerald-400">

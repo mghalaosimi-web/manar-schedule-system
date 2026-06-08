@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { API_URL } from './config';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { toast } from 'react-hot-toast';
 import { motion } from 'framer-motion';
-import { API_URL } from './config';
+import { toast } from 'react-hot-toast';
 import Logo from './Logo';
 import ThemeSwitcher from './ThemeSwitcher';
 
@@ -12,73 +12,69 @@ export default function Register() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
 
-  // Form Fields State
+  // Fields state
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [phoneSuffix, setPhoneSuffix] = useState(''); // Just the 9-digit remainder
   const [password, setPassword] = useState('');
+  const [phoneSuffix, setPhoneSuffix] = useState('');
   const [idNumber, setIdNumber] = useState('');
   const [idPhotoUrl, setIdPhotoUrl] = useState('');
 
-  // CAPTCHA State
-  const [captchaQuestion, setCaptchaQuestion] = useState('');
-  const [captchaAnswer, setCaptchaAnswer] = useState('');
-  const [captchaChallengeId, setCaptchaChallengeId] = useState('');
-
-  // Dropdown Selections & Options
+  // Dropdowns lists
   const [departments, setDepartments] = useState([]);
-  const [selectedDeptId, setSelectedDeptId] = useState('');
-  
   const [majors, setMajors] = useState([]);
-  const [selectedMajorId, setSelectedMajorId] = useState('');
-  
   const [levels, setLevels] = useState([]);
-  const [selectedLevelId, setSelectedLevelId] = useState('');
-  
   const [groups, setGroups] = useState([]);
+
+  // Selections
+  const [selectedDeptId, setSelectedDeptId] = useState('');
+  const [selectedMajorId, setSelectedMajorId] = useState('');
+  const [selectedLevelId, setSelectedLevelId] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState('');
 
-  // Loading & Error states
+  // CAPTCHA
+  const [captchaQuestion, setCaptchaQuestion] = useState('');
+  const [captchaChallengeId, setCaptchaChallengeId] = useState('');
+  const [captchaAnswer, setCaptchaAnswer] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Fetch Captcha challenge
   const fetchCaptcha = async () => {
     try {
       const res = await axios.get(`${API_URL}/api/auth/captcha`);
       if (res.data && res.data.success) {
-        setCaptchaQuestion(res.data.question);
+        setCaptchaQuestion(res.data.query || res.data.question);
         setCaptchaChallengeId(res.data.challengeId);
-        setCaptchaAnswer('');
       }
-    } catch (err) {
-      console.error('Error fetching CAPTCHA challenge:', err);
+    } catch (e) {
+      console.error('CAPTCHA load error:', e);
     }
   };
 
-  // Fetch initial dropdown options: Departments, Levels, Groups and CAPTCHA
+  // Fetch initial dropdown data on mount
   useEffect(() => {
-    const fetchDropdownData = async () => {
+    const fetchData = async () => {
       try {
-        const [deptRes, levelRes, groupRes] = await Promise.all([
+        const [deptRes, lvlRes, grpRes] = await Promise.all([
           axios.get(`${API_URL}/api/departments`),
           axios.get(`${API_URL}/api/levels`),
-          axios.get(`${API_URL}/api/groups`)
+          axios.get(`${API_URL}/api/groups`),
         ]);
 
-        if (deptRes.data && deptRes.data.success) setDepartments(deptRes.data.data);
-        if (levelRes.data && levelRes.data.success) setLevels(levelRes.data.data);
-        if (groupRes.data && groupRes.data.success) setGroups(groupRes.data.data);
+        if (deptRes.data.success) setDepartments(deptRes.data.data);
+        if (lvlRes.data.success) setLevels(lvlRes.data.data);
+        if (grpRes.data.success) setGroups(grpRes.data.data);
       } catch (err) {
-        console.error('Error fetching initial dropdown data:', err);
-        setError('Failed to load portal configuration. Please try again.');
+        console.error('Failed to load form metadata:', err);
+        toast.error('فشل في تحميل بيانات التسجيل الأساسية.');
       }
     };
-    fetchDropdownData();
+    fetchData();
     fetchCaptcha();
   }, []);
 
-  // Fetch Majors when Department selection changes
+  // Fetch majors when department changes
   useEffect(() => {
     const fetchMajors = async () => {
       if (!selectedDeptId) {
@@ -88,21 +84,20 @@ export default function Register() {
       }
       try {
         const res = await axios.get(`${API_URL}/api/majors?departmentId=${selectedDeptId}`);
-        if (res.data && res.data.success) {
+        if (res.data.success) {
           setMajors(res.data.data);
-          setSelectedMajorId('');
         }
       } catch (err) {
-        console.error('Error fetching majors:', err);
+        console.error('Failed to fetch majors:', err);
       }
     };
     fetchMajors();
   }, [selectedDeptId]);
 
   const handlePhoneChange = (e) => {
-    const val = e.target.value.replace(/\D/g, ''); // Numeric only
-    if (val.length <= 9) {
-      setPhoneSuffix(val);
+    const clean = e.target.value.replace(/\D/g, '');
+    if (clean.length <= 9) {
+      setPhoneSuffix(clean);
     }
   };
 
@@ -111,83 +106,62 @@ export default function Register() {
     setLoading(true);
     setError(null);
 
-    if (phoneSuffix.length !== 9) {
-      setError(i18n.language === 'ar' ? 'يجب أن يتكون رقم الهاتف من 9 أرقام' : 'Phone number must be exactly 9 digits.');
-      setLoading(false);
-      return;
-    }
+    const fullPhone = `+967${phoneSuffix}`;
 
-    if (!selectedMajorId || !selectedLevelId || !selectedGroupId) {
-      setError('Please select your academic major, level, and group.');
-      setLoading(false);
-      return;
-    }
-
-    if (!captchaAnswer) {
-      setError('Please solve the human verification CAPTCHA challenge.');
-      setLoading(false);
-      return;
-    }
-
-    const formattedPhone = `+967${phoneSuffix}`;
+    const payload = {
+      fullName,
+      email,
+      password,
+      phone: fullPhone,
+      idNumber,
+      idPhotoUrl: idPhotoUrl || undefined,
+      majorId: selectedMajorId,
+      levelId: selectedLevelId,
+      groupId: selectedGroupId,
+      captchaAnswer,
+      captchaChallengeId,
+    };
 
     try {
-      const payload = {
-        fullName,
-        email,
-        phone: formattedPhone,
-        password,
-        idNumber,
-        idPhotoUrl: idPhotoUrl || null,
-        majorId: parseInt(selectedMajorId),
-        levelId: parseInt(selectedLevelId),
-        groupId: parseInt(selectedGroupId),
-        captchaAnswer,
-        captchaChallengeId
-      };
-
       const res = await axios.post(`${API_URL}/api/auth/register`, payload);
-
       if (res.data && res.data.success) {
         const { token, user } = res.data;
-        
-        // Save to localStorage
         localStorage.setItem('manar_token', token);
         localStorage.setItem('manar_user', JSON.stringify(user));
+        
         localStorage.setItem('student_profile', JSON.stringify({
           name: user.name,
           email: user.email,
+          phone: fullPhone,
+          idPhotoUrl: idPhotoUrl || '',
           department: departments.find(d => d.id === parseInt(selectedDeptId))?.name || 'Software Engineering',
           level: levels.find(l => l.id === parseInt(selectedLevelId))?.name || 'Level 3',
-          groupId: user.groupId || 1
+          groupId: user.groupId
         }));
 
-        toast.success(i18n.language === 'ar' ? 'تم إنشاء الحساب وتسجيل الدخول بنجاح!' : 'Account created and logged in successfully!');
+        toast.success(i18n.language === 'ar' ? 'تم إنشاء الحساب بنجاح!' : 'Account registered successfully!');
         navigate('/student/home');
       }
     } catch (err) {
       console.error('Registration error:', err);
-      fetchCaptcha(); // Refresh captcha on failure
-      const errorMsg = err.response && err.response.data && err.response.data.error
-        ? err.response.data.error
-        : (i18n.language === 'ar' ? 'فشل في إنشاء الحساب. يرجى الاتصال بالدعم.' : 'Failed to establish account. Please contact system support.');
-      
-      setError(errorMsg);
-      toast.error(errorMsg);
+      const msg = err.response?.data?.error || 'فشل الاتصال بالخادم أثناء التسجيل.';
+      setError(msg);
+      toast.error(msg);
+      fetchCaptcha(); // Refresh CAPTCHA on error
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div dir={i18n.language === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-6 relative pt-24 pb-20 overflow-x-hidden">
+    <div dir={i18n.language === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] flex items-center justify-center p-6 relative pt-24 pb-20 overflow-x-hidden transition-colors duration-300">
       
       {/* Background ambient glowing circles */}
-      <div className="absolute top-1/4 left-1/4 h-72 w-72 bg-lime-500/10 rounded-full blur-[80px] -z-10 animate-pulse" />
-      <div className="absolute bottom-1/4 right-1/4 h-72 w-72 bg-emerald-500/10 rounded-full blur-[80px] -z-10 animate-pulse" />
+      <div className="absolute top-1/4 left-1/4 h-[350px] w-[350px] bg-lime-500/10 rounded-full blur-[90px] -z-10 animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 h-[350px] w-[350px] bg-emerald-500/10 rounded-full blur-[90px] -z-10 animate-pulse" />
 
       {/* Global Institution Header */}
-      <header className="fixed top-0 left-0 right-0 h-16 bg-gray-900/60 backdrop-blur-lg border-b border-white/10 shadow-sm z-40 flex items-center justify-between px-6">
+      <header className="fixed top-0 left-0 right-0 h-16 bg-[var(--bg-card)] backdrop-blur-lg border-b border-[var(--border-color)] shadow-sm z-40 flex items-center justify-between px-6 transition-all duration-300">
         <div className="flex items-center gap-3">
           <Logo size="sm" />
           <span className="text-lg md:text-xl font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-lime-400 to-emerald-400">
@@ -209,7 +183,7 @@ export default function Register() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-xl bg-gray-900/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl space-y-6"
+        className="w-full max-w-xl bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-8 shadow-2xl space-y-6 transition-all duration-300"
       >
         
         {/* Header title */}
@@ -218,8 +192,8 @@ export default function Register() {
             <Logo size="lg" />
           </div>
           <div>
-            <h2 className="text-xl font-extrabold text-white tracking-tight">{t('register.title')}</h2>
-            <p className="text-xs text-gray-400 mt-1">{t('register.subtitle')}</p>
+            <h2 className="text-xl font-extrabold text-[var(--text-primary)] tracking-tight">{t('register.title')}</h2>
+            <p className="text-xs text-[var(--text-secondary)] mt-1">{t('register.subtitle')}</p>
           </div>
         </div>
 
@@ -232,52 +206,52 @@ export default function Register() {
         <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           
           {/* Section 1: Basic Information */}
-          <div className="border-b border-white/5 pb-4 space-y-4">
+          <div className="border-b border-[var(--border-color)] pb-4 space-y-4 transition-all">
             <h3 className="text-[10px] font-extrabold tracking-widest text-lime-400 uppercase">{t('register.secAccount')}</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-gray-400 block font-medium">{t('register.fullName')}</label>
+                <label className="text-[var(--text-secondary)] block font-medium">{t('register.fullName')}</label>
                 <input
                   type="text"
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="e.g. John Doe"
-                  className="w-full bg-gray-950/50 border border-white/10 rounded p-2.5 text-white focus:outline-none focus:border-lime-500 focus:ring-1 focus:ring-lime-500/30 font-medium"
+                  className="w-full bg-black/10 border border-[var(--border-color)] rounded p-2.5 text-[var(--text-primary)] focus:outline-none focus:border-lime-500 focus:ring-1 focus:ring-lime-500/30 font-medium transition-all"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-gray-400 block font-medium">{t('register.email')}</label>
+                <label className="text-[var(--text-secondary)] block font-medium">{t('register.email')}</label>
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="e.g. name@student.com"
-                  className="w-full bg-gray-950/50 border border-white/10 rounded p-2.5 text-white focus:outline-none focus:border-lime-500 focus:ring-1 focus:ring-lime-500/30"
+                  className="w-full bg-black/10 border border-[var(--border-color)] rounded p-2.5 text-[var(--text-primary)] focus:outline-none focus:border-lime-500 focus:ring-1 focus:ring-lime-500/30 transition-all"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-gray-400 block font-medium">{t('register.password')}</label>
+                <label className="text-[var(--text-secondary)] block font-medium">{t('register.password')}</label>
                 <input
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-gray-950/50 border border-white/10 rounded p-2.5 text-white focus:outline-none focus:border-lime-500 focus:ring-1 focus:ring-lime-500/30 font-mono"
+                  className="w-full bg-black/10 border border-[var(--border-color)] rounded p-2.5 text-[var(--text-primary)] focus:outline-none focus:border-lime-500 focus:ring-1 focus:ring-lime-500/30 font-mono transition-all"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-gray-400 block font-medium">{t('register.phone')}</label>
-                <div className="flex rounded border border-white/10 bg-gray-950/50 overflow-hidden focus-within:border-lime-500 focus-within:ring-1 focus-within:ring-lime-500/30">
-                  <span className="bg-white/5 px-3 py-2.5 text-gray-400 font-bold border-r border-white/10 flex items-center select-none" dir="ltr">
+                <label className="text-[var(--text-secondary)] block font-medium">{t('register.phone')}</label>
+                <div className="flex rounded border border-[var(--border-color)] bg-black/10 overflow-hidden focus-within:border-lime-500 focus-within:ring-1 focus-within:ring-lime-500/30 transition-all">
+                  <span className="bg-white/5 px-3 py-2.5 text-[var(--text-secondary)] font-bold border-r border-[var(--border-color)] flex items-center select-none" dir="ltr">
                     +967
                   </span>
                   <input
@@ -286,7 +260,7 @@ export default function Register() {
                     value={phoneSuffix}
                     onChange={handlePhoneChange}
                     placeholder={t('register.phonePlaceholder')}
-                    className="w-full bg-transparent p-2.5 text-white focus:outline-none font-medium"
+                    className="w-full bg-transparent p-2.5 text-[var(--text-primary)] focus:outline-none font-medium"
                     dir="ltr"
                   />
                 </div>
@@ -295,64 +269,64 @@ export default function Register() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-gray-400 block font-medium">{t('register.idNumber')}</label>
+                <label className="text-[var(--text-secondary)] block font-medium">{t('register.idNumber')}</label>
                 <input
                   type="text"
                   required
                   value={idNumber}
                   onChange={(e) => setIdNumber(e.target.value)}
                   placeholder="e.g. 2026-98765"
-                  className="w-full bg-gray-950/50 border border-white/10 rounded p-2.5 text-white focus:outline-none focus:border-lime-500 focus:ring-1 focus:ring-lime-500/30 font-bold"
+                  className="w-full bg-black/10 border border-[var(--border-color)] rounded p-2.5 text-[var(--text-primary)] focus:outline-none focus:border-lime-500 focus:ring-1 focus:ring-lime-500/30 font-bold transition-all"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-gray-400 block font-medium">{t('register.idPhoto')}</label>
+                <label className="text-[var(--text-secondary)] block font-medium">{t('register.idPhoto')}</label>
                 <input
                   type="url"
                   value={idPhotoUrl}
                   onChange={(e) => setIdPhotoUrl(e.target.value)}
                   placeholder="https://domain.com/photo.jpg"
-                  className="w-full bg-gray-950/50 border border-white/10 rounded p-2.5 text-white focus:outline-none focus:border-lime-500 focus:ring-1 focus:ring-lime-500/30 font-mono"
+                  className="w-full bg-black/10 border border-[var(--border-color)] rounded p-2.5 text-[var(--text-primary)] focus:outline-none focus:border-lime-500 focus:ring-1 focus:ring-lime-500/30 font-mono transition-all"
                 />
               </div>
             </div>
           </div>
 
           {/* Section 2: Academic Program Information */}
-          <div className="border-b border-white/5 pb-4 space-y-4">
+          <div className="border-b border-[var(--border-color)] pb-4 space-y-4 transition-all">
             <h3 className="text-[10px] font-extrabold tracking-widest text-emerald-400 uppercase">{t('register.secProgram')}</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Department Dropdown */}
               <div className="space-y-1">
-                <label className="text-gray-400 block font-medium">{t('register.department')}</label>
+                <label className="text-[var(--text-secondary)] block font-medium">{t('register.department')}</label>
                 <select
                   required
                   value={selectedDeptId}
                   onChange={(e) => setSelectedDeptId(e.target.value)}
-                  className="w-full bg-gray-950 border border-white/10 rounded p-2.5 text-white focus:outline-none focus:border-lime-500"
+                  className="w-full bg-black/10 border border-[var(--border-color)] rounded p-2.5 text-[var(--text-primary)] focus:outline-none focus:border-lime-500 transition-all font-semibold"
                 >
-                  <option value="">{t('register.selectDept')}</option>
+                  <option className="bg-[var(--bg-card)]" value="">{t('register.selectDept')}</option>
                   {departments.map(d => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
+                    <option className="bg-[var(--bg-card)] text-[var(--text-primary)]" key={d.id} value={d.id}>{d.name}</option>
                   ))}
                 </select>
               </div>
 
               {/* Major (Cascaded from Department) */}
               <div className="space-y-1">
-                <label className="text-gray-400 block font-medium">{t('register.major')}</label>
+                <label className="text-[var(--text-secondary)] block font-medium">{t('register.major')}</label>
                 <select
                   required
                   disabled={!selectedDeptId}
                   value={selectedMajorId}
                   onChange={(e) => setSelectedMajorId(e.target.value)}
-                  className="w-full bg-gray-950 border border-white/10 rounded p-2.5 text-white focus:outline-none focus:border-lime-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-black/10 border border-[var(--border-color)] rounded p-2.5 text-[var(--text-primary)] focus:outline-none focus:border-lime-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold"
                 >
-                  <option value="">{t('register.selectMajor')}</option>
+                  <option className="bg-[var(--bg-card)]" value="">{t('register.selectMajor')}</option>
                   {majors.map(m => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
+                    <option className="bg-[var(--bg-card)] text-[var(--text-primary)]" key={m.id} value={m.id}>{m.name}</option>
                   ))}
                 </select>
               </div>
@@ -361,32 +335,32 @@ export default function Register() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Level Dropdown */}
               <div className="space-y-1">
-                <label className="text-gray-400 block font-medium">{t('register.level')}</label>
+                <label className="text-[var(--text-secondary)] block font-medium">{t('register.level')}</label>
                 <select
                   required
                   value={selectedLevelId}
                   onChange={(e) => setSelectedLevelId(e.target.value)}
-                  className="w-full bg-gray-950 border border-white/10 rounded p-2.5 text-white focus:outline-none focus:border-lime-500"
+                  className="w-full bg-black/10 border border-[var(--border-color)] rounded p-2.5 text-[var(--text-primary)] focus:outline-none focus:border-lime-500 transition-all font-semibold"
                 >
-                  <option value="">{t('register.selectLevel')}</option>
+                  <option className="bg-[var(--bg-card)]" value="">{t('register.selectLevel')}</option>
                   {levels.map(l => (
-                    <option key={l.id} value={l.id}>{l.name}</option>
+                    <option className="bg-[var(--bg-card)] text-[var(--text-primary)]" key={l.id} value={l.id}>{l.name}</option>
                   ))}
                 </select>
               </div>
 
               {/* Group Dropdown */}
               <div className="space-y-1">
-                <label className="text-gray-400 block font-medium">{t('register.group')}</label>
+                <label className="text-[var(--text-secondary)] block font-medium">{t('register.group')}</label>
                 <select
                   required
                   value={selectedGroupId}
                   onChange={(e) => setSelectedGroupId(e.target.value)}
-                  className="w-full bg-gray-950 border border-white/10 rounded p-2.5 text-white focus:outline-none focus:border-lime-500"
+                  className="w-full bg-black/10 border border-[var(--border-color)] rounded p-2.5 text-[var(--text-primary)] focus:outline-none focus:border-lime-500 transition-all font-semibold"
                 >
-                  <option value="">{t('register.selectGroup')}</option>
+                  <option className="bg-[var(--bg-card)]" value="">{t('register.selectGroup')}</option>
                   {groups.map(g => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
+                    <option className="bg-[var(--bg-card)] text-[var(--text-primary)]" key={g.id} value={g.id}>{g.name}</option>
                   ))}
                 </select>
               </div>
@@ -397,11 +371,11 @@ export default function Register() {
           <div className="space-y-4">
             <h3 className="text-[10px] font-extrabold tracking-widest text-sky-400 uppercase">{t('register.secVerification')}</h3>
             
-            <div className="bg-gray-950/65 border border-white/5 rounded-xl p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="bg-black/20 border border-[var(--border-color)] rounded-xl p-4 flex flex-col md:flex-row justify-between items-center gap-4 transition-all">
               <div className="flex items-center gap-3">
                 <span className="text-xl">🤖</span>
                 <div>
-                  <span className="font-semibold text-white text-xs block">{t('register.captcha')}</span>
+                  <span className="font-semibold text-[var(--text-primary)] text-xs block">{t('register.captcha')}</span>
                   <span className="text-lime-400 font-extrabold text-sm tracking-wide mt-0.5 block">{captchaQuestion || 'Loading...'}</span>
                 </div>
               </div>
@@ -413,12 +387,12 @@ export default function Register() {
                   placeholder="Answer"
                   value={captchaAnswer}
                   onChange={(e) => setCaptchaAnswer(e.target.value)}
-                  className="w-full md:w-24 bg-gray-900 border border-white/10 rounded px-3 py-2 text-white focus:outline-none focus:border-sky-500 text-center font-bold text-sm"
+                  className="w-full md:w-24 bg-black/10 border border-[var(--border-color)] rounded px-3 py-2 text-[var(--text-primary)] focus:outline-none focus:border-sky-500 text-center font-bold text-sm transition-all"
                 />
                 <button
                   type="button"
                   onClick={fetchCaptcha}
-                  className="px-3 bg-gray-800 hover:bg-gray-700 rounded border border-gray-750 text-xs font-semibold text-gray-300 transition"
+                  className="px-3 bg-white/5 hover:bg-white/10 rounded border border-[var(--border-color)] text-xs font-semibold text-[var(--text-primary)] transition"
                   title="Reload Captcha"
                 >
                   🔄
@@ -445,7 +419,7 @@ export default function Register() {
               <button
                 type="button"
                 onClick={() => navigate('/login')}
-                className="text-gray-400 hover:text-white transition font-medium"
+                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition font-medium"
               >
                 {t('register.haveAccount')} <span className="text-lime-400 font-bold underline hover:text-lime-300">{t('register.signIn')}</span>
               </button>
@@ -454,12 +428,11 @@ export default function Register() {
 
         </form>
       </motion.div>
-
+      
       {/* Developer footer */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 text-gray-500 text-[10px] font-semibold tracking-wider uppercase">
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 text-[var(--text-secondary)] text-[10px] font-semibold tracking-wider uppercase transition-colors">
         Developed by <a href="https://github.com/mghalaosimi-web" target="_blank" rel="noopener noreferrer" className="bg-gradient-to-r from-lime-400 to-emerald-500 bg-clip-text text-transparent font-extrabold tracking-widest hover:scale-105 transition duration-300 inline-block">M.GH.AL</a>
       </div>
-
     </div>
   );
 }
