@@ -1210,7 +1210,7 @@ app.put('/api/student/settings', verifyToken, async (req, res) => {
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
 // Handle invalid API routes gracefully (return 404 JSON, don't fallback to index.html or throw 500)
-app.all('/api/*', (req, res) => {
+app.all(/^\/api\/.*/, (req, res) => {
   res.status(404).json({ success: false, error: 'API route not found' });
 });
 
