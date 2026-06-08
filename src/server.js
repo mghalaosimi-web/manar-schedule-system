@@ -1,5 +1,20 @@
 require('dotenv').config();
 
+// Debugging block - لنرى ما يراه Render
+console.log('--- DEBUG START ---');
+console.log('DATABASE_URL present:', !!process.env.DATABASE_URL);
+console.log('JWT_SECRET present:', !!process.env.JWT_SECRET);
+console.log('PORT:', process.env.PORT);
+console.log('--- DEBUG END ---');
+
+if (!process.env.DATABASE_URL || !process.env.JWT_SECRET) {
+  console.error('CRITICAL CONFIGURATION ERROR: Missing required environment variables.');
+  // بدلاً من الخروج، نريد رؤية الخطأ في الـ Logs
+  process.exit(1);
+}
+
+require('dotenv').config();
+
 // Environment Validation Check
 if (!process.env.DATABASE_URL || !process.env.JWT_SECRET) {
   console.error('CRITICAL CONFIGURATION ERROR: Missing required environment variables (DATABASE_URL and JWT_SECRET).');
@@ -56,7 +71,7 @@ async function runStartupMigrations() {
           CREATE TYPE "AdminRole" AS ENUM ('ADMIN', 'SUPER_ADMIN');
         END IF;
       END$$;
-    `).catch(() => {});
+    `).catch(() => { });
 
     await prisma.$executeRawUnsafe(`
       DO $$
@@ -65,7 +80,7 @@ async function runStartupMigrations() {
           CREATE TYPE "VerificationType" AS ENUM ('EMAIL', 'PHONE');
         END IF;
       END$$;
-    `).catch(() => {});
+    `).catch(() => { });
 
     // Create VerificationCode table if it doesn't exist
     await prisma.$executeRawUnsafe(`
@@ -76,15 +91,15 @@ async function runStartupMigrations() {
         "type" "VerificationType" NOT NULL,
         "expiresAt" TIMESTAMP NOT NULL
       );
-    `).catch(() => {});
+    `).catch(() => { });
 
     // Ensure all dynamic columns exist
-    await prisma.$executeRawUnsafe('ALTER TABLE "Admin" ADD COLUMN IF NOT EXISTS "role" "AdminRole" DEFAULT \'ADMIN\';').catch(() => {});
-    await prisma.$executeRawUnsafe('ALTER TABLE "Student" ADD COLUMN IF NOT EXISTS "idNumber" TEXT;').catch(() => {});
-    await prisma.$executeRawUnsafe('ALTER TABLE "Student" ADD COLUMN IF NOT EXISTS "idPhotoUrl" TEXT;').catch(() => {});
-    await prisma.$executeRawUnsafe('ALTER TABLE "Student" ADD COLUMN IF NOT EXISTS "phone" TEXT;').catch(() => {});
-    await prisma.$executeRawUnsafe('ALTER TABLE "Student" ADD COLUMN IF NOT EXISTS "isEmailVerified" BOOLEAN DEFAULT false;').catch(() => {});
-    await prisma.$executeRawUnsafe('ALTER TABLE "Student" ADD COLUMN IF NOT EXISTS "isPhoneVerified" BOOLEAN DEFAULT false;').catch(() => {});
+    await prisma.$executeRawUnsafe('ALTER TABLE "Admin" ADD COLUMN IF NOT EXISTS "role" "AdminRole" DEFAULT \'ADMIN\';').catch(() => { });
+    await prisma.$executeRawUnsafe('ALTER TABLE "Student" ADD COLUMN IF NOT EXISTS "idNumber" TEXT;').catch(() => { });
+    await prisma.$executeRawUnsafe('ALTER TABLE "Student" ADD COLUMN IF NOT EXISTS "idPhotoUrl" TEXT;').catch(() => { });
+    await prisma.$executeRawUnsafe('ALTER TABLE "Student" ADD COLUMN IF NOT EXISTS "phone" TEXT;').catch(() => { });
+    await prisma.$executeRawUnsafe('ALTER TABLE "Student" ADD COLUMN IF NOT EXISTS "isEmailVerified" BOOLEAN DEFAULT false;').catch(() => { });
+    await prisma.$executeRawUnsafe('ALTER TABLE "Student" ADD COLUMN IF NOT EXISTS "isPhoneVerified" BOOLEAN DEFAULT false;').catch(() => { });
 
     console.log('[DATABASE] Table schema fields migrated successfully.');
 
@@ -97,7 +112,7 @@ async function runStartupMigrations() {
         ALTER TABLE "VerificationCode" 
         ADD CONSTRAINT "VerificationCode_studentId_fkey" 
         FOREIGN KEY ("studentId") REFERENCES "Student"("id") ON DELETE CASCADE
-      `).catch(() => {});
+      `).catch(() => { });
     }
 
     // Check & add unique constraints
@@ -108,7 +123,7 @@ async function runStartupMigrations() {
     `);
     if (idNumCheck.length === 0) {
       console.log('[DATABASE] Adding unique constraint on Student.idNumber...');
-      await prisma.$executeRawUnsafe('ALTER TABLE "Student" ADD CONSTRAINT "Student_idNumber_key" UNIQUE ("idNumber")').catch(() => {});
+      await prisma.$executeRawUnsafe('ALTER TABLE "Student" ADD CONSTRAINT "Student_idNumber_key" UNIQUE ("idNumber")').catch(() => { });
     }
 
     const phoneCheck = await prisma.$queryRawUnsafe(`
@@ -118,7 +133,7 @@ async function runStartupMigrations() {
     `);
     if (phoneCheck.length === 0) {
       console.log('[DATABASE] Adding unique constraint on Student.phone...');
-      await prisma.$executeRawUnsafe('ALTER TABLE "Student" ADD CONSTRAINT "Student_phone_key" UNIQUE ("phone")').catch(() => {});
+      await prisma.$executeRawUnsafe('ALTER TABLE "Student" ADD CONSTRAINT "Student_phone_key" UNIQUE ("phone")').catch(() => { });
     }
 
     console.log('[DATABASE] All database constraints checked/applied.');
@@ -134,9 +149,9 @@ async function startServer() {
     console.log('[DATABASE] Connecting to PostgreSQL via Prisma Client...');
     await prisma.$connect();
     console.log('[DATABASE] Connected to PostgreSQL via Prisma Client.');
-    
+
     await runStartupMigrations();
-    
+
     // Execute seed script and print logs directly to console output
     const { exec } = require('child_process');
     exec('node prisma/seed.js', (err, stdout, stderr) => {
@@ -172,19 +187,19 @@ cron.schedule('0 20 * * *', async () => {
     // 1. Determine tomorrow's day of week
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    
+
     const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
     const tomorrowDayName = days[tomorrow.getDay()];
-    
+
     // Start and end of tomorrow for date comparison
     const tomorrowStart = new Date(tomorrow);
     tomorrowStart.setHours(0, 0, 0, 0);
     const tomorrowEnd = new Date(tomorrow);
     tomorrowEnd.setHours(23, 59, 59, 999);
-    
+
     // Fetch all groups
     const groups = await prisma.group.findMany();
-    
+
     for (const group of groups) {
       // Find base schedules for this group for tomorrow's day
       const schedules = await prisma.schedule.findMany({
@@ -197,9 +212,9 @@ cron.schedule('0 20 * * *', async () => {
           room: true
         }
       });
-      
+
       const tomorrowClasses = [];
-      
+
       for (const schedule of schedules) {
         // Find overrides for tomorrow's date
         const override = await prisma.scheduleOverride.findFirst({
@@ -214,17 +229,17 @@ cron.schedule('0 20 * * *', async () => {
             newRoom: true
           }
         });
-        
+
         let startTime = schedule.startTime;
         let endTime = schedule.endTime;
         let roomName = schedule.room.name;
-        
+
         if (override) {
           startTime = override.newStartTime || startTime;
           endTime = override.newEndTime || endTime;
           roomName = override.newRoom ? override.newRoom.name : roomName;
         }
-        
+
         tomorrowClasses.push({
           subject: schedule.subject.name,
           code: schedule.subject.code,
@@ -235,14 +250,14 @@ cron.schedule('0 20 * * *', async () => {
           isOverride: !!override
         });
       }
-      
+
       let messageAr = '';
       let messageEn = '';
-      
+
       if (tomorrowClasses.length > 0) {
         messageEn = `Tomorrow's Schedule Summary for ${group.name}:\n`;
         messageAr = `ملخص جدول الغد لشعبة ${group.name}:\n`;
-        
+
         tomorrowClasses.forEach((c, idx) => {
           messageEn += `${idx + 1}. ${c.subject} (${c.code}) with Dr. ${c.lecturer} in Room ${c.room} [${c.startTime} - ${c.endTime}]${c.isOverride ? ' (UPDATED)' : ''}\n`;
           messageAr += `${idx + 1}. ${c.subject} (${c.code}) مع د. ${c.lecturer} في قاعة ${c.room} [${c.startTime} - ${c.endTime}]${c.isOverride ? ' (تم التحديث)' : ''}\n`;
@@ -251,10 +266,10 @@ cron.schedule('0 20 * * *', async () => {
         messageEn = `No classes scheduled for tomorrow for ${group.name}. Enjoy your day off!`;
         messageAr = `لا توجد محاضرات مجدولة للغد لشعبة ${group.name}. استمتع بيومك!`;
       }
-      
+
       // Combine messages
       const alertMessage = `${messageAr}\n${messageEn}`;
-      
+
       await prisma.notificationLog.create({
         data: {
           groupId: group.id,
@@ -264,7 +279,7 @@ cron.schedule('0 20 * * *', async () => {
         }
       });
     }
-    
+
     // 2. Also process any other PENDING notifications and set their status to SENT
     const pendingNotifications = await prisma.notificationLog.findMany({
       where: { status: 'PENDING' }
@@ -272,7 +287,7 @@ cron.schedule('0 20 * * *', async () => {
 
     for (const log of pendingNotifications) {
       console.log(`[CRON] Dispatching alert message to Group ID ${log.groupId || 'All'}: "${log.message}"`);
-      
+
       await prisma.notificationLog.update({
         where: { id: log.id },
         data: { status: 'SENT', sentTime: new Date() }
@@ -386,9 +401,9 @@ app.get('/api/auth/captcha', (req, res) => {
 // Student Registration Endpoint (With Human Verification and Dual-Factor OTP Codes)
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { 
-      fullName, email, password, phone, idNumber, idPhotoUrl, 
-      majorId, levelId, groupId, captchaAnswer, captchaChallengeId 
+    const {
+      fullName, email, password, phone, idNumber, idPhotoUrl,
+      majorId, levelId, groupId, captchaAnswer, captchaChallengeId
     } = req.body;
 
     if (!fullName || !email || !password || !phone || !idNumber || !majorId || !levelId || !groupId) {
@@ -678,7 +693,7 @@ app.get('/api/students', verifyToken, async (req, res) => {
 app.get('/api/schedules', async (req, res) => {
   try {
     const { groupId } = req.query;
-    
+
     const schedules = await prisma.schedule.findMany({
       where: groupId ? { groupId: parseInt(groupId) } : {},
       include: {
@@ -690,7 +705,7 @@ app.get('/api/schedules', async (req, res) => {
         }
       }
     });
-    
+
     res.status(200).json({ success: true, data: schedules });
   } catch (error) {
     console.error('[API] Error fetching schedules:', error);
@@ -760,10 +775,10 @@ app.post('/api/schedules/override', verifyToken, async (req, res) => {
       }
     });
 
-    res.status(201).json({ 
-      success: true, 
+    res.status(201).json({
+      success: true,
       message: 'Schedule overridden and targeted notification queued successfully.',
-      data: override 
+      data: override
     });
 
   } catch (error) {
@@ -1222,14 +1237,18 @@ app.put('/api/student/settings', verifyToken, async (req, res) => {
 // Serve static files from the React frontend app build directory
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
-// Handle invalid API routes gracefully (return 404 JSON, don't fallback to index.html or throw 500)
-app.all('/api/(.*)', (req, res) => {
+// Handle invalid API routes without wildcards
+app.use('/api', (req, res) => {
   res.status(404).json({ success: false, error: 'API route not found' });
 });
 
-// Catch-all route to serve the React frontend index.html for SPA routing (must be last)
-app.get('/*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+// Catch-all for React SPA without wildcards
+app.use((req, res, next) => {
+  if (req.method === 'GET') {
+    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+  } else {
+    next();
+  }
 });
 
 // ==========================================
@@ -1237,14 +1256,14 @@ app.get('/*', (req, res) => {
 // ==========================================
 app.use((err, req, res, next) => {
   console.error('[SERVER ERROR]', err);
-  
+
   if (req.originalUrl.startsWith('/api/')) {
     return res.status(err.status || 500).json({
       success: false,
       error: err.message || 'Internal Server Error'
     });
   }
-  
+
   // Fallback for non-API requests
   res.status(500).sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
