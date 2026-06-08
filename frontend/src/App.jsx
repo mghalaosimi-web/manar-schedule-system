@@ -16,6 +16,7 @@ import StudentDashboard from './StudentDashboard';
 import StudentApp from './StudentApp';
 import NotificationCenter from './NotificationCenter';
 import Settings from './Settings';
+import GodMode from './GodMode';
 import { useTranslation } from 'react-i18next';
 
 function AppLayout() {
@@ -141,6 +142,16 @@ function AppLayout() {
               >
                 📜 {t('nav.logs')}
               </Link>
+              {user?.role === 'SUPER_ADMIN' && (
+                <Link
+                  to="/admin/god-mode"
+                  className={`flex items-center gap-3 px-4 py-2.5 rounded-xl transition ${
+                    path === '/admin/god-mode' ? 'bg-purple-500/10 text-purple-400 border-l-2 border-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.06)]' : 'hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  👑 {i18n.language === 'ar' ? 'وضع المطور (God Mode)' : 'God Mode'}
+                </Link>
+              )}
             </nav>
           </div>
 
@@ -167,6 +178,7 @@ function AppLayout() {
             <Route path="/admin/students" element={<Students />} />
             <Route path="/admin/broadcast" element={<BroadcastCenter />} />
             <Route path="/admin/logs" element={<SystemLog />} />
+            <Route path="/admin/god-mode" element={<GodMode />} />
             <Route path="*" element={<Navigate to="/admin/overview" replace />} />
           </Routes>
         </div>

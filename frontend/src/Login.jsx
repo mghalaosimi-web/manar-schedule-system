@@ -4,6 +4,7 @@ import { API_URL } from './config';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
+import { toast } from 'react-hot-toast';
 
 export default function Login() {
   const { t, i18n } = useTranslation();
@@ -27,6 +28,8 @@ export default function Login() {
         localStorage.setItem('manar_token', token);
         localStorage.setItem('manar_user', JSON.stringify(user));
 
+        toast.success(i18n.language === 'ar' ? 'تم تسجيل الدخول بنجاح!' : 'Logged in successfully!');
+
         // Redirect based on role
         if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
           navigate('/admin/overview');
@@ -44,11 +47,12 @@ export default function Login() {
       }
     } catch (err) {
       console.error('Login error:', err);
-      if (err.response && err.response.data && err.response.data.error) {
-        setError(err.response.data.error);
-      } else {
-        setError(i18n.language === 'ar' ? 'فشل الاتصال بالخادم. يرجى التحقق من تشغيل النظام.' : 'Connection failed. Please verify the backend is running.');
-      }
+      const errorMsg = err.response && err.response.data && err.response.data.error
+        ? err.response.data.error
+        : (i18n.language === 'ar' ? 'فشل الاتصال بالخادم. يرجى التحقق من تشغيل النظام.' : 'Connection failed. Please verify the backend is running.');
+      
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }

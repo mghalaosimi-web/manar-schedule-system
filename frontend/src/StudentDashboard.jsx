@@ -124,34 +124,52 @@ export default function StudentDashboard() {
   };
 
   useEffect(() => {
-    const savedProfile = localStorage.getItem('student_profile');
     let currentGroupId = 1;
+    const userJson = localStorage.getItem('manar_user');
+    if (userJson) {
+      try {
+        const user = JSON.parse(userJson);
+        currentGroupId = user.groupId || 1;
+      } catch (e) {}
+    }
+
+    const savedProfile = localStorage.getItem('student_profile');
     if (savedProfile) {
       try {
         const parsed = JSON.parse(savedProfile);
-        setProfile({
-          name: parsed.name,
-          groupId: parsed.groupId,
-          groupName: parsed.groupId === 1 ? 'Group A' : (parsed.groupId === 2 ? 'Group B' : 'Group C')
-        });
-        currentGroupId = parsed.groupId;
-      } catch (e) {
-        console.error(e);
-      }
+        currentGroupId = parsed.groupId || currentGroupId;
+      } catch (e) {}
     }
 
     const fetchStudentSchedule = async () => {
       try {
         setLoading(true);
-        const res = await axios.get(`${API_URL}/api/schedules?groupId=${currentGroupId}`);
-        if (res.data && res.data.success) {
-          setSchedules(res.data.data);
+        const [scheduleRes, groupsRes] = await Promise.all([
+          axios.get(`${API_URL}/api/schedules?groupId=${currentGroupId}`),
+          axios.get(`${API_URL}/api/groups`)
+        ]);
+
+        let groupNameText = `Group ID: ${currentGroupId}`;
+        if (groupsRes.data && groupsRes.data.success) {
+          const matchingGroup = groupsRes.data.data.find(g => g.id === currentGroupId);
+          if (matchingGroup) {
+            groupNameText = matchingGroup.name;
+          }
+        }
+
+        if (scheduleRes.data && scheduleRes.data.success) {
+          setSchedules(scheduleRes.data.data);
+          setProfile(prev => ({
+            ...prev,
+            groupId: currentGroupId,
+            groupName: groupNameText
+          }));
           setBackendOnline(true);
         } else {
           throw new Error('API failed');
         }
       } catch (err) {
-        console.error('Failed to fetch schedules:', err);
+        console.error('Failed to fetch schedules or groups:', err);
         setBackendOnline(false);
       } finally {
         setLoading(false);

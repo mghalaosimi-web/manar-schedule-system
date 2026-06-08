@@ -398,7 +398,7 @@ app.get('/api/auth/captcha', (req, res) => {
   });
 });
 
-// Student Registration Endpoint (With Human Verification and Dual-Factor OTP Codes)
+// Student Registration Endpoint (Simplified - OTP-free, Auto-login)
 app.post('/api/auth/register', async (req, res) => {
   try {
     const {
@@ -438,7 +438,7 @@ app.post('/api/auth/register', async (req, res) => {
     // Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create the student profile (initially unverified)
+    // Create the student profile (fully verified immediately)
     const student = await prisma.student.create({
       data: {
         name: fullName,
@@ -450,41 +450,29 @@ app.post('/api/auth/register', async (req, res) => {
         majorId: parseInt(majorId),
         levelId: parseInt(levelId),
         groupId: parseInt(groupId),
-        isEmailVerified: false,
-        isPhoneVerified: false
+        isEmailVerified: true,
+        isPhoneVerified: true
       }
     });
 
-    // Generate 6-digit OTP codes for Email and Phone
-    const emailOtp = Math.floor(100000 + Math.random() * 900000).toString();
-    const phoneOtp = Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
-
-    // Save OTPs
-    await prisma.verificationCode.createMany({
-      data: [
-        { studentId: student.id, code: emailOtp, type: 'EMAIL', expiresAt },
-        { studentId: student.id, code: phoneOtp, type: 'PHONE', expiresAt }
-      ]
-    });
-
-    // Write OTP codes to developer log
-    const fs = require('fs');
-    const path = require('path');
-    const logMessage = `[${new Date().toISOString()}] Student: ${fullName} (${email})\n  - EMAIL OTP: ${emailOtp}\n  - PHONE OTP: ${phoneOtp}\n\n`;
-    try {
-      const logPath = path.join(process.cwd(), 'verification_codes.log');
-      fs.appendFileSync(logPath, logMessage);
-      console.log(`[AUTH] Verification codes written to ${logPath}`);
-    } catch (fsErr) {
-      console.warn('Failed to write verification codes to log file:', fsErr.message);
-    }
+    // Sign a 90-day JWT token for auto-login
+    const token = jwt.sign(
+      { id: student.id, name: student.name, role: 'STUDENT', groupId: student.groupId },
+      JWT_SECRET,
+      { expiresIn: '90d' }
+    );
 
     res.status(201).json({
       success: true,
-      message: 'Student registered successfully. Verification codes dispatched to email and phone.',
-      email,
-      phone
+      message: 'Student registered and logged in successfully.',
+      token,
+      user: {
+        id: student.id,
+        name: student.name,
+        email: student.email,
+        role: 'STUDENT',
+        groupId: student.groupId
+      }
     });
 
   } catch (error) {
@@ -665,6 +653,104 @@ app.get('/api/levels', async (req, res) => {
   } catch (error) {
     console.error('[API] Error fetching levels:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch levels' });
+  }
+});
+
+// God Mode - Get Metrics (Protected: SUPER_ADMIN only)
+app.get('/api/admin/god-mode/metrics', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ success: false, error: 'Access denied. Super Admin role required.' });
+    }
+
+    const totalStudents = await prisma.student.count();
+
+    // Group by major
+    const majorsData = await prisma.major.findMany({
+      include: {
+        _count: {
+          select: { students: true }
+        }
+      }
+    });
+
+    const studentsByMajor = majorsData.map(m => ({
+      name: m.name,
+      count: m._count.students
+    }));
+
+    // Group by level
+    const levelsData = await prisma.level.findMany({
+      include: {
+        _count: {
+          select: { students: true }
+        }
+      }
+    });
+
+    const studentsByLevel = levelsData.map(l => ({
+      name: l.name,
+      count: l._count.students
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalStudents,
+        studentsByMajor,
+        studentsByLevel
+      }
+    });
+  } catch (error) {
+    console.error('[API] God Mode metrics error:', error);
+    res.status(500).json({ success: false, error: 'Failed to retrieve system metrics' });
+  }
+});
+
+// God Mode - Get All Students with details (Protected: SUPER_ADMIN only)
+app.get('/api/admin/god-mode/students', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ success: false, error: 'Access denied. Super Admin role required.' });
+    }
+
+    const students = await prisma.student.findMany({
+      include: {
+        major: true,
+        group: true
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    res.status(200).json({ success: true, data: students });
+  } catch (error) {
+    console.error('[API] God Mode students fetch error:', error);
+    res.status(500).json({ success: false, error: 'Failed to retrieve students list' });
+  }
+});
+
+// God Mode - Delete Student (Protected: SUPER_ADMIN only)
+app.delete('/api/admin/god-mode/students/:id', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ success: false, error: 'Access denied. Super Admin role required.' });
+    }
+
+    const studentId = parseInt(req.params.id);
+    if (isNaN(studentId)) {
+      return res.status(400).json({ success: false, error: 'Invalid Student ID' });
+    }
+
+    await prisma.student.delete({
+      where: { id: studentId }
+    });
+
+    res.status(200).json({ success: true, message: 'Student successfully purged.' });
+  } catch (error) {
+    console.error('[API] God Mode delete student error:', error);
+    res.status(500).json({ success: false, error: 'Failed to delete student' });
   }
 });
 

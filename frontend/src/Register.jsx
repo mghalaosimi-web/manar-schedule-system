@@ -147,18 +147,31 @@ export default function Register() {
       const res = await axios.post(`${API_URL}/api/auth/register`, payload);
 
       if (res.data && res.data.success) {
-        toast.success(i18n.language === 'ar' ? 'تم إنشاء الحساب بنجاح! يرجى تفعيل الحساب.' : 'Profile created successfully! Please verify your account.');
-        // Redirect to OTP verification view with email/phone context
-        navigate('/verify', { state: { email, phone: formattedPhone } });
+        const { token, user } = res.data;
+        
+        // Save to localStorage
+        localStorage.setItem('manar_token', token);
+        localStorage.setItem('manar_user', JSON.stringify(user));
+        localStorage.setItem('student_profile', JSON.stringify({
+          name: user.name,
+          email: user.email,
+          department: departments.find(d => d.id === parseInt(selectedDeptId))?.name || 'Software Engineering',
+          level: levels.find(l => l.id === parseInt(selectedLevelId))?.name || 'Level 3',
+          groupId: user.groupId || 1
+        }));
+
+        toast.success(i18n.language === 'ar' ? 'تم إنشاء الحساب وتسجيل الدخول بنجاح!' : 'Account created and logged in successfully!');
+        navigate('/student/home');
       }
     } catch (err) {
       console.error('Registration error:', err);
       fetchCaptcha(); // Refresh captcha on failure
-      if (err.response && err.response.data && err.response.data.error) {
-        setError(err.response.data.error);
-      } else {
-        setError('Failed to establish account. Please contact system support.');
-      }
+      const errorMsg = err.response && err.response.data && err.response.data.error
+        ? err.response.data.error
+        : (i18n.language === 'ar' ? 'فشل في إنشاء الحساب. يرجى الاتصال بالدعم.' : 'Failed to establish account. Please contact system support.');
+      
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setLoading(false);
     }

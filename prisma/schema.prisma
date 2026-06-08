@@ -78,6 +78,7 @@ model Student {
   group            Group              @relation(fields: [groupId], references: [id])
   notificationLogs NotificationLog[]
   verificationCodes VerificationCode[]
+  createdAt        DateTime           @default(now())
 }
 
 model Subject {
