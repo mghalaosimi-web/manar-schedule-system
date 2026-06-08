@@ -7,31 +7,27 @@ export default function GroupManagement() {
   const [activeTab, setActiveTab] = useState('groups');
   const [groups, setGroups] = useState([]);
   const [rooms, setRooms] = useState([]);
-  const [lecturers, setLecturers] = useState(() => {
-    const saved = localStorage.getItem('db_lecturers');
-    return saved ? JSON.parse(saved) : [
-      { id: 1, name: 'Dr. Ahmad Masri', email: 'ahmad@manar.edu' },
-      { id: 2, name: 'Eng. Sarah Taji', email: 'sarah@manar.edu' },
-      { id: 3, name: 'Dr. Manar Al-Saeed', email: 'manar@manar.edu' }
-    ];
-  });
+  const [lecturers, setLecturers] = useState([
+    { id: 1, name: 'Dr. Ahmad Masri', email: 'ahmad@manar.edu' },
+    { id: 2, name: 'Eng. Sarah Taji', email: 'sarah@manar.edu' },
+    { id: 3, name: 'Dr. Manar Al-Saeed', email: 'manar@manar.edu' }
+  ]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formState, setFormState] = useState({});
-
-  useEffect(() => {
-    localStorage.setItem('db_lecturers', JSON.stringify(lecturers));
-  }, [lecturers]);
 
   const fetchGroups = async () => {
     try {
       const res = await axios.get(`${API_URL}/api/groups`);
       if (res.data && res.data.success) {
         setGroups(res.data.data);
+      } else {
+        throw new Error('API failed');
       }
     } catch (err) {
       console.error('Error fetching groups:', err);
+      toast.error('Failed to load groups. Check database connection.');
     }
   };
 
@@ -40,9 +36,12 @@ export default function GroupManagement() {
       const res = await axios.get(`${API_URL}/api/rooms`);
       if (res.data && res.data.success) {
         setRooms(res.data.data);
+      } else {
+        throw new Error('API failed');
       }
     } catch (err) {
       console.error('Error fetching rooms:', err);
+      toast.error('Failed to load classrooms. Check database connection.');
     }
   };
 

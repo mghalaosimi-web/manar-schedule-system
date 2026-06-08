@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { toast } from 'react-hot-toast';
 import { API_URL } from './config';
 
 export default function BroadcastCenter() {
@@ -15,9 +16,12 @@ export default function BroadcastCenter() {
         const res = await axios.get(`${API_URL}/api/groups`);
         if (res.data && res.data.success) {
           setGroups(res.data.data);
+        } else {
+          throw new Error('API failed');
         }
       } catch (err) {
         console.error('Error fetching groups for broadcast target:', err);
+        toast.error('Failed to load target academic groups.');
       }
     };
     fetchGroups();
@@ -42,7 +46,9 @@ export default function BroadcastCenter() {
       if (res.data && res.data.success) {
         setMessage('');
         const targetLabel = target === 'ALL' ? 'All Students' : (groups.find(g => g.id.toString() === target.toString())?.name || 'Selected Group');
-        setSentStatus({ success: true, message: `Alert broadcasted successfully to ${targetLabel}!` });
+        const successMsg = `Alert broadcasted successfully to ${targetLabel}!`;
+        setSentStatus({ success: true, message: successMsg });
+        toast.success(successMsg);
         setTimeout(() => setSentStatus(null), 5000);
       } else {
         throw new Error('API failed');
@@ -51,6 +57,7 @@ export default function BroadcastCenter() {
       console.error(err);
       const errMsg = err.response?.data?.error || 'Failed to dispatch broadcast logs.';
       setSentStatus({ success: false, message: errMsg });
+      toast.error(errMsg);
     } finally {
       setLoading(false);
     }

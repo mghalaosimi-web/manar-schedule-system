@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { API_URL } from './config';
 
@@ -22,9 +23,12 @@ export default function SystemLog() {
           sentTime: log.sentTime,
           status: log.status
         })));
+      } else {
+        throw new Error('API failed');
       }
     } catch (err) {
       console.error('Failed to fetch audit logs:', err);
+      toast.error('Failed to fetch system logs directory.');
     }
   };
 
@@ -35,12 +39,19 @@ export default function SystemLog() {
   const handleClearLogs = async () => {
     try {
       const token = localStorage.getItem('manar_token');
-      await axios.delete(`${API_URL}/api/admin/logs`, {
+      const res = await axios.delete(`${API_URL}/api/admin/logs`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
-      setLogs([]);
+      if (res.data && res.data.success) {
+        setLogs([]);
+        toast.success('All system logs cleared successfully.');
+      } else {
+        throw new Error('API failed');
+      }
     } catch (err) {
       console.error('Failed to clear logs:', err);
+      const errMsg = err.response?.data?.error || 'Failed to clear system logs.';
+      toast.error(errMsg);
     }
   };
 

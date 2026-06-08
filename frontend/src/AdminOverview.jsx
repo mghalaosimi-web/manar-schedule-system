@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import { API_URL } from './config';
 
 export default function AdminOverview() {
@@ -21,9 +22,12 @@ export default function AdminOverview() {
       });
       if (res.data && res.data.success) {
         setStats(res.data.data);
+      } else {
+        throw new Error('API failed');
       }
     } catch (err) {
       console.error('Failed to fetch admin metrics:', err);
+      toast.error('Failed to sync system overview metrics.');
     }
   };
 

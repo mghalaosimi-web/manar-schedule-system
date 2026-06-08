@@ -24,7 +24,7 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-const JWT_SECRET = process.env.JWT_SECRET || 'manar_secret_key';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // Initialize global PG Pool and Prisma Client singletons to prevent connection leaks
 if (!global.pgPool) {
@@ -128,9 +128,13 @@ async function runStartupMigrations() {
 }
 
 // Trigger connection, migrations, and seeding
-prisma.$connect()
-  .then(async () => {
+// Database startup & port binding sequencing
+async function startServer() {
+  try {
+    console.log('[DATABASE] Connecting to PostgreSQL via Prisma Client...');
+    await prisma.$connect();
     console.log('[DATABASE] Connected to PostgreSQL via Prisma Client.');
+    
     await runStartupMigrations();
     
     // Execute seed script and print logs directly to console output
@@ -144,10 +148,19 @@ prisma.$connect()
         if (stdout) console.log(stdout);
       }
     });
-  })
-  .catch((err) => {
+
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+      console.log('Smart Notification Engine (Cron) is initialized.');
+    });
+  } catch (err) {
     console.error('[DATABASE] Critical database connection error:', err.message);
-  });
+    process.exit(1);
+  }
+}
+
+startServer();
 
 // ==========================================
 // NOTIFICATION ENGINE: CRON JOBS
@@ -1210,12 +1223,12 @@ app.put('/api/student/settings', verifyToken, async (req, res) => {
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
 // Handle invalid API routes gracefully (return 404 JSON, don't fallback to index.html or throw 500)
-app.all(/^\/api\/.*/, (req, res) => {
+app.all('/api/(.*)', (req, res) => {
   res.status(404).json({ success: false, error: 'API route not found' });
 });
 
 // Catch-all route to serve the React frontend index.html for SPA routing (must be last)
-app.get('*', (req, res) => {
+app.get('/*', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
@@ -1236,8 +1249,4 @@ app.use((err, req, res, next) => {
   res.status(500).sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-  console.log('Smart Notification Engine (Cron) is initialized.');
-});
+

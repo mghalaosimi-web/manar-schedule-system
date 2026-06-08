@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { toast } from 'react-hot-toast';
 import { API_URL } from './config';
 
 const DEPARTMENTS = ['Computer Science', 'Information Systems', 'Software Engineering'];
@@ -48,9 +49,12 @@ export default function UserSettings() {
         const res = await axios.get(`${API_URL}/api/groups`);
         if (res.data && res.data.success) {
           setGroups(res.data.data);
+        } else {
+          throw new Error('API failed');
         }
       } catch (e) {
         console.error('Failed to fetch groups:', e);
+        toast.error('Failed to load academic groups list.');
       }
     };
     fetchGroups();
@@ -94,9 +98,14 @@ export default function UserSettings() {
         setPassword('');
         setSavedStatus(true);
         setTimeout(() => setSavedStatus(false), 3000);
+        toast.success('Academic profile configuration updated successfully!');
+      } else {
+        throw new Error('API failed');
       }
     } catch (err) {
       console.error('Failed to update student settings:', err);
+      const errMsg = err.response?.data?.error || 'Failed to update academic profile configuration.';
+      toast.error(errMsg);
     }
   };
 

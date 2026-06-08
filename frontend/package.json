@@ -6,7 +6,7 @@
   "scripts": {
     "postinstall": "prisma generate",
     "start": "node src/server.js",
-    "build": "echo 'Build finished'"
+    "build": "vite build"
   },
   "dependencies": {
     "framer-motion": "^12.40.0",
