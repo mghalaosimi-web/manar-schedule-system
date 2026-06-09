@@ -41,6 +41,21 @@ async function upsertGroup(name) {
 }
 
 async function main() {
+  console.log('Clearing existing database tables...');
+  await prisma.scheduleOverride.deleteMany();
+  await prisma.notificationLog.deleteMany();
+  await prisma.verificationCode.deleteMany();
+  await prisma.student.deleteMany();
+  await prisma.schedule.deleteMany();
+  await prisma.room.deleteMany();
+  await prisma.subject.deleteMany();
+  await prisma.group.deleteMany();
+  await prisma.level.deleteMany();
+  await prisma.major.deleteMany();
+  await prisma.department.deleteMany();
+  await prisma.admin.deleteMany();
+  console.log('All tables cleared.');
+
   console.log('Seeding database with academic data...');
 
   // 1. Create Departments
@@ -73,7 +88,7 @@ async function main() {
     console.log(`Major upserted: ${maj.name} (Humanities Department)`);
   }
 
-  // 3. Create 8 Rooms (6 Lecture Rooms, 2 Labs)
+  // 3. Create 10 Rooms (8 Lecture Rooms, 2 Labs)
   const rooms = [
     { name: 'قاعة 1', capacity: 45 },
     { name: 'قاعة 2', capacity: 45 },
@@ -81,6 +96,8 @@ async function main() {
     { name: 'قاعة 4', capacity: 45 },
     { name: 'قاعة 5', capacity: 45 },
     { name: 'قاعة 6', capacity: 45 },
+    { name: 'قاعة 7', capacity: 45 },
+    { name: 'قاعة 8', capacity: 45 },
     { name: 'مختبر الحاسوب 1', capacity: 30 },
     { name: 'مختبر الشبكات 2', capacity: 30 }
   ];
@@ -125,6 +142,109 @@ async function main() {
     }
   });
   console.log(`SUPER_ADMIN upserted: ${superAdmin.email}`);
+
+  // 7. Seed Subjects for 2026 Academic Year (THEORY and PRACTICAL)
+  console.log('Seeding subjects...');
+  const subjectsData = [
+    // Theory Subjects
+    { name: 'تصميم مواقع الويب', code: 'IT-2026-WEB', type: 'THEORY' },
+    { name: 'البرمجة المرئية', code: 'IT-2026-VISUAL', type: 'THEORY' },
+    { name: 'نظم التشغيل', code: 'IT-2026-OS', type: 'THEORY' },
+    { name: 'التصميم المنطقي الرقمي', code: 'IT-2026-DIGITAL', type: 'THEORY' },
+    { name: 'هياكل البيانات والخوارزميات', code: 'IT-2026-DS', type: 'THEORY' },
+    { name: 'القانون الاداري', code: 'HUM-2026-ADMIN-LAW', type: 'THEORY' },
+    { name: 'محاسبة شركة اموال', code: 'HUM-2026-ACC', type: 'THEORY' },
+    { name: 'إدارة الإنتاج والعمليات', code: 'HUM-2026-PROD', type: 'THEORY' },
+    { name: 'مالية عامة', code: 'HUM-2026-FINANCE', type: 'THEORY' },
+
+    // Practical Subjects
+    { name: 'تطبيقات قواعد بيانات (1)', code: 'IT-2026-DB1-PRAC', type: 'PRACTICAL' },
+    { name: 'تطبيقات قواعد بيانات (2)', code: 'IT-2026-DB2-PRAC', type: 'PRACTICAL' },
+    { name: 'تطبيقات أنظمة التشغيل', code: 'IT-2026-OS-PRAC', type: 'PRACTICAL' },
+    { name: 'تطبيقات تصميم مواقع الويب', code: 'IT-2026-WEB-PRAC', type: 'PRACTICAL' },
+    { name: 'تطبيقات التصميم المنطقي الرقمي', code: 'IT-2026-DIGITAL-PRAC', type: 'PRACTICAL' },
+    { name: 'تطبيقات هياكل البيانات', code: 'IT-2026-DS-PRAC', type: 'PRACTICAL' }
+  ];
+
+  const subjects = {};
+  for (const sub of subjectsData) {
+    const s = await prisma.subject.upsert({
+      where: { code: sub.code },
+      update: { name: sub.name, type: sub.type },
+      create: { name: sub.name, code: sub.code, type: sub.type }
+    });
+    subjects[sub.name] = s;
+  }
+  console.log('Subjects seeded successfully.');
+
+  // Fetch all rooms from DB to build a map
+  const roomsInDb = await prisma.room.findMany();
+  const roomsMap = {};
+  roomsInDb.forEach(r => {
+    roomsMap[r.name] = r;
+  });
+
+  // Fetch all groups from DB to build a map
+  const groupsInDb = await prisma.group.findMany();
+  const groupsMap = {};
+  groupsInDb.forEach(g => {
+    groupsMap[g.name] = g;
+  });
+
+  // 8. Create Schedules for 2026 Academic Year
+  console.log('Preparing schedules data...');
+  const theorySchedules = [
+    { subjectName: 'تصميم مواقع الويب', lecturer: 'أ. افنان الشرفي', roomName: 'قاعة 8', day: 'MONDAY', startTime: '08:00', endTime: '10:00', groupNames: ['مجموعة أ (نظري)'] },
+    { subjectName: 'البرمجة المرئية', lecturer: 'د. عبد الرزاق الأهدل', roomName: 'قاعة 1', day: 'TUESDAY', startTime: '10:00', endTime: '12:00', groupNames: ['مجموعة أ (نظري)'] },
+    { subjectName: 'نظم التشغيل', lecturer: 'د. عبد الرزاق الأهدل', roomName: 'قاعة 1', day: 'WEDNESDAY', startTime: '08:00', endTime: '10:00', groupNames: ['مجموعة أ (نظري)'] },
+    { subjectName: 'التصميم المنطقي الرقمي', lecturer: 'أ. منير مفتاح', roomName: 'قاعة 1', day: 'WEDNESDAY', startTime: '10:00', endTime: '12:00', groupNames: ['مجموعة أ (نظري)'] },
+    { subjectName: 'هياكل البيانات والخوارزميات', lecturer: 'د. احمد الناشري', roomName: 'قاعة 6', day: 'THURSDAY', startTime: '08:00', endTime: '10:00', groupNames: ['مجموعة أ (نظري)'] },
+
+    { subjectName: 'القانون الاداري', lecturer: 'د. عدنان الصلوي', roomName: 'قاعة 3', day: 'SUNDAY', startTime: '08:00', endTime: '10:00', groupNames: ['مجموعة أ (نظري)'] },
+    { subjectName: 'محاسبة شركة اموال', lecturer: 'أ. فارس الأعور', roomName: 'قاعة 1', day: 'SUNDAY', startTime: '10:00', endTime: '12:00', groupNames: ['مجموعة أ (نظري)'] },
+    { subjectName: 'إدارة الإنتاج والعمليات', lecturer: 'د. يحيى العبدلي', roomName: 'قاعة 5', day: 'MONDAY', startTime: '10:00', endTime: '12:00', groupNames: ['مجموعة أ (نظري)'] },
+    { subjectName: 'مالية عامة', lecturer: 'د. عبد الله قشوة', roomName: 'قاعة 8', day: 'TUESDAY', startTime: '08:00', endTime: '10:00', groupNames: ['مجموعة أ (نظري)'] }
+  ];
+
+  const practicalSchedules = [
+    { subjectName: 'تطبيقات قواعد بيانات (1)', lecturer: 'أ. سبأ زمام', roomName: 'مختبر الحاسوب 1', day: 'SATURDAY', startTime: '10:00', endTime: '12:00', groupNames: ['مجموعة ب (عملي 1)', 'مجموعة ج (عملي 2)'] },
+    { subjectName: 'تطبيقات قواعد بيانات (2)', lecturer: 'أ. سبأ زمام', roomName: 'مختبر الحاسوب 1', day: 'SATURDAY', startTime: '12:00', endTime: '14:00', groupNames: ['مجموعة ب (عملي 1)', 'مجموعة ج (عملي 2)'] },
+    { subjectName: 'تطبيقات أنظمة التشغيل', lecturer: 'أ. إجلال المحن', roomName: 'مختبر الشبكات 2', day: 'SUNDAY', startTime: '10:00', endTime: '12:00', groupNames: ['مجموعة ب (عملي 1)', 'مجموعة ج (عملي 2)'] },
+    { subjectName: 'تطبيقات تصميم مواقع الويب', lecturer: 'أ. افنان الشرفي', roomName: 'مختبر الحاسوب 1', day: 'MONDAY', startTime: '10:00', endTime: '12:00', groupNames: ['مجموعة ب (عملي 1)', 'مجموعة ج (عملي 2)'] },
+    { subjectName: 'تطبيقات التصميم المنطقي الرقمي', lecturer: 'أ. منير مفتاح', roomName: 'مختبر الحاسوب 1', day: 'WEDNESDAY', startTime: '10:00', endTime: '12:00', groupNames: ['مجموعة ب (عملي 1)', 'مجموعة ج (عملي 2)'] },
+    { subjectName: 'تطبيقات هياكل البيانات', lecturer: 'أ. سمر بدر', roomName: 'مختبر الشبكات 2', day: 'WEDNESDAY', startTime: '12:00', endTime: '14:00', groupNames: ['مجموعة ب (عملي 1)', 'مجموعة ج (عملي 2)'] }
+  ];
+
+  const allSchedulesToCreate = [];
+  const combinedSchedules = [...theorySchedules, ...practicalSchedules];
+
+  for (const item of combinedSchedules) {
+    const room = roomsMap[item.roomName];
+    const subject = subjects[item.subjectName];
+    if (!room) throw new Error(`Room ${item.roomName} not found during seeding.`);
+    if (!subject) throw new Error(`Subject ${item.subjectName} not found during seeding.`);
+
+    for (const gName of item.groupNames) {
+      const group = groupsMap[gName];
+      if (!group) throw new Error(`Group ${gName} not found during seeding.`);
+
+      allSchedulesToCreate.push({
+        subjectId: subject.id,
+        roomId: room.id,
+        lecturerName: item.lecturer,
+        groupId: group.id,
+        dayOfWeek: item.day,
+        startTime: item.startTime,
+        endTime: item.endTime
+      });
+    }
+  }
+
+  console.log(`Bulk inserting ${allSchedulesToCreate.length} schedules...`);
+  await prisma.schedule.createMany({
+    data: allSchedulesToCreate
+  });
+  console.log('Schedules seeded successfully.');
 
   console.log('Seeding process completed successfully.');
 }
