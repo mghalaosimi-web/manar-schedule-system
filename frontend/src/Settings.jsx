@@ -67,7 +67,7 @@ export default function Settings() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="flex-1 w-full bg-transparent p-6 flex flex-col items-center space-y-6"
+      className="flex-1 w-full bg-transparent p-4 md:p-8 flex flex-col items-center space-y-6"
     >
       
       {/* Academic Group Configuration */}

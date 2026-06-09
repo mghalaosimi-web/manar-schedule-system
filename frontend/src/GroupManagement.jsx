@@ -133,7 +133,7 @@ export default function GroupManagement() {
   };
 
   return (
-    <div className="flex-1 bg-gray-900 text-white p-6 space-y-6">
+    <div className="flex-1 bg-gray-900 text-white p-4 md:p-8 space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>

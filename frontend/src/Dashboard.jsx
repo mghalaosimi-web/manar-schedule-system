@@ -407,7 +407,7 @@ export default function Dashboard() {
       </section>
 
       {/* Main Grid View */}
-      <main className="flex-1 p-6 overflow-x-auto">
+      <main className="flex-1 p-4 md:p-8 overflow-x-auto">
         {loading ? (
           <div className="h-full flex items-center justify-center flex-col gap-3 py-20">
             <div className="h-8 w-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />

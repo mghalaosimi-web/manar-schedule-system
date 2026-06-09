@@ -159,7 +159,7 @@ export default function StudentApp() {
             <span className="text-xs text-gray-500">Syncing with schedule engine...</span>
           </div>
         ) : (
-          <div className="flex-1 p-5 space-y-6 print-area">
+          <div className="flex-1 p-4 md:p-8 space-y-6 print-area">
             
             {/* View Selection Toggle */}
             <div className="flex justify-between items-center bg-white/5 border border-white/10 p-2 rounded-xl mb-4 no-print">

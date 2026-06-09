@@ -19,6 +19,7 @@ export default function GodMode() {
   const [impersonatingId,setImpersonatingId]= useState(null);
   const [search,         setSearch]         = useState('');
   const [deleteModal,    setDeleteModal]    = useState({ open: false, studentId: null, studentName: '' });
+  const [isSidebarOpen, setIsSidebarOpen]   = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -119,7 +120,7 @@ export default function GodMode() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45 }}
       dir={isAr ? 'rtl' : 'ltr'}
-      className="flex-1 bg-[#000] p-8 space-y-12 text-[var(--text-primary)]"
+      className="flex-1 bg-[#000] p-4 md:p-8 space-y-12 text-[var(--text-primary)]"
     >
 
       {/* ── Hero header ──────────────────────────────────────── */}

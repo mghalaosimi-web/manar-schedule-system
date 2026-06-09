@@ -102,7 +102,7 @@ export default function Students() {
   };
 
   return (
-    <div className="flex-1 bg-transparent p-6 space-y-6">
+    <div className="flex-1 bg-transparent p-4 md:p-8 space-y-6">
       
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">

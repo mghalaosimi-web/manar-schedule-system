@@ -81,7 +81,7 @@ export default function AdminOverview() {
   useEffect(() => { fetchMetrics(); }, []);
 
   return (
-    <div dir={isAr ? 'rtl' : 'ltr'} className="flex-1 bg-[#000] text-[var(--text-primary)] p-8 space-y-12">
+    <div dir={isAr ? 'rtl' : 'ltr'} className="flex-1 bg-[#000] text-[var(--text-primary)] p-4 md:p-8 space-y-12">
 
       {/* ── Page header ──────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-6">

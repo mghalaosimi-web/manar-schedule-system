@@ -178,7 +178,7 @@ export default function DevPortal() {
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
       dir={isAr ? 'rtl' : 'ltr'}
-      className="min-h-screen bg-[#000] text-[var(--text-primary)] p-8 space-y-8"
+      className="min-h-screen bg-[#000] text-[var(--text-primary)] p-4 md:p-8 space-y-8"
       style={{ fontFamily: "'Urbanist', monospace" }}
     >
 

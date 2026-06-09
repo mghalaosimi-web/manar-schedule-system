@@ -31,6 +31,7 @@ function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const path = location.pathname;
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // ── Session Restoration: Auto-redirect on cold load ──────────────────────
   useEffect(() => {
@@ -98,6 +99,7 @@ function AppLayout() {
         <Link
           key={to}
           to={to}
+          onClick={() => setIsSidebarOpen(false)}
           style={isActive ? { color: activeColor, background: `rgba(222,255,154,0.06)`, borderLeft: isAr ? 'none' : `2px solid ${activeColor}`, borderRight: isAr ? `2px solid ${activeColor}` : 'none' } : {}}
           className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-black tracking-wide transition-all duration-200 ${
             isActive ? '' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/3'
@@ -123,6 +125,15 @@ function AppLayout() {
           }}
         >
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className={`p-1.5 ${isAr ? '-mr-1 ml-1' : '-ml-1 mr-1'} text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 rounded-xl md:hidden transition-colors`}
+              aria-label="Toggle Menu"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d={isSidebarOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
+              </svg>
+            </button>
             <Logo size="sm" />
             <span className="text-sm font-black tracking-[0.20em] uppercase" style={{ color: 'var(--accent)' }}>
               MANAR
@@ -142,10 +153,23 @@ function AppLayout() {
           </div>
         </header>
 
+        {/* ── Mobile Backdrop Overlay ───────────────────────────── */}
+        {isSidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/60 z-40 md:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+
         {/* ── Admin sidebar ────────────────────────────────────── */}
         <aside
-          className="w-60 shrink-0 flex flex-col justify-between"
-          style={{ background: '#000', borderRight: isAr ? 'none' : '1px solid var(--border-color)', borderLeft: isAr ? '1px solid var(--border-color)' : 'none' }}
+          className={`fixed inset-y-0 ${isAr ? 'right-0' : 'left-0'} z-50 w-64 bg-[#000] transition-transform duration-300 ease-in-out transform ${
+            isSidebarOpen ? 'translate-x-0' : (isAr ? 'translate-x-full' : '-translate-x-full')
+          } md:translate-x-0 md:static md:w-64 md:flex flex-col justify-between shrink-0`}
+          style={{
+            borderRight: isAr ? 'none' : '1px solid var(--border-color)',
+            borderLeft: isAr ? '1px solid var(--border-color)' : 'none'
+          }}
         >
           <div className="p-5 pt-7 space-y-7">
             {/* Wordmark */}
@@ -180,6 +204,7 @@ function AppLayout() {
                             localStorage.setItem('manar_user', JSON.stringify(r.data.user));
                             localStorage.setItem('student_profile', JSON.stringify({ name: s.name, email: s.email, department: s.major?.department?.name || '', level: s.level?.name || '', groupId: s.groupId }));
                             toast.success(isAr ? `معاينة: ${s.name}` : `Preview as ${s.name}`);
+                            setIsSidebarOpen(false);
                             navigate('/student/home');
                           }
                         } else {

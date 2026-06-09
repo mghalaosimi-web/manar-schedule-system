@@ -44,7 +44,7 @@ export default function NotificationCenter() {
   };
 
   return (
-    <div dir={i18n.language === 'ar' ? 'rtl' : 'ltr'} className="flex-1 bg-transparent p-5 flex flex-col items-center">
+    <div dir={i18n.language === 'ar' ? 'rtl' : 'ltr'} className="flex-1 bg-transparent p-4 md:p-8 flex flex-col items-center">
       <div className="w-full max-w-md space-y-6">
         
         {/* Header */}

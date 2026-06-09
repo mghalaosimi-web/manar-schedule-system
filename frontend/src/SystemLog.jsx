@@ -71,7 +71,7 @@ export default function SystemLog() {
   };
 
   return (
-    <div className="flex-1 bg-transparent p-6 space-y-6">
+    <div className="flex-1 bg-transparent p-4 md:p-8 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>

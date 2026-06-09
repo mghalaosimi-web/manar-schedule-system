@@ -109,6 +109,7 @@ export default function StudentDashboard() {
   const [schedules, setSchedules] = useState([]);
   const [backendOnline, setBackendOnline] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -326,7 +327,7 @@ export default function StudentDashboard() {
       initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="flex-1 w-full p-5 flex flex-col items-center"
+      className="flex-1 w-full p-4 md:p-8 flex flex-col items-center"
     >
       <div className="w-full max-w-md space-y-6 pb-20">
         
