@@ -124,10 +124,10 @@ function AppLayout() {
             borderBottom: '1px solid var(--border-color)',
           }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0 flex-1 md:flex-none">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className={`p-1.5 ${isAr ? '-mr-1 ml-1' : '-ml-1 mr-1'} text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 rounded-xl md:hidden transition-colors`}
+              className={`p-1.5 ${isAr ? '-mr-1 ml-1' : '-ml-1 mr-1'} text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 rounded-xl md:hidden transition-colors shrink-0`}
               aria-label="Toggle Menu"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -135,11 +135,8 @@ function AppLayout() {
               </svg>
             </button>
             <Logo size="sm" />
-            <span className="text-sm font-black tracking-[0.20em] uppercase" style={{ color: 'var(--accent)' }}>
-              MANAR
-            </span>
-            <span className="text-[var(--text-muted)] text-xs font-medium hidden md:block">
-              {isAr ? '· كلية المنار الجامعية' : '· Al-Manar University'}
+            <span className="text-xs md:text-sm font-black tracking-wider uppercase truncate" style={{ color: 'var(--accent)' }}>
+              {isAr ? 'كلية المنارة الجامعية' : 'Al-Manar University College'}
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -292,9 +289,11 @@ function AppLayout() {
               borderBottom: '1px solid var(--border-color)',
             }}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
               <Logo size="sm" />
-              <span className="text-xs font-black tracking-[0.18em] uppercase" style={{ color: 'var(--accent)' }}>MANAR</span>
+              <span className="text-xs font-black tracking-wider uppercase truncate" style={{ color: 'var(--accent)' }}>
+                {isAr ? 'كلية المنارة الجامعية' : 'Al-Manar University College'}
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <ThemeSwitcher />
