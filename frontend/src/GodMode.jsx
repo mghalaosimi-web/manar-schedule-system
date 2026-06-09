@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { API_URL } from './config';
+import ErrorModal from './ErrorModal';
 
 export default function GodMode() {
   const navigate = useNavigate();
@@ -17,6 +18,7 @@ export default function GodMode() {
   const [deletingId,     setDeletingId]     = useState(null);
   const [impersonatingId,setImpersonatingId]= useState(null);
   const [search,         setSearch]         = useState('');
+  const [deleteModal,    setDeleteModal]    = useState({ open: false, studentId: null, studentName: '' });
 
   const fetchData = async () => {
     setLoading(true);
@@ -39,9 +41,12 @@ export default function GodMode() {
   useEffect(() => { fetchData(); }, []);
 
   const handleDelete = async (id) => {
-    if (!window.confirm(isAr
-      ? 'هل أنت متأكد من حذف هذا الطالب نهائياً؟'
-      : 'Permanently delete this student?')) return;
+    setDeleteModal({ open: true, studentId: id, studentName: students.find(s=>s.id===id)?.name || '' });
+  };
+
+  const confirmDelete = async () => {
+    const id = deleteModal.studentId;
+    setDeleteModal({ open: false, studentId: null, studentName: '' });
     setDeletingId(id);
     try {
       const token = localStorage.getItem('manar_token');
@@ -346,6 +351,20 @@ export default function GodMode() {
           </table>
         </div>
       </div>
+
+      {/* Delete confirm modal */}
+      <ErrorModal
+        isOpen={deleteModal.open}
+        type="confirm"
+        title={isAr ? 'تأكيد الحذف النهائي' : 'Confirm Permanent Delete'}
+        message={isAr
+          ? `هل أنت متأكد من حذف الطالب "${deleteModal.studentName}" نهائياً؟ لا يمكن التراجع عن هذا الإجراء.`
+          : `Permanently delete "${deleteModal.studentName}"? This action cannot be undone.`}
+        confirmLabel={isAr ? 'حذف نهائي' : 'Delete Permanently'}
+        cancelLabel={isAr ? 'إلغاء' : 'Cancel'}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteModal({ open: false, studentId: null, studentName: '' })}
+      />
     </motion.div>
   );
 }

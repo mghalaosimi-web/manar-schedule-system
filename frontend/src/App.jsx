@@ -23,6 +23,8 @@ import ThemeSwitcher from './ThemeSwitcher';
 import Logo from './Logo';
 import { useTranslation } from 'react-i18next';
 import CommandPalette from './CommandPalette';
+import Instructions from './Instructions';
+import DevPortal from './DevPortal';
 
 function AppLayout() {
   const { t, i18n } = useTranslation();
@@ -163,7 +165,8 @@ function AppLayout() {
               {navLink('/admin/logs',      '📜', isAr ? 'السجلات' : 'Logs')}
               {user?.role === 'SUPER_ADMIN' && (
                 <>
-                  {navLink('/admin/god-mode', '👑', isAr ? 'God Mode' : 'God Mode', '#e879f9')}
+                  {navLink('/admin/god-mode',   '👑', isAr ? 'God Mode'   : 'God Mode',   '#e879f9')}
+                  {navLink('/admin/dev-portal', '⌨️', isAr ? 'Dev Portal' : 'Dev Portal', '#60c4ff')}
                   <button
                     onClick={async () => {
                       try {
@@ -218,10 +221,12 @@ function AppLayout() {
             <Route path="/admin/overview" element={<AdminOverview />} />
             <Route path="/admin/schedule" element={<Dashboard />} />
             <Route path="/admin/groups" element={<GroupManagement />} />
-            <Route path="/admin/students" element={<Students />} />
-            <Route path="/admin/broadcast" element={<BroadcastCenter />} />
-            <Route path="/admin/logs" element={<SystemLog />} />
-            <Route path="/admin/god-mode" element={<GodMode />} />
+            <Route path="/admin/students"   element={<Students />} />
+            <Route path="/admin/broadcast"  element={<BroadcastCenter />} />
+            <Route path="/admin/logs"       element={<SystemLog />} />
+            <Route path="/admin/god-mode"   element={<GodMode />} />
+            <Route path="/admin/dev-portal" element={<DevPortal />} />
+            <Route path="/admin/instructions" element={<Instructions />} />
             <Route path="*" element={<Navigate to="/admin/overview" replace />} />
           </Routes>
         </div>
@@ -349,11 +354,12 @@ function AppLayout() {
   // Welcome / Default Landing Page Layout
   return (
     <Routes>
-      <Route path="/" element={<Welcome />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/verify" element={<Verification />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="/"             element={<Welcome />} />
+      <Route path="/login"        element={<Login />} />
+      <Route path="/register"     element={<Register />} />
+      <Route path="/verify"       element={<Verification />} />
+      <Route path="/instructions" element={<Instructions />} />
+      <Route path="*"             element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

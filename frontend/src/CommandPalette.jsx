@@ -62,14 +62,17 @@ export default function CommandPalette() {
 
   // Navigational shortcuts
   const navigationItems = [
+    { name: '📖 دليل المستخدم / Instructions', subtitle: 'كيفية استخدام المنار خطوة بخطوة', action: '/instructions' },
     { name: '⚙️ الذهاب إلى الإعدادات', subtitle: 'تعديل الملف الشخصي والخيارات', action: '/settings' },
     { name: '📅 عرض جدول المحاضرات الأسبوعي', subtitle: 'الانتقال إلى لوحة العرض الرئيسية', action: '/' },
     { name: '🖨️ تصدير / طباعة الجدول الدراسي', subtitle: 'تحميل ملف PDF أو إرسال للطابعة', action: 'print' },
     { name: '🎨 تغيير مظهر التطبيق (Theme)', subtitle: 'التبديل بين الثيمات المتاحة', action: '/settings' },
+    { name: '👑 God Mode — لوحة المطور', subtitle: 'صلاحيات المسؤول الخارق (SUPER_ADMIN فقط)', action: '/admin/god-mode' },
+    { name: '⌨️ Dev Portal — بيئة التطوير', subtitle: 'التيرمنال الداخلي ومقاييس النظام', action: '/admin/dev-portal' },
     { 
       name: '🚪 تسجيل الخروج من الحساب', 
       subtitle: 'إنهاء الجلسة الحالية', 
-      action: () => {
+      action: () => { 
         localStorage.removeItem('manar_token');
         localStorage.removeItem('manar_user');
         navigate('/login');

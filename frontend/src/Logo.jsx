@@ -14,6 +14,19 @@ export default function Logo({ size = 'md' }) {
     <motion.div
       className={`relative flex items-center justify-center shrink-0 ${dimensions}`}
       whileHover="hover"
+      animate={{
+        y: [0, -4, 0, -2, 0],
+        filter: [
+          'drop-shadow(0 0 6px rgba(222,255,154,0.25))',
+          'drop-shadow(0 0 14px rgba(222,255,154,0.55))',
+          'drop-shadow(0 0 6px rgba(222,255,154,0.25))',
+        ],
+      }}
+      transition={{
+        duration: 3.8,
+        repeat: Infinity,
+        ease: 'easeInOut',
+      }}
     >
       {/* Background soft glow that matches the active theme */}
       <div className="absolute inset-0 bg-lime-500/20 rounded-full blur-[8px] opacity-0 group-hover:opacity-100 transition duration-300" />
