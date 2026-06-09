@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import { API_URL } from './config';
+import usePWAInstall from './usePWAInstall';
 
 const DAYS = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
 
@@ -56,6 +57,23 @@ const MOCK_SCHEDULES = [
 export default function StudentDashboard() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const { isInstallable, installApp } = usePWAInstall();
+
+  const handleInstallClick = async () => {
+    const success = await installApp();
+    if (success) {
+      toast.success(
+        i18n.language === 'ar' ? 'تم بدء التثبيت بنجاح!' : 'Installation started successfully!',
+        {
+          style: {
+            background: '#1f2937',
+            color: '#f3f4f6',
+            border: '1px solid #374151',
+          }
+        }
+      );
+    }
+  };
 
   const getInitialProfile = () => {
     const userJson = localStorage.getItem('manar_user');
@@ -346,6 +364,33 @@ export default function StudentDashboard() {
             </div>
           );
         })()}
+
+        {/* Custom Glassmorphic Install App Prompt */}
+        {isInstallable && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative overflow-hidden rounded-2xl border border-lime-500/30 bg-lime-500/10 backdrop-blur-md p-4 shadow-xl flex justify-between items-center gap-3 transition-all duration-300"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-xl">📱</span>
+              <div>
+                <h4 className="text-xs font-black text-lime-400">
+                  {i18n.language === 'ar' ? 'تثبيت التطبيق على جهازك' : 'Install App on Your Device'}
+                </h4>
+                <p className="text-[10px] text-gray-400 font-bold mt-0.5">
+                  {i18n.language === 'ar' ? 'احصل على وصول سريع وتنبيهات فورية' : 'Get quick access and instant push alerts'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleInstallClick}
+              className="px-4 py-2 bg-lime-500 hover:bg-lime-400 active:scale-95 text-black font-extrabold text-xs rounded-xl shadow-lg shadow-lime-500/20 hover:shadow-lime-500/40 transition-all duration-300 whitespace-nowrap"
+            >
+              {i18n.language === 'ar' ? 'تثبيت التطبيق' : 'Install App'}
+            </button>
+          </motion.div>
+        )}
 
         {/* Top Section: Glowing Alert Card for Next Lecture */}
         <section className="space-y-3">
