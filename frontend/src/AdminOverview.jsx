@@ -1,173 +1,205 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
+import { motion } from 'framer-motion';
 import { API_URL } from './config';
+
+/* ── Animated counter hook ─────────────────────────────────── */
+function useCountUp(target, duration = 1200) {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    if (!target && target !== 0) return;
+    let start = 0;
+    const step = Math.ceil(target / (duration / 16));
+    const timer = setInterval(() => {
+      start = Math.min(start + step, target);
+      setValue(start);
+      if (start >= target) clearInterval(timer);
+    }, 16);
+    return () => clearInterval(timer);
+  }, [target, duration]);
+  return value;
+}
+
+/* ── Metric card ───────────────────────────────────────────── */
+function MetricCard({ label, value, sublabel, accentColor = 'var(--accent)', delay = 0 }) {
+  const count = useCountUp(value);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.55, delay, ease: [0.16, 1, 0.3, 1] }}
+      className="command-card p-8 flex flex-col justify-between"
+      style={{ minHeight: 180, borderTopColor: accentColor }}
+    >
+      <p className="text-[10px] font-black tracking-[0.28em] uppercase"
+         style={{ color: accentColor }}>
+        {label}
+      </p>
+      <div>
+        <span
+          className="block font-black leading-none tracking-tighter"
+          style={{ fontSize: 'clamp(52px, 6vw, 80px)', color: '#fff' }}
+        >
+          {count}
+        </span>
+        {sublabel && (
+          <span className="text-xs mt-2 block" style={{ color: 'var(--text-secondary)' }}>
+            {sublabel}
+          </span>
+        )}
+      </div>
+    </motion.div>
+  );
+}
 
 export default function AdminOverview() {
   const navigate = useNavigate();
   const { i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
 
-  const [stats, setStats] = useState({
-    students: 245,
-    lectures: 12,
-    departments: 3,
-    classrooms: 8
-  });
+  const [stats,   setStats]   = useState(null);
   const [loading, setLoading] = useState(false);
 
   const fetchMetrics = async () => {
+    setLoading(true);
     try {
       const token = localStorage.getItem('manar_token');
       const res = await axios.get(`${API_URL}/api/admin/metrics`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      if (res.data && res.data.success) {
-        setStats(res.data.data);
-      } else {
-        throw new Error('API failed');
-      }
+      if (res.data?.success) setStats(res.data.data);
     } catch (err) {
-      console.error('Failed to fetch admin metrics:', err);
-      toast.error(isAr ? 'فشل مزامنة مؤشرات نظرة عامة على النظام.' : 'Failed to sync system overview metrics.');
+      toast.error(isAr ? 'فشل تحميل الإحصائيات' : 'Failed to load metrics');
+    } finally {
+      setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchMetrics();
-  }, []);
-
-  const handleSync = async () => {
-    setLoading(true);
-    await fetchMetrics();
-    setLoading(false);
-  };
+  useEffect(() => { fetchMetrics(); }, []);
 
   return (
-    <div dir={isAr ? 'rtl' : 'ltr'} className="flex-1 bg-gray-900 text-white p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">
-            {isAr ? 'نظرة عامة على النظام' : 'Admin Overview'}
-          </h2>
-          <p className="text-sm text-gray-400">
-            {isAr ? 'إحصائيات النظام اللحظية ومؤشرات الأداء الإداري.' : 'Real-time system stats and administrative health metrics.'}
+    <div dir={isAr ? 'rtl' : 'ltr'} className="flex-1 bg-[#000] text-[var(--text-primary)] p-8 space-y-12">
+
+      {/* ── Page header ──────────────────────────────────────── */}
+      <div className="flex items-start justify-between gap-6">
+        <motion.div initial={{ opacity: 0, x: isAr ? 20 : -20 }} animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5 }}>
+          <p className="text-[10px] font-black tracking-[0.28em] uppercase mb-3"
+             style={{ color: 'var(--accent)' }}>
+            {isAr ? 'مركز القيادة' : 'Command Center'}
           </p>
-        </div>
-        <button
-          onClick={handleSync}
-          className="px-4 py-2 bg-lime-500 text-black font-semibold text-xs rounded-md shadow-md shadow-lime-500/20 hover:bg-lime-400 transition flex items-center gap-2"
+          <h1 className="font-black tracking-tighter leading-none"
+              style={{ fontSize: 'clamp(36px, 5vw, 64px)', color: '#fff' }}>
+            {isAr ? 'نظرة عامة' : 'Overview'}
+          </h1>
+        </motion.div>
+
+        <motion.button
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+          onClick={fetchMetrics}
+          disabled={loading}
+          className="btn-ghost px-5 py-2.5 text-xs font-black tracking-widest uppercase flex items-center gap-2 mt-2 shrink-0"
         >
-          {loading ? (
-            <span className="h-3.5 w-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <span>🔄 {isAr ? 'تحديث البيانات' : 'Refresh Data'}</span>
-          )}
-        </button>
+          {loading
+            ? <span className="h-3.5 w-3.5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+            : <span>↺</span>}
+          {isAr ? 'تحديث' : 'Refresh'}
+        </motion.button>
       </div>
 
-      {/* Stats Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-        <div className="bg-gray-850 p-6 rounded-xl border border-gray-800 flex flex-col justify-between hover:border-sky-500/50 transition duration-200">
-          <div>
-            <span className="text-[10px] uppercase font-bold tracking-widest text-sky-400">
-              {isAr ? 'إجمالي الطلاب' : 'Total Enrollment'}
-            </span>
-            <h3 className="text-3xl font-extrabold mt-2 text-white">{stats.students}</h3>
-          </div>
-          <span className="text-xs text-gray-500 mt-4">
-            {isAr ? 'ملفات الطلاب النشطة في النظام' : 'Active student profiles'}
-          </span>
+      {/* ── Metric cards grid ─────────────────────────────────── */}
+      {stats ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+          <MetricCard
+            label={isAr ? 'إجمالي الطلاب' : 'Total Enrollment'}
+            value={stats.students}
+            sublabel={isAr ? 'ملف نشط في النظام' : 'Active student profiles'}
+            accentColor="var(--accent)"
+            delay={0}
+          />
+          <MetricCard
+            label={isAr ? 'الجداول النشطة' : 'Active Schedules'}
+            value={stats.lectures}
+            sublabel={isAr ? 'محاضرة مجدولة أسبوعياً' : 'Weekly lectures scheduled'}
+            accentColor="#60c4ff"
+            delay={0.07}
+          />
+          <MetricCard
+            label={isAr ? 'الأقسام الأكاديمية' : 'Departments'}
+            value={stats.departments}
+            sublabel={isAr ? 'قسم وكلية دراسية' : 'Academic departments'}
+            accentColor="var(--accent)"
+            delay={0.14}
+          />
+          <MetricCard
+            label={isAr ? 'القاعات والمختبرات' : 'Classrooms'}
+            value={stats.classrooms}
+            sublabel={isAr ? 'قاعة ومختبر معرّف' : 'Configured halls & labs'}
+            accentColor="#60c4ff"
+            delay={0.21}
+          />
         </div>
-
-        <div className="bg-gray-850 p-6 rounded-xl border border-gray-800 flex flex-col justify-between hover:border-lime-500/50 transition duration-200">
-          <div>
-            <span className="text-[10px] uppercase font-bold tracking-widest text-lime-400">
-              {isAr ? 'الجداول النشطة' : 'Active Schedules'}
-            </span>
-            <h3 className="text-3xl font-extrabold mt-2 text-white">{stats.lectures}</h3>
-          </div>
-          <span className="text-xs text-gray-500 mt-4">
-            {isAr ? 'المحاضرات المجدولة أسبوعياً' : 'Weekly lectures scheduled'}
-          </span>
-        </div>
-
-        <div className="bg-gray-850 p-6 rounded-xl border border-gray-800 flex flex-col justify-between hover:border-sky-500/50 transition duration-200">
-          <div>
-            <span className="text-[10px] uppercase font-bold tracking-widest text-sky-400">
-              {isAr ? 'الأقسام الأكاديمية' : 'Departments'}
-            </span>
-            <h3 className="text-3xl font-extrabold mt-2 text-white">{stats.departments}</h3>
-          </div>
-          <span className="text-xs text-gray-500 mt-4">
-            {isAr ? 'الأقسام الدراسية والكليات' : 'Academic departments'}
-          </span>
-        </div>
-
-        <div className="bg-gray-850 p-6 rounded-xl border border-gray-800 flex flex-col justify-between hover:border-lime-500/50 transition duration-200">
-          <div>
-            <span className="text-[10px] uppercase font-bold tracking-widest text-lime-400">
-              {isAr ? 'القاعات والمختبرات' : 'Classrooms'}
-            </span>
-            <h3 className="text-3xl font-extrabold mt-2 text-white">{stats.classrooms}</h3>
-          </div>
-          <span className="text-xs text-gray-500 mt-4">
-            {isAr ? 'القاعات المعرفة والمختبرات' : 'Configured lecture halls & labs'}
-          </span>
-        </div>
-      </div>
-
-      {/* System Status Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-gray-850 border border-gray-800 p-6 rounded-xl lg:col-span-2 space-y-4">
-          <h4 className="text-sm font-bold uppercase tracking-wider text-gray-400">
-            {isAr ? 'أداء وجودة النظام' : 'System Performance'}
-          </h4>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-gray-900/60 p-4 rounded-lg border border-gray-800/80">
-              <span className="text-xs text-gray-400 block">{isAr ? 'استجابة قاعدة البيانات' : 'Database Latency'}</span>
-              <span className="text-lg font-bold text-lime-400 mt-1 block">14 ms</span>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+          {[0,1,2,3].map(i => (
+            <div key={i} className="command-card p-8 animate-pulse" style={{ minHeight: 180 }}>
+              <div className="h-2 w-24 rounded mb-6" style={{ background: 'var(--border-color)' }} />
+              <div className="h-16 w-32 rounded" style={{ background: 'var(--border-color)' }} />
             </div>
-            <div className="bg-gray-900/60 p-4 rounded-lg border border-gray-800/80">
-              <span className="text-xs text-gray-400 block">{isAr ? 'معدل تسليم التنبيهات' : 'FCM Alert Dispatch'}</span>
-              <span className="text-lg font-bold text-sky-400 mt-1 block">99.8%</span>
-            </div>
-            <div className="bg-gray-900/60 p-4 rounded-lg border border-gray-800/80">
-              <span className="text-xs text-gray-400 block">{isAr ? 'حالة محرك المزامنة' : 'Cron Job Status'}</span>
-              <span className="text-lg font-bold text-lime-400 mt-1 block">{isAr ? 'نشط' : 'Active'}</span>
-            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── System status row ─────────────────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.35 }}
+        className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+      >
+        {/* Performance */}
+        <div className="frosted-panel rounded-2xl p-7 lg:col-span-2 space-y-6">
+          <p className="text-[10px] font-black tracking-[0.28em] uppercase" style={{ color: 'var(--text-secondary)' }}>
+            {isAr ? 'أداء النظام' : 'System Performance'}
+          </p>
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { label: isAr ? 'استجابة قاعدة البيانات' : 'DB Latency',    value: '14 ms',  color: 'var(--accent)' },
+              { label: isAr ? 'معدل تسليم التنبيهات' : 'Alert Dispatch',  value: '99.8%',  color: '#60c4ff'       },
+              { label: isAr ? 'حالة محرك المزامنة'   : 'Cron Status',     value: isAr ? 'نشط' : 'Active', color: 'var(--accent)' },
+            ].map((item, i) => (
+              <div key={i} className="rounded-xl p-4 space-y-2"
+                   style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)' }}>
+                <p className="text-[10px]" style={{ color: 'var(--text-secondary)' }}>{item.label}</p>
+                <p className="text-xl font-black" style={{ color: item.color }}>{item.value}</p>
+              </div>
+            ))}
           </div>
         </div>
 
-        <div className="bg-gray-850 border border-gray-800 p-6 rounded-xl space-y-4 flex flex-col justify-between">
-          <div>
-            <h4 className="text-sm font-bold uppercase tracking-wider text-gray-400">
-              {isAr ? 'إجراءات سريعة' : 'Quick Actions'}
-            </h4>
-            <p className="text-xs text-gray-500 mt-1">
-              {isAr ? 'إدارة سريعة لبعض المكونات.' : 'Direct shortcut configurations.'}
-            </p>
-          </div>
-          
-          <div className="space-y-2.5">
-            <button
-              onClick={() => navigate('/admin/broadcast')}
-              className="w-full py-2 bg-gray-800 hover:bg-gray-750 text-xs font-semibold rounded-md border border-gray-750 hover:border-sky-500/40 text-sky-300 transition text-center"
-            >
-              📢 {isAr ? 'فتح مركز البث العام' : 'Open Broadcast Center'}
+        {/* Quick actions */}
+        <div className="frosted-panel rounded-2xl p-7 flex flex-col justify-between space-y-6">
+          <p className="text-[10px] font-black tracking-[0.28em] uppercase" style={{ color: 'var(--text-secondary)' }}>
+            {isAr ? 'إجراءات سريعة' : 'Quick Actions'}
+          </p>
+          <div className="space-y-3 flex-1 flex flex-col justify-end">
+            <button onClick={() => navigate('/admin/broadcast')}
+                    className="btn-ghost w-full py-3 text-xs font-black tracking-wide text-center">
+              📢 {isAr ? 'مركز البث العام' : 'Broadcast Center'}
             </button>
-            <button
-              onClick={() => navigate('/admin/groups')}
-              className="w-full py-2 bg-gray-800 hover:bg-gray-750 text-xs font-semibold rounded-md border border-gray-750 hover:border-lime-500/40 text-lime-300 transition text-center"
-            >
-              🛠️ {isAr ? 'إدارة المجموعات والشُعب الدراسيّة' : 'Manage Academic Groups'}
+            <button onClick={() => navigate('/admin/groups')}
+                    className="btn-ghost w-full py-3 text-xs font-black tracking-wide text-center">
+              🛠 {isAr ? 'إدارة المجموعات' : 'Manage Groups'}
+            </button>
+            <button onClick={() => navigate('/admin/students')}
+                    className="btn-ghost w-full py-3 text-xs font-black tracking-wide text-center">
+              🎓 {isAr ? 'دليل الطلاب' : 'Student Directory'}
             </button>
           </div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

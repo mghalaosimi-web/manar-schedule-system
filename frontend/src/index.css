@@ -1,122 +1,234 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Urbanist:ital,wght@0,100..900;1,100..900&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Root color configurations for dark and light theme */
+/* ═══════════════════════════════════════════════════════════════
+   MANAR UNIVERSITY — GRAND PREMIUM PORTAL
+   Design System: Pure Black × Neon Lime (#deff9a)
+   Font: Urbanist
+═══════════════════════════════════════════════════════════════ */
+
 :root {
-  --bg-primary: #030712; /* gray-950 */
-  --bg-card: rgba(17, 24, 39, 0.65); /* gray-900/65 */
-  --border-color: rgba(255, 255, 255, 0.08);
-  --text-primary: #f3f4f6;
-  --text-secondary: #9ca3af;
+  /* Core Palette */
+  --bg-primary:   #000000;
+  --bg-card:      rgba(10, 10, 10, 0.92);
+  --bg-elevated:  rgba(16, 16, 16, 0.95);
+  --border-color: rgba(222, 255, 154, 0.07);
+  --border-hover: rgba(222, 255, 154, 0.20);
 
-  /* Theme color configuration - Default: Emerald Oasis */
-  --primary-color-rgb: 132, 204, 22; /* lime-500 */
-  --primary-hover-rgb: 163, 230, 53; /* lime-400 */
-  --secondary-color-rgb: 16, 185, 129; /* emerald-500 */
+  /* Text */
+  --text-primary:   #f0f0f0;
+  --text-secondary: #555555;
+  --text-muted:     #333333;
 
-  --glow-lime: rgba(var(--primary-color-rgb), 0.12);
-  --glow-emerald: rgba(var(--secondary-color-rgb), 0.12);
+  /* Neon Accent — Lime (#deff9a) */
+  --accent:         #deff9a;
+  --accent-dim:     rgba(222, 255, 154, 0.12);
+  --accent-glow:    rgba(222, 255, 154, 0.25);
+  --accent-2:       #a3ff70;
+
+  /* Theme-aware accent (used by ThemeSwitcher component) */
+  --primary-color-rgb:   222, 255, 154;   /* neon lime */
+  --primary-hover-rgb:   163, 255, 112;   /* accent-2 */
+  --secondary-color-rgb: 100, 220, 255;   /* cyan complement */
+
+  --glow-lime:    rgba(222, 255, 154, 0.10);
+  --glow-emerald: rgba(100, 220, 255, 0.08);
 }
 
-:root.theme-purple {
-  --primary-color-rgb: 168, 85, 247; /* purple-500 */
-  --primary-hover-rgb: 192, 132, 252; /* purple-400 */
-  --secondary-color-rgb: 236, 72, 153; /* pink-500 */
-}
-
-:root.theme-blue {
-  --primary-color-rgb: 59, 130, 246; /* blue-500 */
-  --primary-hover-rgb: 96, 165, 250; /* blue-400 */
-  --secondary-color-rgb: 6, 182, 212; /* cyan-500 */
-}
-
-:root.theme-amber {
-  --primary-color-rgb: 245, 158, 11; /* amber-500 */
-  --primary-hover-rgb: 251, 191, 36; /* amber-400 */
-  --secondary-color-rgb: 249, 115, 22; /* orange-500 */
-}
-
+/* Light mode keeps same structure but softens blacks */
 :root.light {
-  --bg-primary: #f9fafb; /* gray-50 */
-  --bg-card: rgba(255, 255, 255, 0.75);
-  --border-color: rgba(0, 0, 0, 0.08);
-  --text-primary: #111827;
-  --text-secondary: #4b5563;
-  --glow-lime: rgba(var(--primary-color-rgb), 0.06);
-  --glow-emerald: rgba(var(--secondary-color-rgb), 0.06);
+  --bg-primary:   #f4f4f4;
+  --bg-card:      rgba(255, 255, 255, 0.90);
+  --bg-elevated:  rgba(245, 245, 245, 0.95);
+  --border-color: rgba(0, 0, 0, 0.07);
+  --border-hover: rgba(0, 0, 0, 0.18);
+  --text-primary:   #0a0a0a;
+  --text-secondary: #6b6b6b;
+  --text-muted:     #aaaaaa;
+  --accent:         #5caa00;
+  --accent-dim:     rgba(92, 170, 0, 0.08);
+  --accent-glow:    rgba(92, 170, 0, 0.18);
+  --glow-lime:    rgba(92, 170, 0, 0.06);
+  --glow-emerald: rgba(0, 120, 180, 0.06);
 }
+
+/* ── Theme variants (for ThemeSwitcher) ──────────────────────── */
+:root.theme-purple {
+  --accent:             #e879f9;
+  --accent-dim:         rgba(232, 121, 249, 0.12);
+  --accent-glow:        rgba(232, 121, 249, 0.25);
+  --primary-color-rgb:  232, 121, 249;
+  --primary-hover-rgb:  244, 167, 255;
+  --glow-lime:          rgba(232, 121, 249, 0.10);
+}
+:root.theme-blue {
+  --accent:             #60c4ff;
+  --accent-dim:         rgba(96, 196, 255, 0.12);
+  --accent-glow:        rgba(96, 196, 255, 0.25);
+  --primary-color-rgb:  96, 196, 255;
+  --primary-hover-rgb:  130, 210, 255;
+  --glow-lime:          rgba(96, 196, 255, 0.10);
+}
+:root.theme-amber {
+  --accent:             #ffd666;
+  --accent-dim:         rgba(255, 214, 102, 0.12);
+  --accent-glow:        rgba(255, 214, 102, 0.25);
+  --primary-color-rgb:  255, 214, 102;
+  --primary-hover-rgb:  255, 230, 140;
+  --glow-lime:          rgba(255, 214, 102, 0.10);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   BASE RESETS
+══════════════════════════════════════════════════════════════ */
 
 html {
   scroll-behavior: smooth;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color 0.4s ease, color 0.4s ease;
 }
 
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   margin: 0;
-  font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Urbanist', system-ui, -apple-system, sans-serif;
+  font-feature-settings: 'cv05', 'cv10';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  letter-spacing: -0.01em;
 }
 
-/* Glassmorphism panel definitions */
+/* ══════════════════════════════════════════════════════════════
+   COMPONENT CLASSES
+══════════════════════════════════════════════════════════════ */
+
+/* Glassmorphism card */
 .frosted-panel {
   background-color: var(--bg-card);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
   border: 1px solid var(--border-color);
-  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.35);
-  transition: border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.02) inset, 0 24px 60px -16px rgba(0,0,0,0.70);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Luxury animated background orbs */
-@keyframes pulseGlow {
-  0%, 100% {
-    transform: scale(1) translate(0px, 0px);
-  }
-  33% {
-    transform: scale(1.15) translate(30px, -50px);
-  }
-  66% {
-    transform: scale(0.9) translate(-20px, 20px);
-  }
+/* Neon accent glow */
+.neon-glow {
+  box-shadow: 0 0 20px var(--accent-glow), 0 0 60px rgba(222,255,154,0.05);
+}
+
+/* Command center metric card */
+.command-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border-color);
+  border-top: 2px solid var(--accent);
+  border-radius: 16px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.2s ease;
+}
+.command-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: 0 0 40px var(--accent-glow);
+  transform: translateY(-2px);
+}
+
+/* Accent button */
+.btn-neon {
+  background: var(--accent);
+  color: #000;
+  font-weight: 800;
+  font-family: 'Urbanist', sans-serif;
+  border-radius: 8px;
+  transition: box-shadow 0.25s ease, transform 0.15s ease;
+}
+.btn-neon:hover:not(:disabled) {
+  box-shadow: 0 0 24px var(--accent-glow);
+  transform: translateY(-1px);
+}
+.btn-neon:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Ghost button */
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-weight: 700;
+  font-family: 'Urbanist', sans-serif;
+  border-radius: 8px;
+  transition: border-color 0.2s, color 0.2s;
+}
+.btn-ghost:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Premium input field */
+.cmd-input {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  font-family: 'Urbanist', sans-serif;
+  font-weight: 600;
+  font-size: 1rem;
+  border-radius: 10px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+}
+.cmd-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(222,255,154,0.10);
+}
+.cmd-input::placeholder { color: var(--text-muted); }
+
+/* ══════════════════════════════════════════════════════════════
+   ANIMATIONS
+══════════════════════════════════════════════════════════════ */
+
+@keyframes glowPulse {
+  0%,100% { opacity: 0.5; transform: scale(1) translate(0,0); }
+  40%     { opacity: 0.8; transform: scale(1.18) translate(20px,-40px); }
+  70%     { opacity: 0.4; transform: scale(0.92) translate(-15px,25px); }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(32px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes neonBlink {
+  0%,100% { text-shadow: 0 0 12px var(--accent), 0 0 40px var(--accent-glow); }
+  50%     { text-shadow: none; }
 }
 
 .ambient-orb {
-  animation: pulseGlow 15s infinite ease-in-out;
-  will-change: transform;
+  animation: glowPulse 18s infinite ease-in-out;
+  will-change: transform, opacity;
 }
+.animate-slide-up { animation: slideUp 0.55s cubic-bezier(0.16,1,0.3,1) both; }
+.animate-fade-in  { animation: fadeIn  0.45s ease both; }
 
-/* Print Media Styles for clean PDF export */
+/* ══════════════════════════════════════════════════════════════
+   PRINT STYLES
+══════════════════════════════════════════════════════════════ */
 @media print {
-  body {
-    background: white !important;
-    color: black !important;
-  }
-  header, nav, aside, button, .no-print, .theme-switcher-btn {
-    display: none !important;
-  }
+  body { background: #fff !important; color: #000 !important; }
+  header, nav, aside, button, .no-print { display: none !important; }
   .print-area {
     width: 100% !important;
-    max-width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     box-shadow: none !important;
     border: none !important;
     background: transparent !important;
-    color: black !important;
+    color: #000 !important;
   }
-  .print-area * {
-    color: black !important;
-    border-color: #d1d5db !important;
-  }
-  /* Ensure page breaks don't split cards */
-  .print-card {
-    page-break-inside: avoid;
-  }
+  .print-area * { color: #000 !important; border-color: #d1d5db !important; }
+  .print-card { page-break-inside: avoid; }
 }
