@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL } from './config';
@@ -213,7 +212,6 @@ function DailyProgress({ schedules, getActiveDay: gad, getActiveStartTime: gast,
 export default function StudentDashboard() {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
-  const navigate = useNavigate();
   const { isInstallable, installApp } = usePWAInstall();
 
   const handleInstallClick = async () => {
@@ -247,13 +245,6 @@ export default function StudentDashboard() {
 
   const [profile, setProfile] = useState(getInitialProfile);
   const [schedules, setSchedules] = useState([]);
-  const [originalSchedules, setOriginalSchedules] = useState([]);
-  const [sandboxMode, setSandboxMode] = useState(false);
-  const [activeSimulatorSchedule, setActiveSimulatorSchedule] = useState(null);
-  const [simulatorDay, setSimulatorDay] = useState('SUNDAY');
-  const [simulatorStart, setSimulatorStart] = useState('08:00');
-  const [simulatorEnd, setSimulatorEnd] = useState('10:00');
-  const [backendOnline, setBackendOnline] = useState(false);
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState([]);
   const [selectedGroupId, setSelectedGroupId] = useState(() => getInitialProfile().groupId);
@@ -295,13 +286,9 @@ export default function StudentDashboard() {
 
         if (schedRes.data?.success) {
           setSchedules(schedRes.data.data);
-          setOriginalSchedules(schedRes.data.data);
-          setBackendOnline(true);
         } else throw new Error('API failed');
       } catch {
-        setBackendOnline(false);
         setSchedules(MOCK_SCHEDULES);
-        setOriginalSchedules(MOCK_SCHEDULES);
       } finally {
         setLoading(false);
       }
@@ -334,130 +321,6 @@ export default function StudentDashboard() {
     return () => window.removeEventListener('MANAR_SCHEDULE_UPDATE', onUpdate);
   }, [selectedGroupId]);
 
-  // ── Action handlers ─────────────────────────────────────────────────
-  const handleExportICS = () => {
-    if (schedules.length === 0) {
-      toast.error(isAr ? 'لا توجد محاضرات لتصديرها' : 'No lectures to export');
-      return;
-    }
-    const dayOffsets = { SUNDAY: 0, MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4, FRIDAY: 5, SATURDAY: 6 };
-    let lines = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Manar//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH'];
-    schedules.forEach(item => {
-      const today = new Date();
-      const diff = (dayOffsets[item.dayOfWeek] ?? 0) - today.getDay();
-      const d = new Date(); d.setDate(today.getDate() + diff);
-      const ds = d.toISOString().slice(0,10).replace(/-/g,'');
-      lines.push('BEGIN:VEVENT',`UID:lecture-${item.id}@manar.edu`,`DTSTAMP:${ds}T000000Z`,
-        `DTSTART;TZID=Asia/Aden:${ds}T${item.startTime.replace(/:/g,'')}00`,
-        `DTEND;TZID=Asia/Aden:${ds}T${item.endTime.replace(/:/g,'')}00`,
-        `SUMMARY:${item.subject.name} (${item.subject.code})`,
-        `LOCATION:${item.room?.name || 'Classroom'}`,
-        `DESCRIPTION:Lecturer: ${item.lecturerName}`,
-        'RRULE:FREQ=WEEKLY;BYDAY='+item.dayOfWeek.slice(0,2),'END:VEVENT');
-    });
-    lines.push('END:VCALENDAR');
-    const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url;
-    a.download = `Manar_Schedule_${profile.groupName || 'Student'}.ics`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast.success(isAr ? 'تم تصدير ملف التقويم بنجاح!' : 'Calendar exported!');
-  };
-
-  const buildScheduleText = () => {
-    const dayLabels = isAr
-      ? { SUNDAY: 'الأحد', MONDAY: 'الاثنين', TUESDAY: 'الثلاثاء', WEDNESDAY: 'الأربعاء', THURSDAY: 'الخميس', FRIDAY: 'الجمعة', SATURDAY: 'السبت' }
-      : { SUNDAY: 'Sunday', MONDAY: 'Monday', TUESDAY: 'Tuesday', WEDNESDAY: 'Wednesday', THURSDAY: 'Thursday', FRIDAY: 'Friday', SATURDAY: 'Saturday' };
-    let text = isAr
-      ? `📅 الجدول الدراسي — كلية المنار الجامعية\n`
-      : `📅 Class Schedule — Al-Manar University\n`;
-    DAYS.forEach(day => {
-      const ds = schedules.filter(s => getActiveDay(s) === day);
-      if (ds.length > 0) {
-        text += `\n🔹 ${dayLabels[day]}:\n`;
-        ds.forEach(s => {
-          text += `   [${getActiveStartTime(s)}-${getActiveEndTime(s)}] ${s.subject.name} | ${s.room?.name || 'N/A'} | ${s.lecturerName}\n`;
-        });
-      }
-    });
-    text += `\n— ${isAr ? 'بوابة المنار الذكية' : 'Manar Smart Portal'} 💡`;
-    return text;
-  };
-
-  const handleShareSchedule = async () => {
-    if (schedules.length === 0) {
-      toast.error(isAr ? 'الجدول فارغ' : 'Schedule is empty');
-      return;
-    }
-    const text = buildScheduleText();
-    // Native share on mobile, clipboard fallback on desktop
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: isAr ? 'جدولي الدراسي — كلية المنار' : 'My Class Schedule — Al-Manar',
-          text,
-        });
-        toast.success(isAr ? 'تمت المشاركة!' : 'Shared successfully!');
-      } catch (e) {
-        if (e.name !== 'AbortError') {
-          // User cancelled — no error needed
-          toast.error(isAr ? 'فشلت المشاركة' : 'Share failed');
-        }
-      }
-    } else {
-      navigator.clipboard.writeText(text)
-        .then(() => toast.success(isAr ? 'تم نسخ الجدول للحافظة!' : 'Schedule copied to clipboard!'))
-        .catch(() => toast.error(isAr ? 'فشل النسخ' : 'Copy failed'));
-    }
-  };
-
-  const handleTestNotification = () => {
-    if (!('Notification' in window)) {
-      toast.error(isAr ? 'التنبيهات غير مدعومة' : 'Notifications not supported');
-      return;
-    }
-    const send = () => {
-      new Notification(isAr ? 'كلية المنار الجامعية' : 'Al-Manar University', {
-        body: isAr ? 'هذا تنبيه تجريبي!' : 'This is a test notification!',
-        icon: '/pwa-192x192.png'
-      });
-      toast.success(isAr ? 'تم إرسال التنبيه!' : 'Notification sent!');
-    };
-    if (Notification.permission === 'granted') { send(); }
-    else if (Notification.permission !== 'denied') {
-      Notification.requestPermission().then(p => {
-        if (p === 'granted') send();
-        else toast.error(isAr ? 'لم يتم منح الإذن' : 'Permission not granted');
-      });
-    } else {
-      toast.error(isAr ? 'تم حظر التنبيهات. فعّلها من الإعدادات.' : 'Notifications blocked. Enable in site settings.');
-    }
-  };
-
-  const handleSimulateReschedule = (e) => {
-    e.preventDefault();
-    if (!activeSimulatorSchedule) return;
-    setSchedules(prev => prev.map(s =>
-      s.id === activeSimulatorSchedule.id
-        ? { ...s, dayOfWeek: simulatorDay, startTime: simulatorStart, endTime: simulatorEnd, overrides: [] }
-        : s
-    ));
-    setActiveSimulatorSchedule(null);
-    toast.success(isAr ? 'تمت المحاكاة بنجاح!' : 'Simulation applied!');
-  };
-
-  const toggleSandbox = () => {
-    if (sandboxMode) {
-      setSchedules(originalSchedules);
-      setSandboxMode(false);
-      toast.success(isAr ? 'تم استعادة الجدول الرسمي!' : 'Official timetable restored!');
-    } else {
-      setSandboxMode(true);
-      toast.success(isAr ? 'محاكي التعديل نشط! انقر على أي محاضرة.' : 'Simulator active! Tap a lecture.', { icon: '🧪' });
-    }
-  };
-
   const getNextLecture = () => {
     if (!schedules.length) return null;
     const now = new Date();
@@ -479,40 +342,6 @@ export default function StudentDashboard() {
   const todayIndex = new Date().getDay();
   const todayName = DAYS[todayIndex];
   const todayLectures = schedules.filter(s => getActiveDay(s) === todayName);
-
-  // ── Command hub buttons ─────────────────────────────────────────────
-  const CMD_BUTTONS = [
-    {
-      icon: '📅',
-      label: isAr ? 'تصدير التقويم' : 'Export Calendar',
-      sub: isAr ? 'مزامنة مع Google' : 'Sync to Google / iOS',
-      onClick: handleExportICS,
-      glow: 'hover:shadow-[0_0_20px_rgba(59,130,246,0.25)] hover:border-blue-500/40',
-    },
-    {
-      icon: navigator.share ? '📤' : '🔗',
-      label: isAr ? 'مشاركة الجدول' : 'Share Schedule',
-      sub: isAr ? (navigator.share ? 'مشاركة فورية' : 'نسخ للحافظة') : (navigator.share ? 'Native share' : 'Copy to clipboard'),
-      onClick: handleShareSchedule,
-      glow: 'hover:shadow-[0_0_20px_rgba(139,92,246,0.25)] hover:border-violet-500/40',
-    },
-    {
-      icon: sandboxMode ? '🔄' : '🧪',
-      label: sandboxMode ? (isAr ? 'إنهاء المحاكاة' : 'Exit Simulator') : (isAr ? 'محاكي التعديل' : 'Move Simulator'),
-      sub: sandboxMode ? (isAr ? 'استعادة الجدول' : 'Restore official') : (isAr ? 'محاكاة محلية' : 'Local simulation'),
-      onClick: toggleSandbox,
-      glow: sandboxMode
-        ? 'border-amber-500/50 bg-amber-500/8 shadow-[0_0_16px_rgba(245,158,11,0.2)]'
-        : 'hover:shadow-[0_0_20px_rgba(245,158,11,0.2)] hover:border-amber-500/40',
-    },
-    {
-      icon: '🔔',
-      label: isAr ? 'اختبار التنبيه' : 'Test Alert',
-      sub: isAr ? 'إرسال تنبيه تجريبي' : 'Send mock push',
-      onClick: handleTestNotification,
-      glow: 'hover:shadow-[0_0_20px_rgba(234,179,8,0.2)] hover:border-yellow-500/40',
-    },
-  ];
 
   // ── Render ──────────────────────────────────────────────────────────
   return (
@@ -540,56 +369,7 @@ export default function StudentDashboard() {
           isAr={isAr}
         />
 
-        {/* ── Sandbox Warning Banner ────────────────────────── */}
-        <AnimatePresence>
-          {sandboxMode && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="frosted-panel border-amber-500/40 bg-amber-500/8 p-3.5 rounded-2xl flex items-center justify-between gap-3 shadow-[0_0_16px_rgba(245,158,11,0.15)]"
-            >
-              <div>
-                <span className="text-[9px] font-black uppercase tracking-widest text-amber-400 block">
-                  🧪 {isAr ? 'محاكي التعديل نشط' : 'Simulator Active'}
-                </span>
-                <span className="text-[10px] text-gray-300 font-bold block mt-0.5">
-                  {isAr ? 'التغييرات مؤقتة ومحلية فقط' : 'Changes are temporary & local only'}
-                </span>
-              </div>
-              <button
-                onClick={toggleSandbox}
-                className="px-3 py-1.5 bg-amber-500 text-black text-[9px] font-black rounded-lg shrink-0"
-              >
-                {isAr ? 'خروج' : 'Exit'}
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
-        {/* ── Smart Command Hub ─────────────────────────────── */}
-        <section>
-          <h2 className="text-[9px] font-black uppercase tracking-widest text-[var(--text-secondary)] mb-3 px-1">
-            {isAr ? 'مركز الإجراءات السريعة' : 'Quick Actions'}
-          </h2>
-          <div className="grid grid-cols-2 gap-3">
-            {CMD_BUTTONS.map((btn, i) => (
-              <motion.button
-                key={i}
-                onClick={btn.onClick}
-                whileTap={{ scale: 0.96 }}
-                whileHover={{ y: -2 }}
-                className={`frosted-panel rounded-2xl p-4 flex flex-col items-center justify-center text-center gap-2 transition-all duration-300 border ${btn.glow} min-h-[88px]`}
-              >
-                <span className="text-2xl leading-none">{btn.icon}</span>
-                <div>
-                  <span className="text-[11px] font-black block text-white leading-tight">{btn.label}</span>
-                  <span className="text-[9px] text-gray-500 block mt-0.5 font-bold">{btn.sub}</span>
-                </div>
-              </motion.button>
-            ))}
-          </div>
-        </section>
 
         {/* ── Group Switcher ────────────────────────────────── */}
         <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-4 space-y-2.5">
@@ -650,16 +430,8 @@ export default function StudentDashboard() {
           </h2>
           {nextLecture ? (
             <motion.div
-              whileTap={sandboxMode ? { scale: 0.98 } : {}}
-              onClick={() => {
-                if (sandboxMode) {
-                  setActiveSimulatorSchedule(nextLecture);
-                  setSimulatorDay(nextLecture.dayOfWeek);
-                  setSimulatorStart(nextLecture.startTime);
-                  setSimulatorEnd(nextLecture.endTime);
-                }
-              }}
-              style={sandboxMode ? { cursor: 'pointer' } : {}}
+              whileTap={{ scale: 0.985 }}
+              style={{}}
               className="relative overflow-hidden rounded-2xl border border-red-500/30 bg-red-950/20 backdrop-blur-md p-5 shadow-[0_0_24px_rgba(239,68,68,0.18)] space-y-4"
             >
               <div className="self-start flex items-center gap-1.5 bg-red-500/10 border border-red-500/25 px-2.5 py-0.5 rounded-full text-[9px] font-bold text-red-400 uppercase tracking-wide w-fit">
@@ -718,16 +490,7 @@ export default function StudentDashboard() {
                 return (
                   <motion.div
                     key={schedule.id}
-                    whileTap={sandboxMode ? { scale: 0.97 } : {}}
-                    onClick={() => {
-                      if (sandboxMode) {
-                        setActiveSimulatorSchedule(schedule);
-                        setSimulatorDay(schedule.dayOfWeek);
-                        setSimulatorStart(schedule.startTime);
-                        setSimulatorEnd(schedule.endTime);
-                      }
-                    }}
-                    style={sandboxMode ? { cursor: 'pointer' } : {}}
+                    whileTap={{ scale: 0.985 }}
                     className={`p-4 rounded-2xl border flex justify-between items-center gap-3 transition-all duration-200 hover:scale-[1.015] ${
                       isTheory
                         ? 'bg-blue-950/20 border-blue-500/25 text-blue-200 hover:shadow-[0_0_16px_rgba(59,130,246,0.2)]'
@@ -764,62 +527,6 @@ export default function StudentDashboard() {
         </section>
       </div>
 
-      {/* ── Sandbox Rescheduling Modal ────────────────────── */}
-      <AnimatePresence>
-        {activeSimulatorSchedule && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="frosted-panel w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-5 text-[var(--text-primary)]"
-            >
-              <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                <h3 className="text-sm font-black uppercase tracking-wider text-amber-400">
-                  🧪 {isAr ? 'محاكي تعديل الحصة' : 'Reschedule Simulator'}
-                </h3>
-                <button onClick={() => setActiveSimulatorSchedule(null)} className="text-gray-400 hover:text-white transition-colors text-lg leading-none">✕</button>
-              </div>
-
-              <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-[11px] text-gray-300 font-bold">
-                {isAr ? 'المحاضرة:' : 'Lecture:'}{' '}
-                <span className="text-white font-black">{activeSimulatorSchedule.subject.name}</span>
-              </div>
-
-              <form onSubmit={handleSimulateReschedule} className="space-y-4 text-xs">
-                <div className="space-y-1">
-                  <label className="text-gray-400 font-bold block">{isAr ? 'اليوم' : 'Day'}</label>
-                  <select value={simulatorDay} onChange={e => setSimulatorDay(e.target.value)} className="w-full cmd-input p-3 font-bold cursor-pointer">
-                    {DAYS.map(day => (
-                      <option key={day} value={day} className="bg-[#0c0c0c] text-white">
-                        {isAr ? ({SUNDAY:'الأحد',MONDAY:'الاثنين',TUESDAY:'الثلاثاء',WEDNESDAY:'الأربعاء',THURSDAY:'الخميس',FRIDAY:'الجمعة',SATURDAY:'السبت'}[day]) : day}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-gray-400 font-bold block">{isAr ? 'البداية' : 'Start'}</label>
-                    <input type="time" required value={simulatorStart} onChange={e => setSimulatorStart(e.target.value)} className="w-full cmd-input p-3 font-bold" dir="ltr" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-gray-400 font-bold block">{isAr ? 'النهاية' : 'End'}</label>
-                    <input type="time" required value={simulatorEnd} onChange={e => setSimulatorEnd(e.target.value)} className="w-full cmd-input p-3 font-bold" dir="ltr" />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-2.5 pt-3 border-t border-white/5">
-                  <button type="button" onClick={() => setActiveSimulatorSchedule(null)} className="btn-ghost px-4 py-2 text-xs font-bold">
-                    {isAr ? 'إلغاء' : 'Cancel'}
-                  </button>
-                  <button type="submit" className="px-5 py-2 text-xs font-black rounded-lg bg-amber-500 text-black hover:bg-amber-400 transition-colors">
-                    ⚡ {isAr ? 'تطبيق' : 'Apply'}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 }
