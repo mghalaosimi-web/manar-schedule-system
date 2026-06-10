@@ -26,6 +26,7 @@ import CommandPalette from './CommandPalette';
 import Instructions from './Instructions';
 import DevSignature from './DevSignature';
 import DevPortal from './DevPortal';
+import ErrorBoundary from './ErrorBoundary';
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -492,23 +493,27 @@ function AppLayout() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AppLayout />
-      <CommandPalette />
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          style: {
-            background: '#0a0a0a',
-            color: '#f0f0f0',
-            border: '1px solid var(--accent-glow)',
-            fontFamily: 'Urbanist, system-ui, sans-serif',
-            fontWeight: '700',
-            fontSize: '13px',
-            borderRadius: '12px',
-          },
-        }}
-      />
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <ErrorBoundary>
+          <AppLayout />
+        </ErrorBoundary>
+        <CommandPalette />
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: '#0a0a0a',
+              color: '#f0f0f0',
+              border: '1px solid var(--accent-glow)',
+              fontFamily: 'Urbanist, system-ui, sans-serif',
+              fontWeight: '700',
+              fontSize: '13px',
+              borderRadius: '12px',
+            },
+          }}
+        />
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
