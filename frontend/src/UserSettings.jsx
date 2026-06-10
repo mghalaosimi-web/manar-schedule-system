@@ -1,389 +1,641 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import { motion } from 'framer-motion';
 import { API_URL } from './config';
 import { useTranslation } from 'react-i18next';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Constants
+// ─────────────────────────────────────────────────────────────────────────────
 const DEPARTMENTS = ['Computer Science', 'Information Systems', 'Software Engineering'];
-const LEVELS = ['Level 1', 'Level 2', 'Level 3', 'Level 4'];
+const LEVELS      = ['Level 1', 'Level 2', 'Level 3', 'Level 4'];
 
+// ── Framer Motion variants ────────────────────────────────────────────────────
+const containerVariants = {
+  hidden:  { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.12, delayChildren: 0.05 }
+  }
+};
+const sectionVariants = {
+  hidden:  { opacity: 0, y: 24 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: 'easeOut' } }
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function calcCompletion(profile) {
+  const fields = [
+    profile.name,
+    profile.email,
+    profile.phone,
+    profile.idPhotoUrl,
+    profile.department,
+    profile.level,
+    profile.groupId,
+  ];
+  const filled = fields.filter(f => f && String(f).trim() !== '' && f !== 0).length;
+  return Math.round((filled / fields.length) * 100);
+}
+
+// ── Section wrapper ───────────────────────────────────────────────────────────
+function Section({ icon, title, subtitle, children }) {
+  return (
+    <motion.div variants={sectionVariants} className="w-full max-w-md frosted-panel rounded-2xl overflow-hidden">
+      {/* Section header */}
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-white/5 bg-white/[0.015]">
+        <span className="text-lg leading-none">{icon}</span>
+        <div>
+          <h3 className="text-xs font-black uppercase tracking-widest text-white">{title}</h3>
+          {subtitle && <p className="text-[10px] text-[var(--text-secondary)] mt-0.5 font-semibold">{subtitle}</p>}
+        </div>
+      </div>
+      <div className="p-5 space-y-4">{children}</div>
+    </motion.div>
+  );
+}
+
+// ── Field wrapper ─────────────────────────────────────────────────────────────
+function Field({ label, children }) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-secondary)] block">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+// ── Toggle row ────────────────────────────────────────────────────────────────
+function ToggleRow({ label, desc, checked, onChange }) {
+  return (
+    <div className="flex items-center justify-between p-3 bg-white/[0.02] rounded-xl border border-white/5 gap-3">
+      <div className="min-w-0">
+        <span className="font-bold block text-gray-200 text-xs">{label}</span>
+        {desc && <span className="text-[10px] text-gray-500 block mt-0.5">{desc}</span>}
+      </div>
+      {/* Custom toggle switch */}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`shrink-0 relative inline-flex h-6 w-11 items-center rounded-full border transition-all duration-300 ${
+          checked
+            ? 'bg-[var(--accent)] border-[var(--accent)]'
+            : 'bg-white/10 border-white/10'
+        }`}
+      >
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-black transition-transform duration-300 ${
+            checked ? 'translate-x-6' : 'translate-x-1'
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main Component
+// ─────────────────────────────────────────────────────────────────────────────
 export default function UserSettings() {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
 
+  // ── Profile state ──────────────────────────────────────────────────────────
   const [profile, setProfile] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    idPhotoUrl: '',
-    department: 'Software Engineering',
-    level: 'Level 3',
-    groupId: 1
+    name: '', email: '', phone: '', idPhotoUrl: '',
+    department: 'Software Engineering', level: 'Level 3', groupId: 1,
   });
-  const [groups, setGroups] = useState([]);
+  const [groups, setGroups]     = useState([]);
   const [password, setPassword] = useState('');
-  const [savedStatus, setSavedStatus] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
+  // ── Theme state ────────────────────────────────────────────────────────────
+  const [theme, setTheme] = useState(() => localStorage.getItem('manar_theme_mode') || 'dark');
+
+  // ── Notification toggles ────────────────────────────────────────────────────
+  const [toggles, setToggles] = useState(() => {
+    const saved = localStorage.getItem('student_alert_toggles');
+    return saved ? JSON.parse(saved) : { push: true, email: false, sms: true, preAlertTime: '15' };
+  });
+
+  const completion = calcCompletion(profile);
+  const completionGlow = completion === 100
+    ? 'shadow-[0_0_20px_var(--accent-glow)] border-[var(--accent-glow)]'
+    : '';
+
+  // ── Effects ────────────────────────────────────────────────────────────────
+  // Sync theme to DOM
   useEffect(() => {
-    // 1. Set fallback/initial state from local storage first for smooth loading
-    const saved = localStorage.getItem('student_profile');
-    let initialProfile = {
-      name: '',
-      email: '',
-      phone: '',
-      idPhotoUrl: '',
-      department: 'Software Engineering',
-      level: 'Level 3',
-      groupId: 1
-    };
+    const html = document.documentElement;
+    localStorage.setItem('manar_theme_mode', theme);
+    if (theme === 'light') {
+      html.classList.add('light');
+    } else {
+      html.classList.remove('light');
+    }
+    window.dispatchEvent(new Event('themeModeChanged'));
+  }, [theme]);
 
+  // Listen to external theme changes (ThemeSwitcher)
+  useEffect(() => {
+    const onExternal = () => {
+      const m = localStorage.getItem('manar_theme_mode') || 'dark';
+      if (m !== theme) setTheme(m);
+    };
+    window.addEventListener('themeModeChanged', onExternal);
+    return () => window.removeEventListener('themeModeChanged', onExternal);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [theme]);
+
+  // Persist notification toggles
+  useEffect(() => {
+    localStorage.setItem('student_alert_toggles', JSON.stringify(toggles));
+  }, [toggles]);
+
+  // Load profile + groups
+  useEffect(() => {
+    // 1) Hydrate from localStorage immediately
+    const init = { name: '', email: '', phone: '', idPhotoUrl: '', department: 'Software Engineering', level: 'Level 3', groupId: 1 };
+    const saved = localStorage.getItem('student_profile');
     if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        initialProfile = { ...initialProfile, ...parsed };
-      } catch (e) {
-        console.error(e);
-      }
+      try { Object.assign(init, JSON.parse(saved)); } catch {}
     } else {
       const userJson = localStorage.getItem('manar_user');
       if (userJson) {
         try {
-          const user = JSON.parse(userJson);
-          initialProfile = {
-            name: user.name || '',
-            email: user.email || '',
-            phone: user.phone || '',
-            idPhotoUrl: user.idPhotoUrl || '',
-            department: 'Software Engineering',
-            level: 'Level 3',
-            groupId: user.groupId || 1
-          };
-        } catch (e) {
-          console.error(e);
-        }
+          const u = JSON.parse(userJson);
+          init.name  = u.name  || '';
+          init.email = u.email || '';
+          init.phone = u.phone || '';
+          init.idPhotoUrl = u.idPhotoUrl || '';
+          init.groupId    = u.groupId || 1;
+        } catch {}
       }
     }
-    setProfile(initialProfile);
+    setProfile(init);
 
-    // 2. Fetch the actual database-backed settings dynamically
-    const fetchDBSettings = async () => {
-      const token = localStorage.getItem('manar_token');
-      try {
-        const res = await axios.get(`${API_URL}/api/student/settings`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {}
-        });
-        if (res.data && res.data.success) {
-          const s = res.data.data;
-          const dbProfile = {
-            name: s.name || '',
-            email: s.email || '',
-            phone: s.phone || '',
-            idPhotoUrl: s.idPhotoUrl || '',
-            department: s.majorName || 'Software Engineering',
-            level: s.levelName || 'Level 3',
-            groupId: s.groupId || 1
-          };
-          setProfile(dbProfile);
-          localStorage.setItem('student_profile', JSON.stringify(dbProfile));
-          
-          // Also sync manar_user
-          const userJson = localStorage.getItem('manar_user');
-          if (userJson) {
-            try {
-              const userObj = JSON.parse(userJson);
-              userObj.name = s.name;
-              userObj.email = s.email;
-              userObj.phone = s.phone;
-              userObj.idPhotoUrl = s.idPhotoUrl;
-              userObj.groupId = s.groupId;
-              localStorage.setItem('manar_user', JSON.stringify(userObj));
-            } catch (e) {}
-          }
-        }
-      } catch (err) {
-        console.error('Failed to sync student settings with DB:', err);
+    // 2) Fetch fresh from API
+    const token = localStorage.getItem('manar_token');
+    Promise.all([
+      axios.get(`${API_URL}/api/student/settings`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      }).catch(() => null),
+      axios.get(`${API_URL}/api/groups`).catch(() => null),
+    ]).then(([profileRes, groupsRes]) => {
+      if (profileRes?.data?.success) {
+        const s = profileRes.data.data;
+        const fresh = {
+          name:       s.name        || init.name,
+          email:      s.email       || init.email,
+          phone:      s.phone       || init.phone,
+          idPhotoUrl: s.idPhotoUrl  || init.idPhotoUrl,
+          department: s.majorName   || s.departmentName || init.department,
+          level:      s.levelName   || init.level,
+          groupId:    s.groupId     || init.groupId,
+        };
+        setProfile(fresh);
+        localStorage.setItem('student_profile', JSON.stringify(fresh));
       }
-    };
-    fetchDBSettings();
+      if (groupsRes?.data?.success) setGroups(groupsRes.data.data);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    const fetchGroups = async () => {
-      try {
-        const res = await axios.get(`${API_URL}/api/groups`);
-        if (res.data && res.data.success) {
-          setGroups(res.data.data);
-        } else {
-          throw new Error('API failed');
-        }
-      } catch (e) {
-        console.error('Failed to fetch groups:', e);
-        toast.error(isAr ? 'فشل في تحميل قائمة المجموعات الأكاديمية.' : 'Failed to load academic groups list.');
-      }
-    };
-    fetchGroups();
-  }, [isAr]);
-
+  // ── Save profile ───────────────────────────────────────────────────────────
   const handleSave = async (e) => {
     e.preventDefault();
+    setIsSaving(true);
     const token = localStorage.getItem('manar_token');
     try {
       const res = await axios.put(`${API_URL}/api/student/settings`, {
-        name: profile.name,
-        email: profile.email,
-        phone: profile.phone,
-        idPhotoUrl: profile.idPhotoUrl,
-        groupId: profile.groupId,
+        name:           profile.name,
+        email:          profile.email,
+        phone:          profile.phone,
+        idPhotoUrl:     profile.idPhotoUrl,
+        groupId:        profile.groupId,
         departmentName: profile.department,
-        levelName: profile.level,
-        password: password || undefined
-      }, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
-      });
+        levelName:      profile.level,
+        password:       password || undefined,
+      }, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
 
-      if (res.data && res.data.success) {
-        const updatedProfile = {
-          name: res.data.data.name,
-          email: res.data.data.email,
-          phone: res.data.data.phone || '',
-          idPhotoUrl: res.data.data.idPhotoUrl || '',
-          department: res.data.data.majorName || profile.department,
-          level: res.data.data.levelName || profile.level,
-          groupId: res.data.data.groupId
+      if (res.data?.success) {
+        const d = res.data.data;
+        const updated = {
+          name:       d.name,
+          email:      d.email,
+          phone:      d.phone       || '',
+          idPhotoUrl: d.idPhotoUrl  || '',
+          department: d.majorName   || profile.department,
+          level:      d.levelName   || profile.level,
+          groupId:    d.groupId,
         };
-        localStorage.setItem('student_profile', JSON.stringify(updatedProfile));
-        
-        const savedUser = localStorage.getItem('manar_user');
-        if (savedUser) {
+        localStorage.setItem('student_profile', JSON.stringify(updated));
+        const uJson = localStorage.getItem('manar_user');
+        if (uJson) {
           try {
-            const userObj = JSON.parse(savedUser);
-            userObj.name = res.data.data.name;
-            userObj.email = res.data.data.email;
-            userObj.phone = res.data.data.phone;
-            userObj.idPhotoUrl = res.data.data.idPhotoUrl;
-            userObj.groupId = res.data.data.groupId;
-            localStorage.setItem('manar_user', JSON.stringify(userObj));
-          } catch (e) {}
+            const u = JSON.parse(uJson);
+            Object.assign(u, { name: d.name, email: d.email, phone: d.phone, idPhotoUrl: d.idPhotoUrl, groupId: d.groupId });
+            localStorage.setItem('manar_user', JSON.stringify(u));
+          } catch {}
         }
-        
-        setProfile(updatedProfile);
+        setProfile(updated);
         setPassword('');
-        setSavedStatus(true);
-        setTimeout(() => setSavedStatus(false), 3000);
         toast.success(t('userSettings.savedSuccess'));
-      } else {
-        throw new Error('API failed');
-      }
+      } else throw new Error('API failed');
     } catch (err) {
-      console.error('Failed to update student settings:', err);
-      const errMsg = err.response?.data?.error || (isAr ? 'فشل في تحديث إعدادات الملف الشخصي.' : 'Failed to update profile settings.');
-      toast.error(errMsg);
+      const msg = err.response?.data?.error || (isAr ? 'فشل في الحفظ.' : 'Save failed.');
+      toast.error(msg);
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const getDeptDisplayName = (dept) => {
-    if (dept === 'Computer Science') return isAr ? 'علوم الحاسوب' : 'Computer Science';
-    if (dept === 'Information Systems') return isAr ? 'نظم المعلومات' : 'Information Systems';
-    if (dept === 'Software Engineering') return isAr ? 'هندسة البرمجيات' : 'Software Engineering';
-    return dept;
+  // ── Helpers ────────────────────────────────────────────────────────────────
+  const toggleTheme = () => setTheme(p => p === 'dark' ? 'light' : p === 'light' ? 'system' : 'dark');
+
+  const themeLabel = () => {
+    if (theme === 'light')  return isAr ? '☀️ النهار' : '☀️ Day';
+    if (theme === 'system') return isAr ? '💻 تلقائي' : '💻 System';
+    return isAr ? '🌙 الليل' : '🌙 Night';
   };
 
-  const getLevelDisplayName = (lvl) => {
-    return lvl.replace('Level', isAr ? 'المستوى' : 'Level');
+  const deptLabel = (d) => {
+    const map = { 'Computer Science': isAr ? 'علوم الحاسوب' : 'Computer Science', 'Information Systems': isAr ? 'نظم المعلومات' : 'Information Systems', 'Software Engineering': isAr ? 'هندسة البرمجيات' : 'Software Engineering' };
+    return map[d] || d;
   };
 
+  const avatarUrl = profile.idPhotoUrl
+    ? profile.idPhotoUrl
+    : `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(profile.name || 'student')}`;
+
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div 
-      className={`w-full max-w-md frosted-panel rounded-2xl p-6 space-y-6 ${isAr ? 'text-right' : 'text-left'}`}
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
       dir={isAr ? 'rtl' : 'ltr'}
+      className="flex-1 w-full bg-transparent p-4 md:p-6 flex flex-col items-center space-y-4 text-[var(--text-primary)]"
     >
-      <div className="flex flex-col items-center text-center space-y-3">
-        {/* Profile Avatar Preview */}
-        <div className="relative group">
-          <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-[var(--accent)]/50 shadow-lg shadow-[var(--accent-glow)] bg-[#0a0a0a] flex items-center justify-center transition-all duration-300 group-hover:border-[var(--accent)]">
-            {profile.idPhotoUrl ? (
-              <img 
-                src={profile.idPhotoUrl} 
-                alt={t('userSettings.avatarAlt')} 
+
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          Profile Completion Progress
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <motion.div
+        variants={sectionVariants}
+        className={`w-full max-w-md frosted-panel rounded-2xl p-5 border ${completionGlow} transition-all duration-500`}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-secondary)]">
+              {isAr ? 'اكتمال الملف الشخصي' : 'Profile Completion'}
+            </p>
+            <p className="text-xs font-bold text-white mt-0.5">
+              {completion === 100
+                ? (isAr ? '✅ ملفك مكتمل 100%' : '✅ Profile 100% complete')
+                : (isAr ? `${completion}% مكتمل — أكمل بياناتك أدناه` : `${completion}% — Fill in remaining fields below`)}
+            </p>
+          </div>
+          <span
+            className={`text-2xl font-black tabular-nums ${
+              completion === 100 ? 'text-[var(--accent)]' : 'text-gray-400'
+            }`}
+          >
+            {completion}%
+          </span>
+        </div>
+
+        {/* Progress bar */}
+        <div className="h-2 rounded-full bg-white/8 overflow-hidden">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${completion}%` }}
+            transition={{ duration: 0.9, ease: 'easeOut', delay: 0.2 }}
+            className={`h-full rounded-full transition-all ${
+              completion === 100
+                ? 'bg-[var(--accent)] shadow-[0_0_10px_var(--accent-glow)]'
+                : 'bg-gradient-to-r from-[var(--accent)] to-emerald-400'
+            }`}
+          />
+        </div>
+
+        {/* Field status pills */}
+        <div className="flex flex-wrap gap-1.5 mt-3">
+          {[
+            { key: profile.name,        label: isAr ? 'الاسم'   : 'Name' },
+            { key: profile.email,       label: isAr ? 'البريد'  : 'Email' },
+            { key: profile.phone,       label: isAr ? 'الهاتف'  : 'Phone' },
+            { key: profile.idPhotoUrl,  label: isAr ? 'الصورة'  : 'Photo' },
+            { key: profile.department,  label: isAr ? 'التخصص'  : 'Major' },
+            { key: profile.level,       label: isAr ? 'المستوى' : 'Level' },
+            { key: profile.groupId,     label: isAr ? 'الشعبة'  : 'Group' },
+          ].map(({ key, label }) => {
+            const done = key && String(key).trim() !== '' && key !== 0;
+            return (
+              <span
+                key={label}
+                className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${
+                  done
+                    ? 'bg-[var(--accent-dim)] border-[var(--accent-glow)] text-[var(--accent)]'
+                    : 'bg-red-500/8 border-red-500/20 text-red-400'
+                }`}
+              >
+                {done ? '✓' : '○'} {label}
+              </span>
+            );
+          })}
+        </div>
+      </motion.div>
+
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          SECTION A — Academic Identity
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <Section
+        icon="🎓"
+        title={isAr ? 'الهوية الأكاديمية' : 'Academic Identity'}
+        subtitle={isAr ? 'صورتك، اسمك، تخصصك، مستواك وشعبتك' : 'Avatar, name, major, level & group'}
+      >
+        {/* Avatar */}
+        <div className="flex flex-col items-center gap-3">
+          <div className="relative group">
+            <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-[var(--accent)]/40 shadow-lg bg-[#0a0a0a] transition-all group-hover:border-[var(--accent)]">
+              <img
+                src={avatarUrl}
+                alt="avatar"
                 className="w-full h-full object-cover"
-                onError={(e) => {
-                  e.target.src = 'https://api.dicebear.com/7.x/bottts/svg?seed=' + encodeURIComponent(profile.name || 'avatar');
+                onError={e => {
+                  e.target.src = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(profile.name || 'student')}`;
                 }}
               />
-            ) : (
-              <img 
-                src={'https://api.dicebear.com/7.x/bottts/svg?seed=' + encodeURIComponent(profile.name || 'avatar')} 
-                alt={t('userSettings.defaultAvatarAlt')} 
-                className="w-full h-full object-cover"
-              />
-            )}
+            </div>
+            <div className="absolute -bottom-1 -right-1 bg-[var(--accent)] text-black p-1 rounded-full text-[10px] font-black shadow">📸</div>
           </div>
-          <div className="absolute -bottom-1 -right-1 bg-[var(--accent)] text-black p-1.5 rounded-full text-[10px] font-bold shadow-md">
-            📸
-          </div>
-        </div>
-        
-        <div>
-          <h2 className="text-lg font-bold text-white tracking-tight">{t('userSettings.title')}</h2>
-          <p className="text-xs text-gray-400 mt-1">{t('userSettings.subtitle')}</p>
-        </div>
-      </div>
 
-      {savedStatus && (
-        <div className="p-3 bg-green-950/40 border border-green-600/50 text-green-200 text-xs font-semibold rounded-xl text-center">
-          {t('userSettings.savedSuccess')}
+          {/* File upload */}
+          <input
+            type="file"
+            accept="image/*"
+            id="avatarUpload"
+            className="hidden"
+            onChange={e => {
+              const file = e.target.files[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onloadend = () => setProfile(p => ({ ...p, idPhotoUrl: reader.result }));
+              reader.readAsDataURL(file);
+              toast.success(isAr ? 'تم تحميل الصورة!' : 'Photo uploaded!');
+            }}
+          />
+          <label
+            htmlFor="avatarUpload"
+            className="cmd-input flex items-center justify-between px-4 cursor-pointer w-full max-w-xs hover:border-[var(--accent)] transition-colors"
+            style={{ height: '48px' }}
+          >
+            <span className="text-[var(--text-secondary)] text-xs font-semibold truncate">
+              {profile.idPhotoUrl ? (isAr ? '✅ صورة محددة' : '✅ Photo selected') : (isAr ? 'اختر صورة...' : 'Choose photo...')}
+            </span>
+            <span className="text-[9px] font-black uppercase tracking-wide bg-white/5 border border-white/10 px-2 py-1 rounded shrink-0">
+              {isAr ? 'رفع' : 'Browse'}
+            </span>
+          </label>
         </div>
-      )}
 
-      <form onSubmit={handleSave} className="space-y-4 text-xs">
-        <div className="space-y-1">
-          <label className="text-gray-400 block font-medium">{t('userSettings.nameLabel')}</label>
+        {/* Name */}
+        <Field label={t('userSettings.nameLabel')}>
           <input
             type="text"
             required
             value={profile.name}
-            onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-            className="w-full cmd-input p-3 font-bold"
+            onChange={e => setProfile(p => ({ ...p, name: e.target.value }))}
+            className="cmd-input w-full px-4 font-bold"
+            style={{ height: '52px' }}
+            placeholder={isAr ? 'الاسم الكامل' : 'Full name'}
           />
-        </div>
+        </Field>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className="text-gray-400 block font-medium">{t('userSettings.emailLabel')}</label>
-            <input
-              type="email"
-              required
-              value={profile.email}
-              onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-              className="w-full cmd-input p-3 font-semibold text-left"
-              dir="ltr"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-gray-400 block font-medium">{t('userSettings.phoneLabel')}</label>
-            <input
-              type="text"
-              required
-              value={profile.phone}
-              onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-              className="w-full cmd-input p-3 font-semibold text-left"
-              dir="ltr"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-gray-400 block font-medium">{isAr ? 'تحميل صورة الهوية' : 'Upload ID Photo'}</label>
-          <div className="relative">
-            <input 
-              type="file" 
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files[0];
-                if (file) {
-                  const reader = new FileReader();
-                  reader.onloadend = () => {
-                    setProfile({ ...profile, idPhotoUrl: reader.result });
-                    toast.success(isAr ? 'تم تحميل الصورة!' : 'Image uploaded!');
-                  };
-                  reader.readAsDataURL(file);
-                }
-              }}
-              className="hidden" 
-              id="avatarPhotoUpload"
-            />
-            <label 
-              htmlFor="avatarPhotoUpload"
-              className="cmd-input w-full flex items-center justify-between p-3 cursor-pointer hover:border-[var(--accent)] transition-colors duration-200"
-            >
-              <span className="text-[var(--text-secondary)] font-semibold truncate max-w-[80%]">
-                {profile.idPhotoUrl 
-                  ? (isAr ? '✅ تم اختيار صورة' : '✅ Image Selected') 
-                  : (isAr ? 'اختر صورة لتحديثها...' : 'Choose image file...')}
-              </span>
-              <span className="bg-white/5 border border-white/10 hover:bg-white/10 text-[10px] font-black tracking-wider uppercase px-2 py-1 rounded">
-                {isAr ? 'رفع ملف' : 'Browse'}
-              </span>
-            </label>
-          </div>
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-gray-400 block font-medium">{t('userSettings.majorLabel')}</label>
+        {/* Major */}
+        <Field label={t('userSettings.majorLabel')}>
           <select
             value={profile.department}
-            onChange={(e) => setProfile({ ...profile, department: e.target.value })}
-            className="w-full cmd-input p-3 font-semibold cursor-pointer"
+            onChange={e => setProfile(p => ({ ...p, department: e.target.value }))}
+            className="cmd-input w-full px-4 font-semibold cursor-pointer"
+            style={{ height: '52px' }}
           >
-            {DEPARTMENTS.map(dept => (
-              <option key={dept} value={dept} className="bg-[#0c0c0c]">
-                {getDeptDisplayName(dept)}
-              </option>
+            {DEPARTMENTS.map(d => (
+              <option key={d} value={d} className="bg-[#0c0c0c]">{deptLabel(d)}</option>
             ))}
           </select>
-        </div>
+        </Field>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className="text-gray-400 block font-medium">{t('userSettings.levelLabel')}</label>
+        {/* Level + Group */}
+        <div className="grid grid-cols-2 gap-3">
+          <Field label={t('userSettings.levelLabel')}>
             <select
               value={profile.level}
-              onChange={(e) => setProfile({ ...profile, level: e.target.value })}
-              className="w-full cmd-input p-3 font-semibold cursor-pointer"
+              onChange={e => setProfile(p => ({ ...p, level: e.target.value }))}
+              className="cmd-input w-full px-3 font-semibold cursor-pointer"
+              style={{ height: '52px' }}
             >
-              {LEVELS.map(lvl => (
-                <option key={lvl} value={lvl} className="bg-[#0c0c0c]">
-                  {getLevelDisplayName(lvl)}
+              {LEVELS.map(l => (
+                <option key={l} value={l} className="bg-[#0c0c0c]">
+                  {l.replace('Level', isAr ? 'المستوى' : 'Level')}
                 </option>
               ))}
             </select>
-          </div>
+          </Field>
 
-          <div className="space-y-1">
-            <label className="text-gray-400 block font-medium">{t('userSettings.groupLabel')}</label>
+          <Field label={t('userSettings.groupLabel')}>
             <select
               value={profile.groupId}
-              onChange={(e) => setProfile({ ...profile, groupId: parseInt(e.target.value) })}
-              className="w-full cmd-input p-3 font-bold cursor-pointer"
+              onChange={e => setProfile(p => ({ ...p, groupId: parseInt(e.target.value) }))}
+              className="cmd-input w-full px-3 font-bold cursor-pointer"
+              style={{ height: '52px' }}
             >
               {groups.map(g => (
                 <option key={g.id} value={g.id} className="bg-[#0c0c0c]">{g.name}</option>
               ))}
             </select>
+          </Field>
+        </div>
+      </Section>
+
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          SECTION B — Contact & Security
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <Section
+        icon="🔐"
+        title={isAr ? 'التواصل والأمان' : 'Contact & Security'}
+        subtitle={isAr ? 'بريدك الإلكتروني، هاتفك وكلمة المرور' : 'Email, phone & password'}
+      >
+        <div className="grid grid-cols-1 gap-4">
+          <Field label={t('userSettings.emailLabel')}>
+            <input
+              type="email"
+              required
+              value={profile.email}
+              onChange={e => setProfile(p => ({ ...p, email: e.target.value }))}
+              className="cmd-input w-full px-4 font-semibold"
+              style={{ height: '52px' }}
+              dir="ltr"
+              placeholder="student@manar.edu"
+            />
+          </Field>
+
+          <Field label={t('userSettings.phoneLabel')}>
+            <input
+              type="tel"
+              value={profile.phone}
+              onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))}
+              className="cmd-input w-full px-4 font-semibold"
+              style={{ height: '52px' }}
+              dir="ltr"
+              placeholder="+967 7XX XXX XXXX"
+            />
+          </Field>
+
+          <Field label={t('userSettings.passwordLabel')}>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              className="cmd-input w-full px-4 font-mono"
+              style={{ height: '52px' }}
+              dir="ltr"
+              placeholder={t('userSettings.passwordPlaceholder')}
+            />
+          </Field>
+        </div>
+
+        {/* Save button */}
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={isSaving}
+          className="w-full btn-neon font-black text-xs tracking-wider rounded-xl transition-all"
+          style={{ height: '56px' }}
+        >
+          {isSaving ? (
+            <span className="flex items-center justify-center gap-2">
+              <span className="h-4 w-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+              {isAr ? 'جاري الحفظ...' : 'Saving...'}
+            </span>
+          ) : (
+            `💾 ${t('userSettings.saveBtn')}`
+          )}
+        </button>
+      </Section>
+
+      {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          SECTION C — App Preferences
+      ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+      <Section
+        icon="⚙️"
+        title={isAr ? 'تفضيلات التطبيق' : 'App Preferences'}
+        subtitle={isAr ? 'المظهر، اللغة والإشعارات' : 'Theme, language & notifications'}
+      >
+
+        {/* Language */}
+        <div className="flex items-center justify-between p-3 bg-white/[0.02] rounded-xl border border-white/5">
+          <div>
+            <span className="font-bold block text-gray-200 text-xs">{t('settings.language')}</span>
+            <span className="text-[10px] text-gray-500 block mt-0.5">App Language / لغة التطبيق</span>
+          </div>
+          <div className="flex gap-1.5">
+            {['en', 'ar'].map(lang => (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => i18n.changeLanguage(lang)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-black border transition-all duration-200 ${
+                  i18n.language === lang
+                    ? 'bg-[var(--accent)] text-black border-[var(--accent)] shadow-md shadow-[var(--accent-glow)]'
+                    : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
+                }`}
+              >
+                {lang === 'en' ? 'EN' : 'عربي'}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="space-y-1">
-          <label className="text-gray-400 block font-medium">{t('userSettings.passwordLabel')}</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder={t('userSettings.passwordPlaceholder')}
-            className="w-full cmd-input p-3 font-mono text-left"
-            dir="ltr"
+        {/* Theme */}
+        <div className="flex items-center justify-between p-3 bg-white/[0.02] rounded-xl border border-white/5">
+          <div>
+            <span className="font-bold block text-gray-200 text-xs">{t('settings.theme')}</span>
+            <span className="text-[10px] text-gray-500 block mt-0.5">{t('settings.themeModeDesc')}</span>
+          </div>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl flex items-center gap-1.5 font-black text-gray-200 text-xs transition-all duration-200 shrink-0"
+          >
+            {themeLabel()}
+          </button>
+        </div>
+
+        {/* Notification toggles */}
+        <div className="space-y-2 pt-2 border-t border-white/5">
+          <p className="text-[9px] font-black uppercase tracking-widest text-[var(--text-secondary)]">
+            {isAr ? 'قنوات التنبيهات' : 'Notification Channels'}
+          </p>
+          <ToggleRow
+            label={t('settings.channelPush')}
+            desc={t('settings.channelPushDesc')}
+            checked={toggles.push}
+            onChange={v => setToggles(p => ({ ...p, push: v }))}
+          />
+          <ToggleRow
+            label={t('settings.channelSms')}
+            desc={t('settings.channelSmsDesc')}
+            checked={toggles.sms}
+            onChange={v => setToggles(p => ({ ...p, sms: v }))}
+          />
+          <ToggleRow
+            label={t('settings.channelEmail')}
+            desc={t('settings.channelEmailDesc')}
+            checked={toggles.email}
+            onChange={v => setToggles(p => ({ ...p, email: v }))}
           />
         </div>
 
-        <div className="pt-2">
-          <button
-            type="submit"
-            className="w-full py-3 btn-neon text-xs font-extrabold"
+        {/* Pre-alert offset */}
+        <Field label={t('settings.warningOffset')}>
+          <select
+            value={toggles.preAlertTime}
+            onChange={e => setToggles(p => ({ ...p, preAlertTime: e.target.value }))}
+            className="cmd-input w-full px-4 font-bold cursor-pointer"
+            style={{ height: '52px' }}
           >
-            {t('userSettings.saveBtn')}
-          </button>
-        </div>
-      </form>
+            <option value="5"  className="bg-[#0c0c0c]">{t('settings.minutesBefore', { count: 5 })}</option>
+            <option value="15" className="bg-[#0c0c0c]">{t('settings.minutesBefore', { count: 15 })}</option>
+            <option value="30" className="bg-[#0c0c0c]">{t('settings.minutesBefore', { count: 30 })}</option>
+            <option value="60" className="bg-[#0c0c0c]">{t('settings.hourBefore')}</option>
+          </select>
+        </Field>
 
-      <div className="pt-2 border-t border-white/5">
+        {/* Check for updates */}
         <button
           type="button"
-          onClick={() => window.open('https://your-update-site.com', '_blank')}
-          className="w-full py-3 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white rounded-xl text-xs font-extrabold transition-all duration-300 flex items-center justify-center gap-2 backdrop-blur-md"
+          onClick={() => {
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.getRegistrations().then(regs => {
+                regs.forEach(r => r.update());
+              });
+            }
+            toast.success(isAr ? 'جاري التحقق من التحديثات...' : 'Checking for updates...', { icon: '🔄' });
+          }}
+          className="w-full flex items-center justify-center gap-2 py-3.5 bg-white/4 border border-white/8 hover:bg-white/8 hover:border-white/15 text-white rounded-xl text-xs font-black transition-all duration-200"
         >
           <span>📥</span>
           <span>{isAr ? 'التحقق من التحديثات' : 'Check for Updates'}</span>
         </button>
-      </div>
-    </div>
+      </Section>
+
+      {/* Bottom spacer for nav dock */}
+      <div style={{ height: '32px' }} />
+    </motion.div>
   );
 }
