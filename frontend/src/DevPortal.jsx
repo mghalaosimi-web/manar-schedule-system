@@ -319,6 +319,17 @@ export default function DevPortal() {
                 accentColor="#f87171"
               />
             </div>
+            
+            <div className="pt-4 mt-4 border-t border-white/5">
+              <button
+                type="button"
+                onClick={() => window.open('https://your-update-site.com', '_blank')}
+                className="w-full py-3 bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 text-white rounded-xl text-xs font-extrabold transition-all duration-300 flex items-center justify-center gap-2 backdrop-blur-md"
+              >
+                <span>📥</span>
+                <span>{isAr ? 'التحقق من التحديثات' : 'Check for Updates'}</span>
+              </button>
+            </div>
           </div>
 
           {/* Live metrics */}

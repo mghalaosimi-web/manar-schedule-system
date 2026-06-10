@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">نظام جداول المنار</string>
-    <string name="title_activity_main">نظام جداول المنار</string>
-    <string name="package_name">com.manar.schedule</string>
-    <string name="custom_url_scheme">com.manar.schedule</string>
+    <string name="app_name">Manar Schedule</string>
+    <string name="title_activity_main">Manar Schedule</string>
+    <string name="package_name">com.mghal.manarschedule</string>
+    <string name="custom_url_scheme">com.mghal.manarschedule</string>
 </resources>

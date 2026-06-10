@@ -1,4 +1,4 @@
-package com.manar.schedule;
+package com.mghal.manarschedule;
 
 import com.getcapacitor.BridgeActivity;
 
