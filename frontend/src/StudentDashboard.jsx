@@ -56,6 +56,7 @@ const MOCK_SCHEDULES = [
 
 export default function StudentDashboard() {
   const { t, i18n } = useTranslation();
+  const isAr = i18n.language === 'ar';
   const navigate = useNavigate();
   const { isInstallable, installApp } = usePWAInstall();
 
@@ -476,7 +477,6 @@ export default function StudentDashboard() {
 
   const getGreetingData = () => {
     const hour = new Date().getHours();
-    const isAr = i18n.language === 'ar';
     
     if (hour >= 5 && hour < 12) {
       return {
