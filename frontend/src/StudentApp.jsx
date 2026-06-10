@@ -120,12 +120,17 @@ export default function StudentApp() {
       }
     };
 
-    const interval = setInterval(() => {
-      fetchStudentSchedule();
-    }, 5000); // Poll every 5s for live updates/rescheduling changes
-
     fetchStudentSchedule();
-    return () => clearInterval(interval);
+
+    const handleScheduleUpdate = () => {
+      console.log('[StudentApp] Real-time schedule update triggered.');
+      fetchStudentSchedule();
+    };
+
+    window.addEventListener('MANAR_SCHEDULE_UPDATE', handleScheduleUpdate);
+    return () => {
+      window.removeEventListener('MANAR_SCHEDULE_UPDATE', handleScheduleUpdate);
+    };
   }, [groupId]);
 
   const nextLecture = schedules.length > 0 ? schedules[0] : null;

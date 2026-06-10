@@ -74,11 +74,12 @@ model Student {
   major            Major              @relation(fields: [majorId], references: [id])
   levelId          Int
   level            Level              @relation(fields: [levelId], references: [id])
-  groupId          Int
-  group            Group              @relation(fields: [groupId], references: [id])
-  notificationLogs NotificationLog[]
-  verificationCodes VerificationCode[]
-  createdAt        DateTime           @default(now())
+  groupId            Int
+  group              Group              @relation(fields: [groupId], references: [id])
+  notificationLogs   NotificationLog[]
+  verificationCodes  VerificationCode[]
+  pushSubscriptions  PushSubscription[]
+  createdAt          DateTime           @default(now())
 }
 
 model Subject {
@@ -141,11 +142,12 @@ enum AdminRole {
 }
 
 model Admin {
-  id       Int       @id @default(autoincrement())
-  name     String
-  email    String    @unique
-  password String
-  role     AdminRole @default(ADMIN)
+  id                Int                @id @default(autoincrement())
+  name              String
+  email             String             @unique
+  password          String
+  role              AdminRole          @default(ADMIN)
+  pushSubscriptions PushSubscription[]
 }
 
 enum VerificationType {
@@ -160,5 +162,17 @@ model VerificationCode {
   code      String
   type      VerificationType
   expiresAt DateTime
+}
+
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  studentId Int?
+  student   Student? @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  adminId   Int?
+  admin     Admin?   @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
 }
 

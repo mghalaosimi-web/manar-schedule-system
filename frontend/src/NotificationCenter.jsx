@@ -24,8 +24,18 @@ export default function NotificationCenter() {
     };
 
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 5000);
-    return () => clearInterval(interval);
+
+    const handleBroadcastReceive = () => {
+      console.log('[NotificationCenter] Real-time notification receive triggered.');
+      fetchNotifications();
+    };
+
+    window.addEventListener('MANAR_BROADCAST_RECEIVE', handleBroadcastReceive);
+    window.addEventListener('MANAR_SCHEDULE_UPDATE', handleBroadcastReceive);
+    return () => {
+      window.removeEventListener('MANAR_BROADCAST_RECEIVE', handleBroadcastReceive);
+      window.removeEventListener('MANAR_SCHEDULE_UPDATE', handleBroadcastReceive);
+    };
   }, []);
 
   const containerVariants = {

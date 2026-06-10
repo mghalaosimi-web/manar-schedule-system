@@ -239,6 +239,16 @@ export default function StudentDashboard() {
 
     fetchStudentSchedule();
     fetchLatestNotificationToast();
+
+    const handleScheduleUpdate = () => {
+      console.log('[StudentDashboard] Real-time schedule update triggered.');
+      fetchStudentSchedule();
+    };
+
+    window.addEventListener('MANAR_SCHEDULE_UPDATE', handleScheduleUpdate);
+    return () => {
+      window.removeEventListener('MANAR_SCHEDULE_UPDATE', handleScheduleUpdate);
+    };
   }, []);
 
   const getNextLecture = () => {

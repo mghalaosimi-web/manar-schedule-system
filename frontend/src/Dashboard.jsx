@@ -141,6 +141,16 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchSchedules();
+
+    const handleScheduleUpdate = () => {
+      console.log('[AdminDashboard] Real-time schedule update triggered.');
+      fetchSchedules();
+    };
+
+    window.addEventListener('MANAR_SCHEDULE_UPDATE', handleScheduleUpdate);
+    return () => {
+      window.removeEventListener('MANAR_SCHEDULE_UPDATE', handleScheduleUpdate);
+    };
   }, []);
 
   const showToast = (message, type = 'success') => {

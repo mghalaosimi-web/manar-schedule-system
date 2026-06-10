@@ -17,10 +17,83 @@ const { PrismaPg } = require('@prisma/adapter-pg');
 const { Pool } = require('pg');
 const cron = require('node-cron');
 const { verifyToken } = require('./middleware/auth');
+const webpush = require('web-push');
 
 const app = express();
 
 app.use(helmet());
+
+// Auto-generate VAPID keys on boot if not configured in .env (for easier local setup)
+if (!process.env.PUBLIC_VAPID_KEY || !process.env.PRIVATE_VAPID_KEY) {
+  const vapidKeys = webpush.generateVAPIDKeys();
+  process.env.PUBLIC_VAPID_KEY = vapidKeys.publicKey;
+  process.env.PRIVATE_VAPID_KEY = vapidKeys.privateKey;
+  console.log('[PUSH] Temporary VAPID keys generated for this session.');
+}
+
+webpush.setVapidDetails(
+  'mailto:developer@mghal.com',
+  process.env.PUBLIC_VAPID_KEY,
+  process.env.PRIVATE_VAPID_KEY
+);
+
+// Active SSE client streams
+let sseClients = [];
+
+// Helper function to broadcast update to all connected SSE clients
+function broadcastSSE(type, data) {
+  console.log(`[SSE] Broadcasting event of type "${type}" to ${sseClients.length} clients...`);
+  sseClients.forEach(client => {
+    client.res.write(`data: ${JSON.stringify({ type, data })}\n\n`);
+  });
+}
+
+// Helper to send push notifications to students/admins of a specific group
+async function sendPushNotification(groupId, payload) {
+  console.log(`[PUSH] Dispatching push notification to group ${groupId || 'ALL'}...`);
+  try {
+    let subscriptions = [];
+    if (groupId) {
+      subscriptions = await prisma.pushSubscription.findMany({
+        where: {
+          OR: [
+            { student: { groupId: parseInt(groupId) } },
+            { adminId: { not: null } }
+          ]
+        }
+      });
+    } else {
+      subscriptions = await prisma.pushSubscription.findMany();
+    }
+
+    console.log(`[PUSH] Found ${subscriptions.length} active subscription(s) to notify.`);
+
+    const sendPromises = subscriptions.map(async (sub) => {
+      const pushSubscription = {
+        endpoint: sub.endpoint,
+        keys: {
+          p256dh: sub.p256dh,
+          auth: sub.auth
+        }
+      };
+
+      return webpush.sendNotification(pushSubscription, JSON.stringify(payload))
+        .catch(async (err) => {
+          console.warn(`[PUSH] Failed sending to endpoint ${sub.endpoint}:`, err.message);
+          if (err.statusCode === 404 || err.statusCode === 410) {
+            console.log(`[PUSH] Deleting expired subscription for endpoint: ${sub.endpoint}`);
+            await prisma.pushSubscription.delete({ where: { id: sub.id } }).catch(() => {});
+          }
+        });
+    });
+
+    await Promise.all(sendPromises);
+    console.log('[PUSH] All notifications processed.');
+  } catch (err) {
+    console.error('[PUSH] Error dispatching push notifications:', err);
+  }
+}
+
 app.use(cors());
 app.use(express.json());
 
@@ -262,6 +335,13 @@ cron.schedule('0 20 * * *', async () => {
           sentTime: new Date()
         }
       });
+
+      // Send daily summary push notification
+      sendPushNotification(group.id, {
+        title: `جدول الغد - ${group.name}`,
+        body: messageAr || messageEn,
+        url: '/student/home'
+      });
     }
 
     // 2. Also process any other PENDING notifications and set their status to SENT
@@ -291,6 +371,63 @@ cron.schedule('0 20 * * *', async () => {
 // Health Check Endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'Manar Schedule System Backend is running.' });
+});
+
+// Server-Sent Events (SSE) Live Schedule Update Endpoint
+app.get('/api/schedules/live', (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive'
+  });
+  
+  res.write('\n'); // Send initial ping
+  
+  const client = { id: Date.now(), res };
+  sseClients.push(client);
+  
+  console.log(`[SSE] Client connected. Total clients: ${sseClients.length}`);
+  
+  req.on('close', () => {
+    sseClients = sseClients.filter(c => c.id !== client.id);
+    console.log(`[SSE] Client disconnected. Total clients: ${sseClients.length}`);
+  });
+});
+
+// Get Public VAPID Key
+app.get('/api/notifications/vapid-key', (req, res) => {
+  res.status(200).json({ success: true, publicKey: process.env.PUBLIC_VAPID_KEY });
+});
+
+// Subscribe to Push Notifications
+app.post('/api/notifications/subscribe', verifyToken, async (req, res) => {
+  try {
+    const { subscription } = req.body;
+    if (!subscription || !subscription.endpoint || !subscription.keys || !subscription.keys.p256dh || !subscription.keys.auth) {
+      return res.status(400).json({ success: false, error: 'Subscription object with endpoint, p256dh, and auth keys is required' });
+    }
+
+    const isStudent = req.user.role === 'STUDENT';
+    const userIdField = isStudent ? 'studentId' : 'adminId';
+
+    await prisma.pushSubscription.upsert({
+      where: { endpoint: subscription.endpoint },
+      update: {
+        [userIdField]: req.user.id
+      },
+      create: {
+        endpoint: subscription.endpoint,
+        p256dh: subscription.keys.p256dh,
+        auth: subscription.keys.auth,
+        [userIdField]: req.user.id
+      }
+    });
+
+    res.status(200).json({ success: true, message: 'Subscribed to push notifications successfully' });
+  } catch (error) {
+    console.error('[API] Subscription error:', error);
+    res.status(500).json({ success: false, error: 'Failed to subscribe' });
+  }
 });
 
 // Authentication Endpoint
@@ -866,6 +1003,16 @@ app.post('/api/schedules/override', verifyToken, async (req, res) => {
       }
     });
 
+    // Trigger live SSE broadcast
+    broadcastSSE('SCHEDULE_UPDATE', { scheduleId: override.scheduleId });
+
+    // Trigger push notification
+    sendPushNotification(override.schedule.groupId, {
+      title: 'تعديل طارئ في الجدول',
+      body: alertMessage,
+      url: '/student/home'
+    });
+
     res.status(201).json({
       success: true,
       message: 'Schedule overridden and targeted notification queued successfully.',
@@ -967,6 +1114,16 @@ app.post('/api/schedules', verifyToken, async (req, res) => {
         group: true,
         overrides: true
       }
+    });
+
+    // Trigger live SSE broadcast
+    broadcastSSE('SCHEDULE_UPDATE', { scheduleId: newSchedule.id });
+
+    // Trigger push notification
+    sendPushNotification(newSchedule.groupId, {
+      title: 'محاضرة جديدة مضافة',
+      body: `تمت إضافة محاضرة جديدة: ${newSchedule.subject.name} في قاعة ${newSchedule.room.name}`,
+      url: '/student/home'
     });
 
     res.status(201).json({
@@ -1173,6 +1330,16 @@ app.post('/api/broadcasts', verifyToken, async (req, res) => {
         message,
         status: 'PENDING'
       }
+    });
+
+    // Trigger live SSE broadcast
+    broadcastSSE('BROADCAST_MESSAGE', { groupId: parsedGroupId, message });
+
+    // Trigger push notification
+    sendPushNotification(parsedGroupId, {
+      title: 'تنبيه جديد من الكلية',
+      body: message,
+      url: '/student/home'
     });
 
     res.status(201).json({ success: true, data: log });

@@ -26,6 +26,21 @@ import CommandPalette from './CommandPalette';
 import Instructions from './Instructions';
 import DevPortal from './DevPortal';
 
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 function AppLayout() {
   const { t, i18n } = useTranslation();
   const location = useLocation();
@@ -54,6 +69,98 @@ function AppLayout() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Web Push Notification Subscription ───────────────────────────────────
+  useEffect(() => {
+    const token = localStorage.getItem('manar_token');
+    const userJson = localStorage.getItem('manar_user');
+    if (!token || !userJson) return;
+
+    // Ask for permission and register push subscription
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+      navigator.serviceWorker.ready.then(async (registration) => {
+        try {
+          // Get public VAPID key
+          const keyRes = await axios.get(`${API_URL}/api/notifications/vapid-key`);
+          if (keyRes.data?.success && keyRes.data.publicKey) {
+            const publicVapidKey = keyRes.data.publicKey;
+
+            let subscription = await registration.pushManager.getSubscription();
+            if (!subscription) {
+              // Ask permission first
+              const permission = await Notification.requestPermission();
+              if (permission === 'granted') {
+                subscription = await registration.pushManager.subscribe({
+                  userVisibleOnly: true,
+                  applicationServerKey: urlBase64ToUint8Array(publicVapidKey)
+                });
+              }
+            }
+
+            if (subscription) {
+              await axios.post(`${API_URL}/api/notifications/subscribe`, { subscription }, {
+                headers: { Authorization: `Bearer ${token}` }
+              });
+              console.log('[PUSH] Successfully subscribed and synced with server.');
+            }
+          }
+        } catch (err) {
+          console.warn('[PUSH] Subscription registration failed:', err.message);
+        }
+      });
+    }
+  }, [path]);
+
+  // ── Server-Sent Events (SSE) Live Update Listener ────────────────────────
+  useEffect(() => {
+    const token = localStorage.getItem('manar_token');
+    if (!token) return;
+
+    console.log('[SSE] Connecting to live updates stream...');
+    const eventSource = new EventSource(`${API_URL}/api/schedules/live`);
+
+    eventSource.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        console.log('[SSE] Broadcast event received:', payload);
+
+        if (payload.type === 'SCHEDULE_UPDATE') {
+          toast(i18n.language === 'ar' ? '📅 تم تحديث جدول المحاضرات للتو!' : '📅 Lecture schedule has been updated!', {
+            icon: '🔔',
+            duration: 5000,
+            style: { border: '1px solid var(--accent)' }
+          });
+          // Dispatch custom window event to trigger dashboard/profile re-fetches
+          window.dispatchEvent(new CustomEvent('MANAR_SCHEDULE_UPDATE'));
+        } else if (payload.type === 'BROADCAST_MESSAGE') {
+          const userJson = localStorage.getItem('manar_user');
+          let currentUser = null;
+          try { currentUser = JSON.parse(userJson); } catch {}
+
+          if (payload.data.groupId === null || (currentUser && currentUser.groupId === payload.data.groupId)) {
+            toast(payload.data.message, {
+              icon: '📢',
+              duration: 8000,
+              style: { border: '1px solid #60c4ff' }
+            });
+            window.dispatchEvent(new CustomEvent('MANAR_BROADCAST_RECEIVE'));
+          }
+        }
+      } catch (err) {
+        console.error('[SSE] Error processing incoming event:', err);
+      }
+    };
+
+    eventSource.onerror = () => {
+      console.warn('[SSE] EventSource stream closed. Auto-reconnecting...');
+    };
+
+    return () => {
+      console.log('[SSE] Closing live updates stream...');
+      eventSource.close();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [path]);
   // ─────────────────────────────────────────────────────────────────────────
 
   const isAdminPath = path.startsWith('/admin');
