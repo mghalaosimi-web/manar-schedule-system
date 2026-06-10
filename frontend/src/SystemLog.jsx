@@ -83,7 +83,7 @@ export default function SystemLog() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-lime-400 to-emerald-400">
+          <h2 className="text-2xl font-bold tracking-tight text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(to right, var(--accent), var(--accent-2, var(--accent)))' }}>
             {t('logs.title')}
           </h2>
           <p className="text-sm text-gray-400 mt-1">{t('logs.subtitle')}</p>

@@ -151,9 +151,9 @@ export default function Register() {
       {/* Ambient orbs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden -z-0">
         <div className="ambient-orb absolute top-[-10%] right-[5%] w-[500px] h-[500px] rounded-full"
-             style={{ background: 'radial-gradient(circle, rgba(222,255,154,0.10) 0%, transparent 70%)' }} />
+             style={{ background: 'radial-gradient(circle, var(--accent-dim) 0%, transparent 70%)' }} />
         <div className="ambient-orb absolute bottom-[-5%] left-[0%] w-[360px] h-[360px] rounded-full"
-             style={{ background: 'radial-gradient(circle, rgba(163,255,112,0.06) 0%, transparent 70%)', animationDelay: '8s' }} />
+             style={{ background: 'radial-gradient(circle, var(--accent-glow) 0%, transparent 70%)', animationDelay: '8s' }} />
       </div>
 
       {/* Header */}
@@ -237,7 +237,7 @@ export default function Register() {
                 <Field label={isAr ? 'رقم الهاتف' : 'Phone Number'}>
                   <div className="cmd-input flex overflow-hidden" style={{ padding: 0 }}>
                     <span className="px-4 flex items-center text-xs font-black border-r"
-                          style={{ borderColor: 'var(--border-color)', color: 'var(--accent)', background: 'rgba(222,255,154,0.04)', letterSpacing: '0.05em' }}
+                          style={{ borderColor: 'var(--border-color)', color: 'var(--accent)', background: 'var(--accent-dim)', letterSpacing: '0.05em' }}
                           dir="ltr">
                       +967
                     </span>

@@ -121,7 +121,7 @@ export default function Verification() {
         
         {/* Header Title */}
         <div className="text-center space-y-2">
-          <div className="mx-auto h-12 w-12 bg-gradient-to-tr from-lime-500 to-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-lime-500/10">
+          <div className="mx-auto h-12 w-12 rounded-xl flex items-center justify-center shadow-lg shadow-[var(--accent-glow)]" style={{ backgroundImage: 'linear-gradient(to right, var(--accent), var(--accent-2, var(--accent)))' }}>
             <span className="text-2xl font-black text-black">M</span>
           </div>
           <div>
@@ -129,18 +129,18 @@ export default function Verification() {
             <p className="text-xs text-[var(--text-secondary)] mt-1">{t('verify.subtitle')}</p>
           </div>
         </div>
-
+ 
         {/* Developer Sandbox Notice (only in development) */}
         {(import.meta.env.DEV || window.location.hostname === 'localhost') && (
           <div className="bg-black/20 border border-[var(--border-color)] p-3 rounded-lg text-[10px] text-[var(--text-secondary)] leading-relaxed transition-all duration-300">
-            <span className="font-bold text-lime-400 uppercase block mb-1">{t('verify.devHelper')}</span>
+            <span className="font-bold text-[var(--accent)] uppercase block mb-1">{t('verify.devHelper')}</span>
             {t('verify.logNotice')} 
             <code className="block mt-1 p-1 bg-black/45 border border-[var(--border-color)] rounded text-[var(--text-primary)] font-mono truncate transition-all">
               verification_codes.log
             </code>
           </div>
         )}
-
+ 
         <div className="space-y-6 text-xs">
           {/* Step 1: Email Verification Form */}
           <div className="bg-black/10 p-4 rounded-xl border border-[var(--border-color)] space-y-3 transition-all">
@@ -150,12 +150,12 @@ export default function Verification() {
                 <span className="text-[10px] text-[var(--text-secondary)] font-mono">{email}</span>
               </div>
               {isEmailVerified ? (
-                <span className="px-2 py-0.5 bg-lime-500/20 text-lime-400 border border-lime-500/30 rounded text-[10px] font-bold">{t('verify.verified')}</span>
+                <span className="px-2 py-0.5 bg-[var(--accent-dim)] text-[var(--accent)] border border-[var(--accent-glow)] rounded text-[10px] font-bold">{t('verify.verified')}</span>
               ) : (
                 <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded text-[10px] font-bold">{t('verify.pending')}</span>
               )}
             </div>
-
+ 
             {!isEmailVerified && (
               <form 
                 onSubmit={(e) => handleVerify(e, emailCode, 'EMAIL', email, setEmailLoading, setIsEmailVerified)}
@@ -168,12 +168,12 @@ export default function Verification() {
                   value={emailCode}
                   onChange={(e) => setEmailCode(e.target.value)}
                   placeholder="6-digit Email OTP"
-                  className="flex-1 bg-black/10 border border-[var(--border-color)] rounded px-3 py-2 text-[var(--text-primary)] focus:outline-none focus:border-lime-500 font-bold tracking-widest text-center transition-all"
+                  className="flex-1 bg-black/10 border border-[var(--border-color)] rounded px-3 py-2 text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] font-bold tracking-widest text-center transition-all"
                 />
                 <button
                   type="submit"
                   disabled={emailLoading}
-                  className="px-4 py-2 bg-lime-500 text-black font-extrabold rounded shadow-md shadow-lime-500/10 hover:bg-lime-400 transition flex items-center justify-center min-w-[70px]"
+                  className="px-4 py-2 bg-[var(--accent)] text-black font-extrabold rounded shadow-md shadow-[var(--accent-glow)] hover:opacity-90 transition flex items-center justify-center min-w-[70px]"
                 >
                   {emailLoading ? (
                     <span className="h-3.5 w-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
@@ -184,7 +184,7 @@ export default function Verification() {
               </form>
             )}
           </div>
-
+ 
           {/* Step 2: Phone Verification Form */}
           <div className="bg-black/10 p-4 rounded-xl border border-[var(--border-color)] space-y-3 transition-all">
             <div className="flex justify-between items-center">
@@ -193,12 +193,12 @@ export default function Verification() {
                 <span className="text-[10px] text-[var(--text-secondary)] font-mono">{phone}</span>
               </div>
               {isPhoneVerified ? (
-                <span className="px-2 py-0.5 bg-lime-500/20 text-lime-400 border border-lime-500/30 rounded text-[10px] font-bold">{t('verify.verified')}</span>
+                <span className="px-2 py-0.5 bg-[var(--accent-dim)] text-[var(--accent)] border border-[var(--accent-glow)] rounded text-[10px] font-bold">{t('verify.verified')}</span>
               ) : (
                 <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded text-[10px] font-bold">{t('verify.pending')}</span>
               )}
             </div>
-
+ 
             {!isPhoneVerified && (
               <form 
                 onSubmit={(e) => handleVerify(e, phoneCode, 'PHONE', phone, setPhoneLoading, setIsPhoneVerified)}
@@ -211,12 +211,12 @@ export default function Verification() {
                   value={phoneCode}
                   onChange={(e) => setPhoneCode(e.target.value)}
                   placeholder="6-digit Phone OTP"
-                  className="flex-1 bg-black/10 border border-[var(--border-color)] rounded px-3 py-2 text-[var(--text-primary)] focus:outline-none focus:border-lime-500 font-bold tracking-widest text-center transition-all"
+                  className="flex-1 bg-black/10 border border-[var(--border-color)] rounded px-3 py-2 text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] font-bold tracking-widest text-center transition-all"
                 />
                 <button
                   type="submit"
                   disabled={phoneLoading}
-                  className="px-4 py-2 bg-lime-500 text-black font-extrabold rounded shadow-md shadow-lime-500/10 hover:bg-lime-400 transition flex items-center justify-center min-w-[70px]"
+                  className="px-4 py-2 bg-[var(--accent)] text-black font-extrabold rounded shadow-md shadow-[var(--accent-glow)] hover:opacity-90 transition flex items-center justify-center min-w-[70px]"
                 >
                   {phoneLoading ? (
                     <span className="h-3.5 w-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />

@@ -81,7 +81,7 @@ export default function BroadcastCenter() {
     >
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-lime-400 to-emerald-400">
+        <h2 className="text-2xl font-bold tracking-tight text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(to right, var(--accent), var(--accent-2, var(--accent)))' }}>
           {t('broadcast.title')}
         </h2>
         <p className="text-sm text-gray-400 mt-1">{t('broadcast.subtitle')}</p>
@@ -89,7 +89,7 @@ export default function BroadcastCenter() {
 
       {/* Broadcast Form */}
       <div className="max-w-2xl frosted-panel rounded-2xl p-6 space-y-5">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-lime-400 border-b border-white/5 pb-3">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--accent)] border-b border-white/5 pb-3">
           📢 {t('broadcast.composeTitle')}
         </h3>
 

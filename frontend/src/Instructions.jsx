@@ -79,7 +79,7 @@ export default function Instructions() {
       {/* Ambient orbs */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden -z-0">
         <div className="ambient-orb absolute top-[10%] left-[15%] w-[500px] h-[500px] rounded-full"
-             style={{ background: 'radial-gradient(circle, rgba(222,255,154,0.07) 0%, transparent 70%)' }} />
+             style={{ background: 'radial-gradient(circle, var(--accent-dim) 0%, transparent 70%)' }} />
         <div className="ambient-orb absolute bottom-[5%] right-[10%] w-[380px] h-[380px] rounded-full"
              style={{ background: 'radial-gradient(circle, rgba(96,196,255,0.05) 0%, transparent 70%)', animationDelay: '7s' }} />
       </div>
@@ -126,7 +126,7 @@ export default function Instructions() {
               className="frosted-panel rounded-2xl p-7 cursor-pointer transition-all duration-300 group"
               style={{
                 borderTop: `2px solid ${active === step.id ? step.accentColor : 'transparent'}`,
-                boxShadow: active === step.id ? `0 0 40px rgba(222,255,154,0.08)` : 'none',
+                boxShadow: active === step.id ? `0 0 40px var(--accent-glow)` : 'none',
               }}
               whileHover={{ scale: 1.015, borderTopColor: step.accentColor }}
               whileTap={{ scale: 0.99 }}

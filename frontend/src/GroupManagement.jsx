@@ -153,7 +153,7 @@ export default function GroupManagement() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-lime-400 to-emerald-400">
+          <h2 className="text-2xl font-bold tracking-tight text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(to right, var(--accent), var(--accent-2, var(--accent)))' }}>
             {t('groups.title')}
           </h2>
           <p className="text-sm text-gray-400 mt-1">{t('groups.subtitle')}</p>
@@ -172,7 +172,7 @@ export default function GroupManagement() {
           onClick={() => setActiveTab('groups')}
           className={`px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition duration-200 ${
             activeTab === 'groups' 
-              ? 'border-[var(--accent)] text-[var(--accent)] bg-[rgba(222,255,154,0.03)]' 
+              ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-dim)]' 
               : 'border-transparent text-gray-400 hover:text-gray-200'
           }`}
         >
@@ -182,7 +182,7 @@ export default function GroupManagement() {
           onClick={() => setActiveTab('rooms')}
           className={`px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition duration-200 ${
             activeTab === 'rooms' 
-              ? 'border-[var(--accent)] text-[var(--accent)] bg-[rgba(222,255,154,0.03)]' 
+              ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-dim)]' 
               : 'border-transparent text-gray-400 hover:text-gray-200'
           }`}
         >
@@ -192,7 +192,7 @@ export default function GroupManagement() {
           onClick={() => setActiveTab('lecturers')}
           className={`px-5 py-3 text-xs font-bold uppercase tracking-wider border-b-2 transition duration-200 ${
             activeTab === 'lecturers' 
-              ? 'border-[var(--accent)] text-[var(--accent)] bg-[rgba(222,255,154,0.03)]' 
+              ? 'border-[var(--accent)] text-[var(--accent)] bg-[var(--accent-dim)]' 
               : 'border-transparent text-gray-400 hover:text-gray-200'
           }`}
         >
@@ -365,7 +365,7 @@ export default function GroupManagement() {
               className="frosted-panel w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-5 text-[var(--text-primary)]"
             >
               <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-lime-400">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--accent)]">
                   {editingItem.item ? t('groups.editRecord') : t('groups.addNewRecord')}
                 </h3>
                 <button

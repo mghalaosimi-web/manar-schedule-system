@@ -193,11 +193,11 @@ export default function Students() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-455">{t('students.level')}</span>
-                    <span className="text-lime-450">{student.level?.name || 'N/A'}</span>
+                    <span className="text-[var(--accent)]">{student.level?.name || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-455">{t('students.group')}</span>
-                    <span className="text-emerald-400 font-semibold">{student.group?.name || 'N/A'}</span>
+                    <span className="text-[var(--accent)] font-semibold">{student.group?.name || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between pt-1 border-t border-white/5 items-center">
                     <span className="text-gray-455">{t('students.status')}</span>

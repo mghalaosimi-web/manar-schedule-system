@@ -141,7 +141,7 @@ export default function CommandPalette() {
                       onClick={() => handleAction(item.action)}
                       className="w-full text-right p-2.5 rounded-xl hover:bg-white/5 transition flex flex-col group"
                     >
-                      <span className="text-xs font-bold text-white group-hover:text-lime-400 transition">{item.name}</span>
+                      <span className="text-xs font-bold text-white group-hover:text-[var(--accent)] transition">{item.name}</span>
                       <span className="text-[10px] text-gray-400 mt-0.5">{item.subtitle}</span>
                     </button>
                   ))}
@@ -159,7 +159,7 @@ export default function CommandPalette() {
                       className="w-full text-right p-2.5 rounded-xl hover:bg-white/5 transition flex justify-between items-center group"
                     >
                       <div className="flex flex-col">
-                        <span className="text-xs font-bold text-white group-hover:text-lime-400 transition">{s.subject.name} ({s.subject.code})</span>
+                        <span className="text-xs font-bold text-white group-hover:text-[var(--accent)] transition">{s.subject.name} ({s.subject.code})</span>
                         <span className="text-[10px] text-gray-400 mt-0.5">مع د. {s.lecturerName} في {s.room.name}</span>
                       </div>
                       <div className="text-left">

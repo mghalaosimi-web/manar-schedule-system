@@ -186,8 +186,8 @@ export default function DevPortal() {
       <div className="flex items-start justify-between gap-6 flex-wrap">
         <div>
           <div className="flex items-center gap-3 mb-3">
-            <span className="text-[10px] font-black tracking-[0.3em] uppercase px-3 py-1 rounded-full"
-                  style={{ background: 'rgba(222,255,154,0.07)', color: 'var(--accent)', border: '1px solid rgba(222,255,154,0.15)' }}>
+            <span className="text-[10px] font-black tracking-[0.30em] uppercase px-3 py-1 rounded-full"
+                  style={{ background: 'rgba(var(--primary-color-rgb), 0.07)', color: 'var(--accent)', border: '1px solid rgba(var(--primary-color-rgb), 0.15)' }}>
               🛡 DEV PORTAL
             </span>
             {/* DB status pill */}

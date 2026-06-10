@@ -67,9 +67,9 @@ export default function Login() {
       {/* ── Ambient orbs ───────────────────────────────────────── */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden -z-0">
         <div className="ambient-orb absolute top-[-15%] left-[10%] w-[520px] h-[520px] rounded-full"
-             style={{ background: 'radial-gradient(circle, rgba(222,255,154,0.12) 0%, transparent 70%)' }} />
+             style={{ background: 'radial-gradient(circle, var(--accent-dim) 0%, transparent 70%)' }} />
         <div className="ambient-orb absolute bottom-[-10%] right-[5%] w-[400px] h-[400px] rounded-full"
-             style={{ background: 'radial-gradient(circle, rgba(163,255,112,0.07) 0%, transparent 70%)', animationDelay: '6s' }} />
+             style={{ background: 'radial-gradient(circle, var(--accent-glow) 0%, transparent 70%)', animationDelay: '6s' }} />
       </div>
 
       {/* ── Top bar ──────────────────────────────────────────────── */}

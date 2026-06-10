@@ -59,7 +59,7 @@ export default function NotificationCenter() {
         
         {/* Header */}
         <div>
-          <h2 className="text-xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-lime-400 to-emerald-400 tracking-tight">
+          <h2 className="text-xl font-extrabold text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(to right, var(--accent), var(--accent-2, var(--accent)))' }}>
             {t('notifications.title')}
           </h2>
           <p className="text-xs text-gray-400 mt-1">{t('notifications.subtitle')}</p>

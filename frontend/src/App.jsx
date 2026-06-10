@@ -208,7 +208,7 @@ function AppLayout() {
           key={to}
           to={to}
           onClick={() => setIsSidebarOpen(false)}
-          style={isActive ? { color: activeColor, background: `rgba(222,255,154,0.06)`, borderLeft: isAr ? 'none' : `2px solid ${activeColor}`, borderRight: isAr ? `2px solid ${activeColor}` : 'none' } : {}}
+          style={isActive ? { color: activeColor, background: `var(--accent-dim)`, borderLeft: isAr ? 'none' : `2px solid ${activeColor}`, borderRight: isAr ? `2px solid ${activeColor}` : 'none' } : {}}
           className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs font-black tracking-wide transition-all duration-200 ${
             isActive ? '' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/3'
           }`}
@@ -501,7 +501,7 @@ export default function App() {
           style: {
             background: '#0a0a0a',
             color: '#f0f0f0',
-            border: '1px solid rgba(222,255,154,0.12)',
+            border: '1px solid var(--accent-glow)',
             fontFamily: 'Urbanist, system-ui, sans-serif',
             fontWeight: '700',
             fontSize: '13px',

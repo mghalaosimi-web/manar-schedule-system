@@ -21,7 +21,7 @@ export default function Welcome() {
       <header className="fixed top-0 left-0 right-0 h-16 bg-[var(--bg-card)] backdrop-blur-lg border-b border-[var(--border-color)] shadow-sm z-40 flex items-center justify-between px-6 transition-all duration-300">
         <div className="flex items-center gap-3">
           <Logo size="sm" />
-          <span className="text-lg md:text-xl font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-lime-400 to-emerald-400">
+          <span className="text-lg md:text-xl font-extrabold tracking-wide text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(to right, var(--accent), var(--accent-2, var(--accent)))' }}>
             كلية المنار الجامعية
           </span>
         </div>
@@ -35,7 +35,7 @@ export default function Welcome() {
           </button>
         </div>
       </header>
-
+ 
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -47,7 +47,7 @@ export default function Welcome() {
         <div className="flex justify-center">
           <Logo size="xl" />
         </div>
-
+ 
         {/* Branding header */}
         <div className="space-y-3">
           <h2 className="text-2xl md:text-3xl font-extrabold text-[var(--text-primary)] tracking-tight leading-tight">
@@ -57,33 +57,37 @@ export default function Welcome() {
             {t('welcome.subtitle')}
           </p>
         </div>
-
+ 
         {/* Action Options */}
         <div className="space-y-4 pt-2">
           <button
             onClick={() => navigate('/login')}
-            className="w-full py-3.5 px-4 bg-gradient-to-r from-lime-500 to-emerald-500 hover:from-lime-400 hover:to-emerald-400 text-black font-extrabold rounded-xl shadow-lg shadow-lime-500/10 transition duration-300 flex items-center justify-center gap-3 text-xs md:text-sm"
+            className="w-full py-3.5 px-4 text-black font-extrabold rounded-xl transition duration-300 flex items-center justify-center gap-3 text-xs md:text-sm shadow-lg hover:opacity-90"
+            style={{
+              backgroundImage: 'linear-gradient(to right, var(--accent), var(--accent-2, var(--accent)))',
+              boxShadow: '0 10px 15px -3px var(--accent-glow)'
+            }}
           >
             <span>{t('welcome.studentPortal')}</span>
           </button>
-
+ 
           <button
             onClick={() => navigate('/login')}
-            className="w-full py-3.5 px-4 bg-gray-950/60 hover:bg-gray-950 text-lime-400 hover:text-lime-300 font-extrabold rounded-xl border border-white/10 hover:border-lime-500/40 transition duration-300 flex items-center justify-center gap-3 text-xs md:text-sm"
+            className="w-full py-3.5 px-4 bg-gray-955/60 hover:bg-gray-955 text-[var(--accent)] hover:text-[var(--accent)] font-extrabold rounded-xl border border-white/10 hover:border-[var(--accent)]/45 transition duration-300 flex items-center justify-center gap-3 text-xs md:text-sm"
           >
             <span>{t('welcome.adminPortal')}</span>
           </button>
         </div>
-
+ 
         <p className="text-[11px] text-gray-500 max-w-xs mx-auto leading-relaxed">
           {t('welcome.tagline')}
         </p>
-
+ 
         {/* Micro status info */}
         <div className="border-t border-white/5 pt-4 flex justify-between items-center text-[10px] text-gray-650 font-mono">
           <span>v1.2.0 (Phase 8)</span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-lime-500 animate-ping inline-block" />
+            <span className="h-2 w-2 rounded-full animate-ping inline-block" style={{ backgroundColor: 'var(--accent)' }} />
             {i18n.language === 'ar' ? 'متصل وحي' : 'Live Sync Active'}
           </span>
         </div>

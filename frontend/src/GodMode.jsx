@@ -126,17 +126,17 @@ export default function GodMode() {
       {/* ── Hero header ──────────────────────────────────────── */}
       <div className="relative overflow-hidden rounded-3xl p-10"
            style={{
-             background: 'linear-gradient(135deg, rgba(222,255,154,0.06) 0%, rgba(0,0,0,0) 60%)',
-             border: '1px solid rgba(222,255,154,0.12)',
+             background: 'linear-gradient(135deg, rgba(var(--primary-color-rgb), 0.06) 0%, rgba(0,0,0,0) 60%)',
+             border: '1px solid rgba(var(--primary-color-rgb), 0.12)',
            }}>
         {/* Glow blob */}
         <div className="absolute top-[-40px] right-[-40px] w-72 h-72 rounded-full pointer-events-none"
-             style={{ background: 'radial-gradient(circle, rgba(222,255,154,0.12) 0%, transparent 70%)' }} />
-
+             style={{ background: 'radial-gradient(circle, var(--accent-dim) 0%, transparent 70%)' }} />
+ 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <span className="inline-block text-[10px] font-black tracking-[0.3em] uppercase px-3 py-1 rounded-full mb-4"
-                  style={{ background: 'rgba(222,255,154,0.08)', color: 'var(--accent)', border: '1px solid rgba(222,255,154,0.15)' }}>
+                  style={{ background: 'rgba(var(--primary-color-rgb), 0.08)', color: 'var(--accent)', border: '1px solid rgba(var(--primary-color-rgb), 0.15)' }}>
               👑 {isAr ? 'صلاحيات المطور' : 'Developer Access'}
             </span>
             <h1 className="font-black tracking-tighter leading-none"
@@ -267,7 +267,7 @@ export default function GodMode() {
                       borderBottom: '1px solid var(--border-color)',
                       background: idx % 2 === 0 ? 'rgba(255,255,255,0.008)' : 'transparent',
                     }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(222,255,154,0.03)'}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(var(--primary-color-rgb), 0.03)'}
                     onMouseLeave={e => e.currentTarget.style.background = idx % 2 === 0 ? 'rgba(255,255,255,0.008)' : 'transparent'}
                   >
                     <td className="px-5 py-4 font-mono font-bold" style={{ color: 'var(--text-secondary)' }}>
@@ -295,7 +295,7 @@ export default function GodMode() {
                     <td className="px-5 py-4">
                       {s.group?.name
                         ? <span className="px-2.5 py-1 rounded-full text-[10px] font-black"
-                                style={{ background: 'rgba(222,255,154,0.08)', color: 'var(--accent)', border: '1px solid rgba(222,255,154,0.15)' }}>
+                                style={{ background: 'rgba(var(--primary-color-rgb), 0.08)', color: 'var(--accent)', border: '1px solid rgba(var(--primary-color-rgb), 0.15)' }}>
                             {s.group.name}
                           </span>
                         : <span style={{ color: 'var(--text-secondary)' }}>—</span>}
