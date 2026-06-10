@@ -110,6 +110,11 @@ export default function StudentDashboard() {
   const [backendOnline, setBackendOnline] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [groups, setGroups] = useState([]);
+  const [selectedGroupId, setSelectedGroupId] = useState(() => {
+    const initial = getInitialProfile();
+    return initial.groupId;
+  });
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -158,46 +163,30 @@ export default function StudentDashboard() {
   };
 
   useEffect(() => {
-    let currentGroupId = 1;
-    const userJson = localStorage.getItem('manar_user');
-    if (userJson) {
-      try {
-        const user = JSON.parse(userJson);
-        currentGroupId = user.groupId || 1;
-      } catch (e) {}
-    }
-
-    const savedProfile = localStorage.getItem('student_profile');
-    if (savedProfile) {
-      try {
-        const parsed = JSON.parse(savedProfile);
-        currentGroupId = parsed.groupId || currentGroupId;
-      } catch (e) {}
-    }
-
     const fetchStudentSchedule = async () => {
       try {
         setLoading(true);
         const [scheduleRes, groupsRes] = await Promise.all([
-          axios.get(`${API_URL}/api/schedules?groupId=${currentGroupId}`),
+          axios.get(`${API_URL}/api/schedules?groupId=${selectedGroupId}`),
           axios.get(`${API_URL}/api/groups`)
         ]);
 
-        let groupNameText = `Group ID: ${currentGroupId}`;
         if (groupsRes.data && groupsRes.data.success) {
-          const matchingGroup = groupsRes.data.data.find(g => g.id === currentGroupId);
-          if (matchingGroup) {
-            groupNameText = matchingGroup.name;
+          setGroups(groupsRes.data.data);
+          
+          // Dynamically map active group name to profile card
+          const activeG = groupsRes.data.data.find(g => g.id === selectedGroupId);
+          if (activeG) {
+            setProfile(prev => ({
+              ...prev,
+              groupId: selectedGroupId,
+              groupName: activeG.name
+            }));
           }
         }
 
         if (scheduleRes.data && scheduleRes.data.success) {
           setSchedules(scheduleRes.data.data);
-          setProfile(prev => ({
-            ...prev,
-            groupId: currentGroupId,
-            groupName: groupNameText
-          }));
           setBackendOnline(true);
         } else {
           throw new Error('API failed');
@@ -210,6 +199,10 @@ export default function StudentDashboard() {
       }
     };
 
+    fetchStudentSchedule();
+  }, [selectedGroupId]);
+
+  useEffect(() => {
     const fetchLatestNotificationToast = async () => {
       const hasShown = sessionStorage.getItem('manar_welcome_toast_shown');
       if (hasShown) return;
@@ -237,19 +230,22 @@ export default function StudentDashboard() {
       }
     };
 
-    fetchStudentSchedule();
     fetchLatestNotificationToast();
 
     const handleScheduleUpdate = () => {
       console.log('[StudentDashboard] Real-time schedule update triggered.');
-      fetchStudentSchedule();
+      axios.get(`${API_URL}/api/schedules?groupId=${selectedGroupId}`).then(res => {
+        if (res.data && res.data.success) {
+          setSchedules(res.data.data);
+        }
+      }).catch(e => console.error(e));
     };
 
     window.addEventListener('MANAR_SCHEDULE_UPDATE', handleScheduleUpdate);
     return () => {
       window.removeEventListener('MANAR_SCHEDULE_UPDATE', handleScheduleUpdate);
     };
-  }, []);
+  }, [selectedGroupId]);
 
   const getNextLecture = () => {
     if (schedules.length === 0) return null;
@@ -375,6 +371,28 @@ export default function StudentDashboard() {
             </div>
           );
         })()}
+
+        {/* Dynamic Group Switcher */}
+        <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-4 flex flex-col gap-2.5">
+          <label className="text-[10px] font-black tracking-widest uppercase text-[var(--text-secondary)]">
+            {i18n.language === 'ar' ? 'عرض جدول شعبة:' : 'View Schedule for Group:'}
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {groups.map(g => (
+              <button
+                key={g.id}
+                onClick={() => setSelectedGroupId(g.id)}
+                className={`px-3.5 py-2 rounded-xl text-[10px] font-black tracking-wider uppercase border transition-all duration-200 ${
+                  selectedGroupId === g.id
+                    ? 'bg-[var(--accent)] border-[var(--accent)] text-black shadow-lg shadow-[var(--accent-glow)] scale-105'
+                    : 'bg-white/3 border-white/5 hover:bg-white/8 text-[var(--text-primary)]'
+                }`}
+              >
+                {g.name}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Custom Glassmorphic Install App Prompt */}
         {isInstallable && (

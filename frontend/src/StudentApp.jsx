@@ -66,6 +66,7 @@ export default function StudentApp() {
   const [backendOnline, setBackendOnline] = useState(false);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState('list');
+  const [groups, setGroups] = useState([]);
 
   const getActiveDay = (schedule) => {
     if (schedule.overrides && schedule.overrides.length > 0) {
@@ -103,11 +104,19 @@ export default function StudentApp() {
       try {
         setLoading(true);
         const token = localStorage.getItem('manar_token');
-        const res = await axios.get(`${API_URL}/api/schedules?groupId=${groupId}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {}
-        });
-        if (res.data && res.data.success) {
-          setSchedules(res.data.data);
+        const [scheduleRes, groupsRes] = await Promise.all([
+          axios.get(`${API_URL}/api/schedules?groupId=${groupId}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+          }),
+          axios.get(`${API_URL}/api/groups`)
+        ]);
+
+        if (groupsRes.data && groupsRes.data.success) {
+          setGroups(groupsRes.data.data);
+        }
+
+        if (scheduleRes.data && scheduleRes.data.success) {
+          setSchedules(scheduleRes.data.data);
           setBackendOnline(true);
         } else {
           throw new Error('API failed');
@@ -166,6 +175,28 @@ export default function StudentApp() {
         ) : (
           <div className="flex-1 p-4 md:p-8 space-y-6 print-area">
             
+            {/* Group Selector */}
+            <div className="bg-white/3 border border-[var(--border-color)] p-4 rounded-2xl mb-4 no-print flex flex-col gap-2.5">
+              <label className="text-[10px] font-black tracking-widest uppercase text-[var(--text-secondary)]">
+                {i18n.language === 'ar' ? 'عرض جدول شعبة:' : 'View Schedule for Group:'}
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {groups.map(g => (
+                  <button
+                    key={g.id}
+                    onClick={() => setGroupId(g.id)}
+                    className={`px-3 py-1.5 rounded-xl text-[10px] font-black tracking-wider uppercase border transition-all duration-200 ${
+                      groupId === g.id
+                        ? 'bg-[var(--accent)] border-[var(--accent)] text-black shadow-lg shadow-[var(--accent-glow)] scale-105'
+                        : 'bg-white/3 border-white/5 hover:bg-white/8 text-[var(--text-primary)]'
+                    }`}
+                  >
+                    {g.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* View Selection Toggle */}
             <div className="flex justify-between items-center bg-white/3 border border-[var(--border-color)] p-2 rounded-xl mb-4 no-print">
               <span className="text-xs font-bold text-[var(--text-secondary)]">

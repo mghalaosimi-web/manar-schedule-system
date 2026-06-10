@@ -254,11 +254,40 @@ export default function Register() {
                     placeholder="2026-XXXXX"
                     className={`${inputClass} font-mono tracking-widest`} />
                 </Field>
-                <Field label={isAr ? 'رابط صورة الهوية (اختياري)' : 'ID Photo URL (optional)'}>
-                  <input type="url" value={idPhotoUrl}
-                    onChange={e => setIdPhotoUrl(e.target.value)}
-                    placeholder="https://…"
-                    className={inputClass} />
+                <Field label={isAr ? 'تحميل صورة الهوية (اختياري)' : 'Upload ID Photo (optional)'}>
+                  <div className="relative">
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setIdPhotoUrl(reader.result);
+                            toast.success(isAr ? 'تم تحميل الصورة!' : 'Image loaded!');
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="hidden" 
+                      id="idPhotoUpload"
+                    />
+                    <label 
+                      htmlFor="idPhotoUpload"
+                      className="cmd-input w-full flex items-center justify-between px-5 py-3.5 cursor-pointer hover:border-[var(--accent)] transition-colors duration-200"
+                      style={{ height: '58px' }}
+                    >
+                      <span className="text-[var(--text-secondary)] font-semibold truncate max-w-[80%]">
+                        {idPhotoUrl 
+                          ? (isAr ? '✅ تم اختيار صورة' : '✅ Image Selected') 
+                          : (isAr ? 'اختر صورة من جهازك...' : 'Choose image file...')}
+                      </span>
+                      <span className="bg-white/5 border border-white/10 hover:bg-white/10 text-[10px] font-black tracking-wider uppercase px-3 py-1.5 rounded-lg text-gray-300">
+                        {isAr ? 'رفع ملف' : 'Browse'}
+                      </span>
+                    </label>
+                  </div>
                 </Field>
               </div>
             </motion.div>

@@ -230,15 +230,39 @@ export default function UserSettings() {
         </div>
 
         <div className="space-y-1">
-          <label className="text-gray-400 block font-medium">{t('userSettings.photoUrlLabel')}</label>
-          <input
-            type="url"
-            placeholder="https://example.com/avatar.jpg"
-            value={profile.idPhotoUrl}
-            onChange={(e) => setProfile({ ...profile, idPhotoUrl: e.target.value })}
-            className="w-full cmd-input p-3 font-mono text-left"
-            dir="ltr"
-          />
+          <label className="text-gray-400 block font-medium">{isAr ? 'تحميل صورة الهوية' : 'Upload ID Photo'}</label>
+          <div className="relative">
+            <input 
+              type="file" 
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onloadend = () => {
+                    setProfile({ ...profile, idPhotoUrl: reader.result });
+                    toast.success(isAr ? 'تم تحميل الصورة!' : 'Image uploaded!');
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }}
+              className="hidden" 
+              id="avatarPhotoUpload"
+            />
+            <label 
+              htmlFor="avatarPhotoUpload"
+              className="cmd-input w-full flex items-center justify-between p-3 cursor-pointer hover:border-[var(--accent)] transition-colors duration-200"
+            >
+              <span className="text-[var(--text-secondary)] font-semibold truncate max-w-[80%]">
+                {profile.idPhotoUrl 
+                  ? (isAr ? '✅ تم اختيار صورة' : '✅ Image Selected') 
+                  : (isAr ? 'اختر صورة لتحديثها...' : 'Choose image file...')}
+              </span>
+              <span className="bg-white/5 border border-white/10 hover:bg-white/10 text-[10px] font-black tracking-wider uppercase px-2 py-1 rounded">
+                {isAr ? 'رفع ملف' : 'Browse'}
+              </span>
+            </label>
+          </div>
         </div>
 
         <div className="space-y-1">
