@@ -1510,6 +1510,49 @@ app.put('/api/student/settings', verifyToken, async (req, res) => {
 });
 
 
+app.get('/api/student/settings', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'STUDENT') {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
+    }
+    const student = await prisma.student.findUnique({
+      where: { id: req.user.id },
+      include: {
+        major: {
+          include: { department: true }
+        },
+        level: true,
+        group: true
+      }
+    });
+
+    if (!student) {
+      return res.status(404).json({ success: false, error: 'Student not found' });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        id: student.id,
+        name: student.name,
+        email: student.email,
+        phone: student.phone,
+        idPhotoUrl: student.idPhotoUrl,
+        groupId: student.groupId,
+        groupName: student.group?.name || '',
+        majorName: student.major?.name || '',
+        departmentName: student.major?.department?.name || '',
+        levelName: student.level?.name || ''
+      }
+    });
+  } catch (error) {
+    console.error('[API] Error fetching student settings:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch settings' });
+  }
+});
+
+
+
 // ==========================================
 // STATIC SERVING & ROUTING FOR SPA
 // ==========================================

@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { API_URL } from './config';
 import usePWAInstall from './usePWAInstall';
 
@@ -79,11 +79,17 @@ export default function StudentDashboard() {
     const userJson = localStorage.getItem('manar_user');
     let loggedInName = 'Student Account';
     let loggedInGroupId = 1;
+    let loggedInEmail = '';
+    let loggedInPhone = '';
+    let loggedInIdPhotoUrl = '';
     if (userJson) {
       try {
         const user = JSON.parse(userJson);
         loggedInName = user.name || 'Student Account';
         loggedInGroupId = user.groupId || 1;
+        loggedInEmail = user.email || '';
+        loggedInPhone = user.phone || '';
+        loggedInIdPhotoUrl = user.idPhotoUrl || '';
       } catch (e) {}
     }
 
@@ -93,6 +99,11 @@ export default function StudentDashboard() {
         const parsed = JSON.parse(savedProfile);
         return {
           name: parsed.name || loggedInName,
+          email: parsed.email || loggedInEmail,
+          phone: parsed.phone || loggedInPhone,
+          idPhotoUrl: parsed.idPhotoUrl || loggedInIdPhotoUrl,
+          department: parsed.department || '',
+          level: parsed.level || '',
           groupId: parsed.groupId || loggedInGroupId,
           groupName: parsed.groupId === 1 ? 'Group A' : (parsed.groupId === 2 ? 'Group B' : 'Group C')
         };
@@ -100,6 +111,11 @@ export default function StudentDashboard() {
     }
     return {
       name: loggedInName,
+      email: loggedInEmail,
+      phone: loggedInPhone,
+      idPhotoUrl: loggedInIdPhotoUrl,
+      department: '',
+      level: '',
       groupId: loggedInGroupId,
       groupName: loggedInGroupId === 1 ? 'Group A' : (loggedInGroupId === 2 ? 'Group B' : 'Group C')
     };
@@ -107,6 +123,14 @@ export default function StudentDashboard() {
 
   const [profile, setProfile] = useState(getInitialProfile);
   const [schedules, setSchedules] = useState([]);
+  const [originalSchedules, setOriginalSchedules] = useState([]);
+  const [sandboxMode, setSandboxMode] = useState(false);
+  const [activeSimulatorSchedule, setActiveSimulatorSchedule] = useState(null);
+  
+  const [simulatorDay, setSimulatorDay] = useState('SUNDAY');
+  const [simulatorStart, setSimulatorStart] = useState('08:00');
+  const [simulatorEnd, setSimulatorEnd] = useState('10:00');
+
   const [backendOnline, setBackendOnline] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -166,9 +190,16 @@ export default function StudentDashboard() {
     const fetchStudentSchedule = async () => {
       try {
         setLoading(true);
-        const [scheduleRes, groupsRes] = await Promise.all([
+        const token = localStorage.getItem('manar_token');
+        const [scheduleRes, groupsRes, profileRes] = await Promise.all([
           axios.get(`${API_URL}/api/schedules?groupId=${selectedGroupId}`),
-          axios.get(`${API_URL}/api/groups`)
+          axios.get(`${API_URL}/api/groups`),
+          axios.get(`${API_URL}/api/student/settings`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+          }).catch(e => {
+            console.warn('Profile fetch error, falling back to local storage', e);
+            return null;
+          })
         ]);
 
         if (groupsRes.data && groupsRes.data.success) {
@@ -185,8 +216,24 @@ export default function StudentDashboard() {
           }
         }
 
+        if (profileRes && profileRes.data && profileRes.data.success) {
+          const s = profileRes.data.data;
+          setProfile(prev => ({
+            ...prev,
+            name: s.name || prev.name,
+            email: s.email || prev.email,
+            phone: s.phone || prev.phone,
+            idPhotoUrl: s.idPhotoUrl || prev.idPhotoUrl,
+            department: s.departmentName || s.majorName || prev.department,
+            level: s.levelName || prev.level,
+            groupId: s.groupId || prev.groupId,
+            groupName: s.groupName || prev.groupName
+          }));
+        }
+
         if (scheduleRes.data && scheduleRes.data.success) {
           setSchedules(scheduleRes.data.data);
+          setOriginalSchedules(scheduleRes.data.data);
           setBackendOnline(true);
         } else {
           throw new Error('API failed');
@@ -246,6 +293,159 @@ export default function StudentDashboard() {
       window.removeEventListener('MANAR_SCHEDULE_UPDATE', handleScheduleUpdate);
     };
   }, [selectedGroupId]);
+
+  const handleExportICS = () => {
+    if (schedules.length === 0) {
+      toast.error(isAr ? 'لا توجد محاضرات لتصديرها' : 'No lectures to export');
+      return;
+    }
+    
+    let icsLines = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Manar University//Schedule Portal//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH'
+    ];
+    
+    const dayOffsets = { SUNDAY: 0, MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4, FRIDAY: 5, SATURDAY: 6 };
+    
+    schedules.forEach(item => {
+      const today = new Date();
+      const currentDay = today.getDay();
+      const targetDay = dayOffsets[item.dayOfWeek] ?? 0;
+      const diff = targetDay - currentDay;
+      const eventDate = new Date();
+      eventDate.setDate(today.getDate() + diff);
+      
+      const dateStr = eventDate.toISOString().slice(0, 10).replace(/-/g, '');
+      const startTimeClean = item.startTime.replace(/:/g, '') + '00';
+      const endTimeClean = item.endTime.replace(/:/g, '') + '00';
+      
+      icsLines.push('BEGIN:VEVENT');
+      icsLines.push(`UID:lecture-${item.id}@manar.edu`);
+      icsLines.push(`DTSTAMP:${dateStr}T000000Z`);
+      icsLines.push(`DTSTART;TZID=Asia/Aden:${dateStr}T${startTimeClean}`);
+      icsLines.push(`DTEND;TZID=Asia/Aden:${dateStr}T${endTimeClean}`);
+      icsLines.push(`SUMMARY:${item.subject.name} (${item.subject.code})`);
+      icsLines.push(`LOCATION:${item.room?.name || 'Classroom'}`);
+      icsLines.push(`DESCRIPTION:Lecturer: ${item.lecturerName} - Group: ${profile.groupName}`);
+      icsLines.push('RRULE:FREQ=WEEKLY;BYDAY=' + item.dayOfWeek.slice(0, 2));
+      icsLines.push('END:VEVENT');
+    });
+    
+    icsLines.push('END:VCALENDAR');
+    
+    const blob = new Blob([icsLines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Manar_Schedule_${profile.groupName || 'Student'}.ics`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast.success(isAr ? 'تم تصدير ملف التقويم بنجاح!' : 'Calendar file exported successfully!');
+  };
+
+  const handleCopySummary = () => {
+    if (schedules.length === 0) {
+      toast.error(isAr ? 'الجدول فارغ' : 'Schedule is empty');
+      return;
+    }
+    
+    let text = isAr 
+      ? `📅 الجدول الدراسي لـ (${profile.groupName || 'الطالب'}) - كلية المنار الجامعية\n\n`
+      : `📅 Class Schedule for (${profile.groupName || 'Student'}) - Al-Manar University\n\n`;
+      
+    const dayLabels = isAr 
+      ? { SUNDAY: 'الأحد', MONDAY: 'الاثنين', TUESDAY: 'الثلاثاء', WEDNESDAY: 'الأربعاء', THURSDAY: 'الخميس', FRIDAY: 'الجمعة', SATURDAY: 'السبت' }
+      : { SUNDAY: 'Sunday', MONDAY: 'Monday', TUESDAY: 'Tuesday', WEDNESDAY: 'Wednesday', THURSDAY: 'Thursday', FRIDAY: 'Friday', SATURDAY: 'Saturday' };
+      
+    DAYS.forEach(day => {
+      const daySchedules = schedules.filter(s => getActiveDay(s) === day);
+      if (daySchedules.length > 0) {
+        text += `🔹 ${dayLabels[day] || day}:\n`;
+        daySchedules.forEach(s => {
+          text += `   - [${getActiveStartTime(s)} - ${getActiveEndTime(s)}] ${s.subject.name} (${s.subject.code}) | ${s.room?.name || 'Classroom'} | د. ${s.lecturerName}\n`;
+        });
+        text += `\n`;
+      }
+    });
+    
+    text += isAr ? `تم التوليد بواسطة بوابة المنار الذكية 💡` : `Generated by Manar Smart Portal 💡`;
+    
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        toast.success(isAr ? 'تم نسخ خلاصة الجدول للحافظة!' : 'Schedule copied to clipboard!');
+      })
+      .catch(() => {
+        toast.error(isAr ? 'فشل في نسخ النص' : 'Failed to copy text');
+      });
+  };
+
+  const handleTestNotification = () => {
+    if (!("Notification" in window)) {
+      toast.error(isAr ? 'التنبيهات غير مدعومة في متصفحك' : 'Notifications not supported in your browser');
+      return;
+    }
+    
+    if (Notification.permission === "granted") {
+      new Notification(isAr ? "كلية المنار الجامعية - تجربة" : "Al-Manar University - Test", {
+        body: isAr ? "هذا تنبيه تجريبي من بوابة المنار الذكية!" : "This is a test notification from the Manar Smart Portal!",
+        icon: "/assets/logo-CAkLai4O.png"
+      });
+      toast.success(isAr ? 'تم إرسال التنبيه التجريبي!' : 'Test notification sent!');
+    } else if (Notification.permission !== "denied") {
+      Notification.requestPermission().then(permission => {
+        if (permission === "granted") {
+          new Notification(isAr ? "كلية المنار الجامعية - تجربة" : "Al-Manar University - Test", {
+            body: isAr ? "تم تفعيل التنبيهات التجريبية بنجاح!" : "Test notifications enabled successfully!"
+          });
+          toast.success(isAr ? 'تم تفعيل التنبيهات!' : 'Notifications enabled!');
+        }
+      });
+    } else {
+      toast.error(isAr ? 'تم حظر التنبيهات في متصفحك. يرجى تفعيلها من الإعدادات.' : 'Notifications blocked. Enable them in site settings.');
+    }
+  };
+
+  const handleSimulateReschedule = (e) => {
+    e.preventDefault();
+    if (!activeSimulatorSchedule) return;
+    
+    setSchedules(prev => prev.map(s => {
+      if (s.id === activeSimulatorSchedule.id) {
+        return {
+          ...s,
+          dayOfWeek: simulatorDay,
+          startTime: simulatorStart,
+          endTime: simulatorEnd,
+          overrides: [] // clear overrides locally to show sandbox change
+        };
+      }
+      return s;
+    }));
+    
+    setActiveSimulatorSchedule(null);
+    toast.success(isAr ? 'تمت محاكاة التعديل بنجاح في لوحة الرصد!' : 'Timetable modification simulated successfully!');
+  };
+
+  const toggleSandbox = () => {
+    if (sandboxMode) {
+      // Disabling: restore original schedules from database cache
+      setSchedules(originalSchedules);
+      setSandboxMode(false);
+      toast.success(isAr ? 'تم الخروج من محاكي التعديل واستعادة الجدول الرسمي!' : 'Exited Reschedule Simulator. Official timetable restored!');
+    } else {
+      setSandboxMode(true);
+      toast.success(
+        isAr ? 'تم تفعيل محاكي التعديل! انقر على أي محاضرة بالجدول لتجربة تعديلها.' : 'Reschedule Simulator Active! Tap any lecture card to simulate moves.',
+        { icon: '🧪' }
+      );
+    }
+  };
 
   const getNextLecture = () => {
     if (schedules.length === 0) return null;
@@ -337,40 +537,150 @@ export default function StudentDashboard() {
     >
       <div className="w-full max-w-md space-y-6 pb-20">
         
-        {/* Profile Card Summary - Redesigned to be massive, premium and dynamic based on time */}
+        {/* Sandbox Warning Banner */}
+        {sandboxMode && (
+          <div className="w-full frosted-panel border-amber-500/40 bg-amber-500/10 p-3.5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-right shadow-[0_0_20px_rgba(245,158,11,0.15)] animate-pulse">
+            <div className="space-y-0.5">
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-400 block">
+                🧪 {isAr ? 'محاكي التعديل نشط (محلي)' : 'Reschedule Simulator Active (Local)'}
+              </span>
+              <span className="text-[11px] text-gray-300 font-bold block">
+                {isAr ? 'أي تغييرات تقوم بها بالجدول هنا هي تجريبية وتأثيرها محلي فقط.' : 'Any moves you simulate are temporary and client-side only.'}
+              </span>
+            </div>
+            <button
+              onClick={toggleSandbox}
+              className="px-3 py-1.5 bg-amber-500 text-black text-[10px] font-black rounded-lg hover:bg-amber-400 transition"
+            >
+              {isAr ? 'إعادة تعيين / خروج' : 'Exit / Reset'}
+            </button>
+          </div>
+        )}
+
+        {/* Profile Card Summary - Redesigned to be massive, premium and dynamic based on database */}
         {(() => {
           const g = getGreetingData();
+          const avatarUrl = profile.idPhotoUrl || 'https://api.dicebear.com/7.x/bottts/svg?seed=' + encodeURIComponent(profile.name || 'avatar');
           return (
-            <div className={`relative overflow-hidden rounded-3xl border ${g.border} bg-[var(--bg-card)] bg-gradient-to-br ${g.gradient} ${g.shadowGlow} p-6 flex flex-col gap-4 backdrop-blur-xl transition-all duration-500`}>
+            <div className={`relative overflow-hidden rounded-3xl border ${g.border} bg-[var(--bg-card)] bg-gradient-to-br ${g.gradient} ${g.shadowGlow} p-6 flex flex-col gap-5 backdrop-blur-xl transition-all duration-500`}>
               <div className="absolute -right-10 -top-10 w-32 h-32 rounded-full bg-white/5 blur-3xl pointer-events-none" />
               
-              <div className="flex justify-between items-start">
-                <div className="space-y-1">
-                  <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${g.bgGlow} ${g.text} border ${g.border}`}>
-                    {g.title}
-                  </span>
-                  <h3 className="text-xl font-black text-[var(--text-primary)] mt-3 leading-tight">
-                    {profile.name}
-                  </h3>
-                  <p className="text-[11px] text-[var(--text-secondary)] font-bold mt-1">
-                    {profile.groupName}
-                  </p>
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+                {/* Photo Avatar */}
+                <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-white/10 shadow-lg bg-[#0c0c0c] shrink-0">
+                  <img src={avatarUrl} alt="Student avatar" className="w-full h-full object-cover" />
                 </div>
-
-                <button
-                  onClick={() => navigate('/student/settings')}
-                  className="btn-neon px-4 py-2 text-xs rounded-2xl shadow-lg shadow-[var(--accent-glow)]"
-                >
-                  {t('dashboard.manageGroup')}
-                </button>
+                
+                {/* Profile Meta info */}
+                <div className="flex-1 text-center sm:text-right space-y-1">
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5">
+                    <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full ${g.bgGlow} ${g.text} border ${g.border}`}>
+                      {g.title}
+                    </span>
+                    {profile.level && (
+                      <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-gray-300">
+                        {profile.level}
+                      </span>
+                    )}
+                  </div>
+                  
+                  <h3 className="text-xl font-black text-white mt-1.5 leading-tight">{profile.name}</h3>
+                  <p className="text-xs font-semibold text-[var(--text-secondary)]">{profile.department || (isAr ? 'قسم البرمجيات والذكاء' : 'Engineering Department')}</p>
+                </div>
               </div>
 
-              <div className="text-xs text-[var(--text-secondary)]/80 leading-relaxed font-semibold border-t border-[var(--border-color)] pt-3.5 mt-1">
-                {g.subtitle}
+              {/* Complete Contact Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px] border-t border-[var(--border-color)] pt-4 mt-1">
+                <div className="flex justify-between sm:justify-start gap-2 items-center text-gray-400">
+                  <span className="font-bold uppercase tracking-wider">{isAr ? 'البريد:' : 'Email:'}</span>
+                  <span className="text-white font-mono truncate max-w-[150px]">{profile.email || '—'}</span>
+                </div>
+                <div className="flex justify-between sm:justify-start gap-2 items-center text-gray-400">
+                  <span className="font-bold uppercase tracking-wider">{isAr ? 'الهاتف:' : 'Phone:'}</span>
+                  <span className="text-white font-mono">{profile.phone || '—'}</span>
+                </div>
+                <div className="flex justify-between sm:justify-start gap-2 items-center text-gray-400 col-span-1 sm:col-span-2">
+                  <span className="font-bold uppercase tracking-wider">{isAr ? 'الشعبة النشطة:' : 'Active Timetable:'}</span>
+                  <span className="text-[var(--accent)] font-bold">{profile.groupName || '—'}</span>
+                </div>
+              </div>
+
+              {/* Edit Profile Action Button */}
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-2">
+                <p className="text-[10px] text-[var(--text-secondary)] font-semibold text-center sm:text-right">
+                  {g.subtitle}
+                </p>
+                <button
+                  onClick={() => navigate('/student/settings')}
+                  className="btn-neon w-full sm:w-auto px-5 py-2.5 text-xs rounded-xl shadow-lg shadow-[var(--accent-glow)] flex items-center justify-center gap-2 whitespace-nowrap"
+                >
+                  ⚙️ {isAr ? 'تعديل الملف الشخصي' : 'Modify Profile / Edit'}
+                </button>
               </div>
             </div>
           );
         })()}
+
+        {/* Smart action shortcuts command hub - Massive glowing buttons */}
+        <div className="space-y-3">
+          <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{isAr ? 'المركز الذكي للتحكم والإجراءات السريعة' : 'Smart Command Hub & Quick Actions'}</h2>
+          
+          <div className="grid grid-cols-2 gap-3">
+            {/* Export calendar */}
+            <button
+              onClick={handleExportICS}
+              className="frosted-panel p-4.5 rounded-2xl hover:border-[var(--accent)] transition-all duration-300 flex flex-col items-center justify-center text-center gap-2.5 active:scale-95 group"
+            >
+              <span className="text-2xl group-hover:scale-110 transition duration-300">📅</span>
+              <div>
+                <span className="text-[11px] font-black block text-white">{isAr ? 'تصدير التقويم (ICS)' : 'Export Calendar'}</span>
+                <span className="text-[9px] text-gray-400 block mt-0.5">{isAr ? 'مزامنة مع Google' : 'Sync to Google / iOS'}</span>
+              </div>
+            </button>
+
+            {/* Copy schedule summary */}
+            <button
+              onClick={handleCopySummary}
+              className="frosted-panel p-4.5 rounded-2xl hover:border-[var(--accent)] transition-all duration-300 flex flex-col items-center justify-center text-center gap-2.5 active:scale-95 group"
+            >
+              <span className="text-2xl group-hover:scale-110 transition duration-300">🔗</span>
+              <div>
+                <span className="text-[11px] font-black block text-white">{isAr ? 'نسخ ملخص الجدول' : 'Copy Timetable'}</span>
+                <span className="text-[9px] text-gray-400 block mt-0.5">{isAr ? 'مشاركة الجدول الدراسي' : 'Share formatted text'}</span>
+              </div>
+            </button>
+
+            {/* Timetable Sandbox simulator */}
+            <button
+              onClick={toggleSandbox}
+              className={`frosted-panel p-4.5 rounded-2xl transition-all duration-300 flex flex-col items-center justify-center text-center gap-2.5 active:scale-95 group ${
+                sandboxMode ? 'border-amber-500 bg-amber-500/5 shadow-md shadow-amber-500/10' : 'hover:border-[var(--accent)]'
+              }`}
+            >
+              <span className="text-2xl group-hover:scale-110 transition duration-300">🧪</span>
+              <div>
+                <span className="text-[11px] font-black block text-white">
+                  {sandboxMode ? (isAr ? 'تعطيل المحاكاة' : 'Disable Sandbox') : (isAr ? 'محاكي التعديل' : 'Move Simulator')}
+                </span>
+                <span className="text-[9px] text-gray-400 block mt-0.5">
+                  {sandboxMode ? (isAr ? 'استعادة الجدول الرسمي' : 'Restore Official') : (isAr ? 'محاكاة تعديل الحصص' : 'Simulate custom timetable')}
+                </span>
+              </div>
+            </button>
+
+            {/* Test notifications */}
+            <button
+              onClick={handleTestNotification}
+              className="frosted-panel p-4.5 rounded-2xl hover:border-[var(--accent)] transition-all duration-300 flex flex-col items-center justify-center text-center gap-2.5 active:scale-95 group"
+            >
+              <span className="text-2xl group-hover:scale-110 transition duration-300">🔔</span>
+              <div>
+                <span className="text-[11px] font-black block text-white">{isAr ? 'اختبار التنبيهات' : 'Test Live Alerts'}</span>
+                <span className="text-[9px] text-gray-400 block mt-0.5">{isAr ? 'إرسال تنبيه تجريبي' : 'Send mock push alert'}</span>
+              </div>
+            </button>
+          </div>
+        </div>
 
         {/* Dynamic Group Switcher */}
         <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-4 flex flex-col gap-2.5">
@@ -425,7 +735,18 @@ export default function StudentDashboard() {
         <section className="space-y-3">
           <h2 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">{t('dashboard.activeAlert')}</h2>
           {nextLecture ? (
-            <div className="relative overflow-hidden rounded-2xl border border-red-500/35 bg-red-950/20 backdrop-blur-md p-5 shadow-2xl flex flex-col gap-4 shadow-[0_0_20px_rgba(239,68,68,0.2)] animate-[pulse_2s_infinite]">
+            <div 
+              onClick={() => {
+                if (sandboxMode) {
+                  setActiveSimulatorSchedule(nextLecture);
+                  setSimulatorDay(nextLecture.dayOfWeek);
+                  setSimulatorStart(nextLecture.startTime);
+                  setSimulatorEnd(nextLecture.endTime);
+                }
+              }}
+              style={sandboxMode ? { cursor: 'pointer' } : {}}
+              className="relative overflow-hidden rounded-2xl border border-red-500/35 bg-red-950/20 backdrop-blur-md p-5 shadow-2xl flex flex-col gap-4 shadow-[0_0_20px_rgba(239,68,68,0.2)] animate-[pulse_2s_infinite]"
+            >
               <div className="self-start flex items-center gap-1.5 bg-red-500/10 border border-red-500/30 px-2.5 py-0.5 rounded-full text-[9px] font-bold text-red-400 uppercase tracking-wide">
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
@@ -480,6 +801,15 @@ export default function StudentDashboard() {
               return (
                 <div
                   key={schedule.id}
+                  onClick={() => {
+                    if (sandboxMode) {
+                      setActiveSimulatorSchedule(schedule);
+                      setSimulatorDay(schedule.dayOfWeek);
+                      setSimulatorStart(schedule.startTime);
+                      setSimulatorEnd(schedule.endTime);
+                    }
+                  }}
+                  style={sandboxMode ? { cursor: 'pointer' } : {}}
                   className={`p-4 rounded-2xl border flex justify-between items-center gap-3 transition hover:scale-[1.02] duration-200 ${
                     isTheory
                       ? 'bg-blue-950/20 backdrop-blur-md border-blue-500/30 text-blue-200 hover:shadow-[0_0_15px_rgba(59,130,246,0.25)]'
@@ -514,6 +844,101 @@ export default function StudentDashboard() {
           </div>
         </section>
       </div>
+
+      {/* Sandbox Rescheduling Simulator Modal */}
+      <AnimatePresence>
+        {activeSimulatorSchedule && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="frosted-panel w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-5 text-[var(--text-primary)]"
+            >
+              <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-amber-400">
+                  🧪 {isAr ? 'محاكي تعديل الحصة الدراسي' : 'Timetable Reschedule Simulator'}
+                </h3>
+                <button
+                  onClick={() => setActiveSimulatorSchedule(null)}
+                  className="text-gray-400 hover:text-white text-base transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-[11px] text-gray-300 leading-relaxed font-bold">
+                {isAr ? 'المحاضرة المراد محاكاتها:' : 'Simulating rescheduling for:'}
+                <div className="text-white text-xs font-black mt-1">
+                  {activeSimulatorSchedule.subject.name} ({activeSimulatorSchedule.subject.code})
+                </div>
+              </div>
+
+              <form onSubmit={handleSimulateReschedule} className="space-y-4 text-xs">
+                {/* Target Day */}
+                <div className="space-y-1">
+                  <label className="text-gray-400 block font-medium">{isAr ? 'اليوم المستهدف' : 'Target Day'}</label>
+                  <select
+                    value={simulatorDay}
+                    onChange={(e) => setSimulatorDay(e.target.value)}
+                    className="w-full cmd-input p-3 font-bold cursor-pointer"
+                  >
+                    {DAYS.map(day => (
+                      <option key={day} value={day} className="bg-[#0c0c0c] text-white">
+                        {isAr
+                          ? (day === 'SUNDAY' ? 'الأحد' : day === 'MONDAY' ? 'الاثنين' : day === 'TUESDAY' ? 'الثلاثاء' : day === 'WEDNESDAY' ? 'الأربعاء' : day === 'THURSDAY' ? 'الخميس' : day === 'FRIDAY' ? 'الجمعة' : 'السبت')
+                          : day}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Target Start Time */}
+                <div className="space-y-1">
+                  <label className="text-gray-400 block font-medium">{isAr ? 'وقت البدء' : 'Start Time'}</label>
+                  <input
+                    type="time"
+                    required
+                    value={simulatorStart}
+                    onChange={(e) => setSimulatorStart(e.target.value)}
+                    className="w-full cmd-input p-3 font-bold text-left"
+                    dir="ltr"
+                  />
+                </div>
+
+                {/* Target End Time */}
+                <div className="space-y-1">
+                  <label className="text-gray-400 block font-medium">{isAr ? 'وقت الانتهاء' : 'End Time'}</label>
+                  <input
+                    type="time"
+                    required
+                    value={simulatorEnd}
+                    onChange={(e) => setSimulatorEnd(e.target.value)}
+                    className="w-full cmd-input p-3 font-bold text-left"
+                    dir="ltr"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2.5 pt-3 border-t border-white/5">
+                  <button
+                    type="button"
+                    onClick={() => setActiveSimulatorSchedule(null)}
+                    className="btn-ghost px-4 py-2 font-semibold text-xs"
+                  >
+                    {isAr ? 'إلغاء' : 'Cancel'}
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-neon px-5 py-2 font-semibold text-xs border border-amber-500/20 text-black bg-amber-500 hover:bg-amber-400"
+                  >
+                    ⚡ {isAr ? 'تحديث المحاكاة' : 'Simulate Change'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

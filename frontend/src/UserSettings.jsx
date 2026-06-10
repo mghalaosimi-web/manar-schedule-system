@@ -25,6 +25,7 @@ export default function UserSettings() {
   const [savedStatus, setSavedStatus] = useState(false);
 
   useEffect(() => {
+    // 1. Set fallback/initial state from local storage first for smooth loading
     const saved = localStorage.getItem('student_profile');
     let initialProfile = {
       name: '',
@@ -63,6 +64,47 @@ export default function UserSettings() {
       }
     }
     setProfile(initialProfile);
+
+    // 2. Fetch the actual database-backed settings dynamically
+    const fetchDBSettings = async () => {
+      const token = localStorage.getItem('manar_token');
+      try {
+        const res = await axios.get(`${API_URL}/api/student/settings`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        if (res.data && res.data.success) {
+          const s = res.data.data;
+          const dbProfile = {
+            name: s.name || '',
+            email: s.email || '',
+            phone: s.phone || '',
+            idPhotoUrl: s.idPhotoUrl || '',
+            department: s.majorName || 'Software Engineering',
+            level: s.levelName || 'Level 3',
+            groupId: s.groupId || 1
+          };
+          setProfile(dbProfile);
+          localStorage.setItem('student_profile', JSON.stringify(dbProfile));
+          
+          // Also sync manar_user
+          const userJson = localStorage.getItem('manar_user');
+          if (userJson) {
+            try {
+              const userObj = JSON.parse(userJson);
+              userObj.name = s.name;
+              userObj.email = s.email;
+              userObj.phone = s.phone;
+              userObj.idPhotoUrl = s.idPhotoUrl;
+              userObj.groupId = s.groupId;
+              localStorage.setItem('manar_user', JSON.stringify(userObj));
+            } catch (e) {}
+          }
+        }
+      } catch (err) {
+        console.error('Failed to sync student settings with DB:', err);
+      }
+    };
+    fetchDBSettings();
 
     const fetchGroups = async () => {
       try {
