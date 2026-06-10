@@ -23,12 +23,11 @@ const app = express();
 
 app.use(helmet());
 
-// Auto-generate VAPID keys on boot if not configured in .env (for easier local setup)
+// Use stable fallback VAPID keys if not configured in .env to prevent push subscription invalidation on restart
 if (!process.env.PUBLIC_VAPID_KEY || !process.env.PRIVATE_VAPID_KEY) {
-  const vapidKeys = webpush.generateVAPIDKeys();
-  process.env.PUBLIC_VAPID_KEY = vapidKeys.publicKey;
-  process.env.PRIVATE_VAPID_KEY = vapidKeys.privateKey;
-  console.log('[PUSH] Temporary VAPID keys generated for this session.');
+  process.env.PUBLIC_VAPID_KEY = process.env.PUBLIC_VAPID_KEY || 'BD0TO6aDGRJZi121Sz3bPVPzecZFwcX8NYqs3RerJyoLQbmDP73yUT2kpDRtjypnxAJ0KQVyIBjtaMWSWzhBupk';
+  process.env.PRIVATE_VAPID_KEY = process.env.PRIVATE_VAPID_KEY || '8RJrMMchaSV4bDbBRhRFmGSGxugoYbkAQTFBRnroOgo';
+  console.log('[PUSH] Stable VAPID keys loaded for this session.');
 }
 
 webpush.setVapidDetails(
