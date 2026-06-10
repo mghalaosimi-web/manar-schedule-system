@@ -189,6 +189,10 @@ body {
    ANIMATIONS
 ══════════════════════════════════════════════════════════════ */
 
+/* ══════════════════════════════════════════════════════════════
+   ANIMATIONS
+   ══════════════════════════════════════════════════════════════ */
+
 @keyframes glowPulse {
   0%,100% { opacity: 0.5; transform: scale(1) translate(0,0); }
   40%     { opacity: 0.8; transform: scale(1.18) translate(20px,-40px); }
@@ -206,6 +210,21 @@ body {
   0%,100% { text-shadow: 0 0 12px var(--accent), 0 0 40px var(--accent-glow); }
   50%     { text-shadow: none; }
 }
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes text-glitch {
+  0%, 100% { transform: translate(0); }
+  20% { transform: translate(-1px, 1px); }
+  40% { transform: translate(-1px, -1px); }
+  60% { transform: translate(1px, 1px); }
+  80% { transform: translate(1px, -1px); }
+}
+@keyframes glow-expand {
+  0%, 100% { box-shadow: 0 0 12px var(--accent-glow), 0 0 40px rgba(222,255,154,0.02); }
+  50% { box-shadow: 0 0 24px var(--accent-glow), 0 0 80px rgba(222,255,154,0.12); }
+}
 
 .ambient-orb {
   animation: glowPulse 18s infinite ease-in-out;
@@ -213,6 +232,35 @@ body {
 }
 .animate-slide-up { animation: slideUp 0.55s cubic-bezier(0.16,1,0.3,1) both; }
 .animate-fade-in  { animation: fadeIn  0.45s ease both; }
+.animate-shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(222,255,154,0.12) 50%, rgba(255,255,255,0.03) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s infinite linear;
+}
+.animate-text-glitch {
+  animation: text-glitch 0.4s steps(2, start) infinite;
+}
+.animate-glow-expand {
+  animation: glow-expand 2s infinite ease-in-out;
+}
+
+/* Fluid spacing and container sizing */
+.premium-container {
+  padding: clamp(1rem, 4vw, 2.5rem);
+}
+
+/* Touch targets for buttons and inputs */
+.btn-neon, .btn-ghost, .cmd-input {
+  min-height: clamp(52px, 7vh, 58px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.cmd-input {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
 
 /* ══════════════════════════════════════════════════════════════
    PRINT STYLES

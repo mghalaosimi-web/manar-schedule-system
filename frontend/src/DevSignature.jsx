@@ -1,11 +1,15 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 
 /**
  * DevSignature — Premium "Developed by M.GH.AL" footer component.
  * Text-glitch + expand + glow animation on hover.
  */
 export default function DevSignature({ centered = true }) {
+  const { i18n } = useTranslation();
+  const isAr = i18n?.language === 'ar';
+
   return (
     <motion.div
       className={`${centered ? 'text-center' : ''} py-1`}
@@ -17,7 +21,7 @@ export default function DevSignature({ centered = true }) {
         className="text-[10px] font-semibold tracking-[0.18em] uppercase"
         style={{ color: 'var(--text-muted)' }}
       >
-        Developed by{' '}
+        {isAr ? 'برمجة وتطوير ' : 'Developed by '}
       </span>
       <motion.a
         href="https://github.com/mghalaosimi-web"

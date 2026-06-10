@@ -24,6 +24,7 @@ import Logo from './Logo';
 import { useTranslation } from 'react-i18next';
 import CommandPalette from './CommandPalette';
 import Instructions from './Instructions';
+import DevSignature from './DevSignature';
 import DevPortal from './DevPortal';
 
 function urlBase64ToUint8Array(base64String) {
@@ -234,10 +235,10 @@ function AppLayout() {
           <div className="flex items-center gap-3 min-w-0 flex-1 md:flex-none">
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className={`p-1.5 ${isAr ? '-mr-1 ml-1' : '-ml-1 mr-1'} text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 rounded-xl md:hidden transition-colors shrink-0`}
+              className={`h-12 w-12 flex items-center justify-center ${isAr ? '-mr-2 ml-1' : '-ml-2 mr-1'} text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 rounded-xl md:hidden transition-all shrink-0`}
               aria-label="Toggle Menu"
             >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d={isSidebarOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
               </svg>
             </button>
@@ -334,13 +335,7 @@ function AppLayout() {
             >
               🚪 {isAr ? 'تسجيل الخروج' : 'Sign Out'}
             </button>
-            <p className="text-center text-[10px] font-semibold tracking-[0.15em] uppercase" style={{ color: 'var(--text-muted)' }}>
-              by{' '}
-              <a href="https://github.com/mghalaosimi-web" target="_blank" rel="noopener noreferrer"
-                 className="font-black hover:opacity-70 transition-opacity" style={{ color: 'var(--accent)' }}>
-                M.GH.AL
-              </a>
-            </p>
+            <DevSignature centered={true} />
           </div>
         </aside>
 

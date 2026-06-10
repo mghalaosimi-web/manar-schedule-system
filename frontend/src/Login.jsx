@@ -6,6 +6,8 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import ThemeSwitcher from './ThemeSwitcher';
+import Logo from './Logo';
+import DevSignature from './DevSignature';
 
 /* ── Animation variants ───────────────────────────────────────── */
 const container = {
@@ -111,16 +113,19 @@ export default function Login() {
         >
 
           {/* Headline */}
-          <motion.div variants={item} className="mb-12 text-center">
+          <motion.div variants={item} className="mb-12 text-center flex flex-col items-center">
+            <div className="mb-5 flex justify-center">
+              <Logo size="lg" />
+            </div>
             <p className="text-[11px] font-black tracking-[0.30em] uppercase mb-4"
                style={{ color: 'var(--accent)' }}>
               {isAr ? 'بوابة الطالب' : 'Student Portal'}
             </p>
             <h1
-              className="font-black leading-none tracking-tighter"
+              className="font-black leading-none tracking-tighter whitespace-pre-line"
               style={{ fontSize: 'clamp(52px, 9vw, 88px)', color: '#fff' }}
             >
-              {isAr ? 'مرحباً\nبك' : 'Sign\nIn'}
+              {isAr ? 'مرحباً بك' : 'Sign In'}
             </h1>
           </motion.div>
 
@@ -220,18 +225,8 @@ export default function Login() {
       </main>
 
       {/* ── Footer ───────────────────────────────────────────────── */}
-      <footer className="relative z-10 text-center pb-7 text-[10px] font-semibold tracking-[0.2em] uppercase"
-              style={{ color: 'var(--text-muted)' }}>
-        Developed by{' '}
-        <a
-          href="https://github.com/mghalaosimi-web"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-black transition-opacity hover:opacity-70"
-          style={{ color: 'var(--accent)' }}
-        >
-          M.GH.AL
-        </a>
+      <footer className="relative z-10 text-center pb-7">
+        <DevSignature centered={true} />
       </footer>
     </div>
   );

@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import ThemeSwitcher from './ThemeSwitcher';
+import DevSignature from './DevSignature';
 
 const container = {
   hidden: {},
@@ -363,13 +364,8 @@ export default function Register() {
         </motion.div>
       </main>
 
-      <footer className="relative z-10 text-center pb-7 text-[10px] font-semibold tracking-[0.2em] uppercase"
-              style={{ color: 'var(--text-muted)' }}>
-        Developed by{' '}
-        <a href="https://github.com/mghalaosimi-web" target="_blank" rel="noopener noreferrer"
-           className="font-black hover:opacity-70 transition-opacity" style={{ color: 'var(--accent)' }}>
-          M.GH.AL
-        </a>
+      <footer className="relative z-10 text-center pb-7">
+        <DevSignature centered={true} />
       </footer>
     </div>
   );

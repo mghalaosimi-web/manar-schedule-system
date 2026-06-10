@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import Logo from './Logo';
 import ThemeSwitcher from './ThemeSwitcher';
+import DevSignature from './DevSignature';
 
 export default function Welcome() {
   const { t, i18n } = useTranslation();
@@ -90,8 +91,8 @@ export default function Welcome() {
       </motion.div>
 
       {/* Developer footer signature */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 text-gray-500 text-[10px] font-semibold tracking-wider uppercase">
-        Developed by <a href="https://github.com/mghalaosimi-web" target="_blank" rel="noopener noreferrer" className="bg-gradient-to-r from-lime-400 to-emerald-500 bg-clip-text text-transparent font-extrabold tracking-widest hover:scale-105 transition duration-300 inline-block">M.GH.AL</a>
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50">
+        <DevSignature centered={true} />
       </div>
 
     </div>

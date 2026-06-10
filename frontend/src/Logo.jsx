@@ -14,10 +14,15 @@ export default function Logo({ size = 'md' }) {
   }[size] || 'w-10 h-10';
 
   return (
-    <div className={`relative shrink-0 ${dimensions} overflow-hidden rounded-full border border-white/10 bg-black/20 shadow-md`}>
+    <motion.div 
+      className={`relative shrink-0 ${dimensions} overflow-hidden rounded-full border border-white/10 bg-black/20 shadow-md`}
+      initial={{ scale: 0.9, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+    >
       {/* Progressive loading shimmer */}
       {!loaded && (
-        <div className="absolute inset-0 bg-gradient-to-r from-white/5 via-white/10 to-white/5 animate-[pulse_1.5s_infinite]" />
+        <div className="absolute inset-0 animate-shimmer" />
       )}
       
       <motion.img
@@ -31,6 +36,21 @@ export default function Logo({ size = 'md' }) {
         }}
         transition={{ duration: 0.25 }}
       />
-    </div>
+
+      {/* Repeating premium shimmer shine overlay */}
+      {loaded && (
+        <motion.div
+          className="absolute inset-0 pointer-events-none bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12"
+          initial={{ left: '-150%' }}
+          animate={{ left: '150%' }}
+          transition={{
+            duration: 1.8,
+            ease: "easeInOut",
+            repeat: Infinity,
+            repeatDelay: 4
+          }}
+        />
+      )}
+    </motion.div>
   );
 }

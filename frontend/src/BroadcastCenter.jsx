@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
+import { motion } from 'framer-motion';
 import { API_URL } from './config';
 
 export default function BroadcastCenter() {
+  const { t, i18n } = useTranslation();
+  const isAr = i18n.language === 'ar';
+
   const [target, setTarget] = useState('ALL');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,11 +26,11 @@ export default function BroadcastCenter() {
         }
       } catch (err) {
         console.error('Error fetching groups for broadcast target:', err);
-        toast.error('Failed to load target academic groups.');
+        toast.error(isAr ? 'فشل في تحميل المجموعات الأكاديمية المستهدفة.' : 'Failed to load target academic groups.');
       }
     };
     fetchGroups();
-  }, []);
+  }, [isAr]);
 
   const handleSend = async (e) => {
     e.preventDefault();
@@ -45,8 +50,11 @@ export default function BroadcastCenter() {
 
       if (res.data && res.data.success) {
         setMessage('');
-        const targetLabel = target === 'ALL' ? 'All Students' : (groups.find(g => g.id.toString() === target.toString())?.name || 'Selected Group');
-        const successMsg = `Alert broadcasted successfully to ${targetLabel}!`;
+        const targetLabel = target === 'ALL' 
+          ? (isAr ? 'جميع الطلاب' : 'All Students') 
+          : (groups.find(g => g.id.toString() === target.toString())?.name || 'Selected Group');
+        
+        const successMsg = t('broadcast.successMsg', { target: targetLabel });
         setSentStatus({ success: true, message: successMsg });
         toast.success(successMsg);
         setTimeout(() => setSentStatus(null), 5000);
@@ -55,7 +63,7 @@ export default function BroadcastCenter() {
       }
     } catch (err) {
       console.error(err);
-      const errMsg = err.response?.data?.error || 'Failed to dispatch broadcast logs.';
+      const errMsg = err.response?.data?.error || t('broadcast.failMsg');
       setSentStatus({ success: false, message: errMsg });
       toast.error(errMsg);
     } finally {
@@ -64,21 +72,29 @@ export default function BroadcastCenter() {
   };
 
   return (
-    <div className="flex-1 bg-gray-900 text-white p-4 md:p-8 space-y-6">
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.45 }}
+      dir={isAr ? 'rtl' : 'ltr'}
+      className="flex-1 bg-transparent p-4 md:p-8 space-y-6 text-[var(--text-primary)]"
+    >
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Broadcast Center</h2>
-        <p className="text-sm text-gray-400">Send instant push alerts and schedule notices to targeted academic groups.</p>
+        <h2 className="text-2xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-lime-400 to-emerald-400">
+          {t('broadcast.title')}
+        </h2>
+        <p className="text-sm text-gray-400 mt-1">{t('broadcast.subtitle')}</p>
       </div>
 
       {/* Broadcast Form */}
-      <div className="max-w-2xl bg-gray-850 border border-gray-800 rounded-xl p-6 shadow-xl space-y-5">
-        <h3 className="text-sm font-bold uppercase tracking-wider text-lime-400 border-b border-gray-800 pb-3">
-          📢 Compose Targeted Broadcast
+      <div className="max-w-2xl frosted-panel rounded-2xl p-6 space-y-5">
+        <h3 className="text-sm font-bold uppercase tracking-wider text-lime-400 border-b border-white/5 pb-3">
+          📢 {t('broadcast.composeTitle')}
         </h3>
 
         {sentStatus && (
-          <div className={`p-4 rounded-lg text-xs font-semibold border ${
+          <div className={`p-4 rounded-xl text-xs font-semibold border ${
             sentStatus.success ? 'bg-green-950/40 border-green-600/50 text-green-200' : 'bg-red-950/40 border-red-650/50 text-red-200'
           }`}>
             {sentStatus.message}
@@ -86,19 +102,19 @@ export default function BroadcastCenter() {
         )}
 
         <form onSubmit={handleSend} className="space-y-4 text-xs">
-          {/* Target Selector */}
+          {/* Target Group Selector */}
           <div className="space-y-1">
-            <label className="text-gray-400 block font-medium">Select Target Group</label>
+            <label className="text-gray-400 block font-medium">{t('broadcast.targetLabel')}</label>
             <select
               value={target}
               onChange={(e) => setTarget(e.target.value)}
-              className="w-full bg-gray-900 border border-gray-750 rounded p-2.5 text-white font-bold focus:outline-none focus:border-lime-500"
+              className="w-full cmd-input p-3 font-bold cursor-pointer"
             >
-              <option value="ALL" className="bg-gray-900 text-white">
-                All Students (General Broadcast)
+              <option value="ALL" className="bg-[#0c0c0c] text-white">
+                {t('broadcast.targetAll')}
               </option>
               {groups.map(g => (
-                <option key={g.id} value={g.id} className="bg-gray-900 text-white">
+                <option key={g.id} value={g.id} className="bg-[#0c0c0c] text-white">
                   {g.name}
                 </option>
               ))}
@@ -107,33 +123,33 @@ export default function BroadcastCenter() {
 
           {/* Alert Message Box */}
           <div className="space-y-1">
-            <label className="text-gray-400 block font-medium">Alert Message</label>
+            <label className="text-gray-400 block font-medium">{t('broadcast.messageLabel')}</label>
             <textarea
               required
               rows={5}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
-              placeholder="e.g. Please note that the Database Systems lab scheduled for tomorrow will be held in Lab 2 instead of Lab 5."
-              className="w-full bg-gray-900 border border-gray-750 rounded p-2.5 text-white focus:outline-none focus:border-lime-500 text-xs leading-relaxed"
+              placeholder={t('broadcast.messagePlaceholder')}
+              className="w-full cmd-input p-3 leading-relaxed text-xs"
             />
-            <p className="text-[10px] text-gray-500">This alert will trigger immediate SMS, Email, and Push notifications to the selected group.</p>
+            <p className="text-[10px] text-gray-500 mt-1">{t('broadcast.messageDesc')}</p>
           </div>
 
           <div className="pt-2">
             <button
               type="submit"
               disabled={loading}
-              className="w-full sm:w-auto px-6 py-2.5 bg-lime-500 hover:bg-lime-400 text-black font-extrabold rounded-md shadow-lg shadow-lime-500/15 transition flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-6 py-3 btn-neon text-xs font-extrabold flex items-center justify-center gap-2"
             >
               {loading ? (
                 <span className="h-4 w-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
               ) : (
-                <span>🚀 Send Emergency Alert Notice</span>
+                <span>🚀 {t('broadcast.sendBtn')}</span>
               )}
             </button>
           </div>
         </form>
       </div>
-    </div>
+    </motion.div>
   );
 }
