@@ -42,6 +42,7 @@ async function upsertGroup(name) {
 
 async function main() {
   console.log('Clearing existing database tables...');
+  await prisma.pushSubscription.deleteMany();
   await prisma.scheduleOverride.deleteMany();
   await prisma.notificationLog.deleteMany();
   await prisma.verificationCode.deleteMany();
@@ -59,37 +60,36 @@ async function main() {
   console.log('Seeding database with academic data...');
 
   // 1. Create Departments
-  const itDept = await prisma.department.upsert({
-    where: { name: 'كلية الحاسبات وتكنولوجيا المعلومات' },
-    update: {},
-    create: { name: 'كلية الحاسبات وتكنولوجيا المعلومات' }
+  const itDept = await prisma.department.create({
+    data: { name: 'كلية الحاسبات وتكنولوجيا المعلومات' }
   });
-  console.log(`Department upserted: ${itDept.name}`);
+  console.log(`Department created: ${itDept.name}`);
 
-  const humDept = await prisma.department.upsert({
-    where: { name: 'كلية العلوم الإدارية والإنسانية' },
-    update: {},
-    create: { name: 'كلية العلوم الإدارية والإنسانية' }
+  const humDept = await prisma.department.create({
+    data: { name: 'كلية العلوم الإدارية والإنسانية' }
   });
-  console.log(`Department upserted: ${humDept.name}`);
+  console.log(`Department created: ${humDept.name}`);
 
-  // 2. Create 6 Majors
+  // 2. Create Majors
+  const majorsList = [];
   // IT Dept
   const itMajors = ['تقنية المعلومات', 'أمن سيبراني'];
   for (const majorName of itMajors) {
     const maj = await upsertMajor(majorName, itDept.id);
-    console.log(`Major upserted: ${maj.name} (IT Department)`);
+    majorsList.push(maj);
+    console.log(`Major created: ${maj.name} (IT Department)`);
   }
 
   // Humanities Dept
   const humMajors = ['شريعة وقانون', 'محاسبة', 'إدارة صحية', 'إدارة أعمال'];
   for (const majorName of humMajors) {
     const maj = await upsertMajor(majorName, humDept.id);
-    console.log(`Major upserted: ${maj.name} (Humanities Department)`);
+    majorsList.push(maj);
+    console.log(`Major created: ${maj.name} (Humanities Department)`);
   }
 
-  // 3. Create 10 Rooms (8 Lecture Rooms, 2 Labs)
-  const rooms = [
+  // 3. Create Rooms
+  const roomsData = [
     { name: 'قاعة 1', capacity: 45 },
     { name: 'قاعة 2', capacity: 45 },
     { name: 'قاعة 3', capacity: 45 },
@@ -102,51 +102,47 @@ async function main() {
     { name: 'مختبر الشبكات 2', capacity: 30 }
   ];
 
-  for (const roomData of rooms) {
-    const rm = await prisma.room.upsert({
-      where: { name: roomData.name },
-      update: { capacity: roomData.capacity },
-      create: { name: roomData.name, capacity: roomData.capacity }
+  const rooms = [];
+  for (const rData of roomsData) {
+    const rm = await prisma.room.create({
+      data: { name: rData.name, capacity: rData.capacity }
     });
-    console.log(`Room upserted: ${rm.name} (Capacity: ${rm.capacity})`);
+    rooms.push(rm);
+    console.log(`Room created: ${rm.name} (Capacity: ${rm.capacity})`);
   }
 
-  // 4. Create Levels 1 to 4
+  // 4. Create Levels
+  const levels = [];
   for (let i = 1; i <= 4; i++) {
-    const lvlName = `Level ${i}`;
-    const lvl = await upsertLevel(lvlName);
-    console.log(`Level upserted: ${lvl.name}`);
+    const lvl = await upsertLevel(`Level ${i}`);
+    levels.push(lvl);
+    console.log(`Level created: ${lvl.name}`);
   }
 
   // 5. Create Groups
+  const groupsList = [];
   const groupNames = ['مجموعة أ (نظري)', 'مجموعة ب (عملي 1)', 'مجموعة ج (عملي 2)'];
   for (const gName of groupNames) {
     const grp = await upsertGroup(gName);
-    console.log(`Group upserted: ${grp.name}`);
+    groupsList.push(grp);
+    console.log(`Group created: ${grp.name}`);
   }
 
   // 6. Create SUPER_ADMIN Account
   const superAdminPasswordHash = await bcrypt.hash('708090', 10);
-  const superAdmin = await prisma.admin.upsert({
-    where: { email: 'developer@mghal.com' },
-    update: {
-      name: 'mohammed',
-      password: superAdminPasswordHash,
-      role: 'SUPER_ADMIN'
-    },
-    create: {
+  const superAdmin = await prisma.admin.create({
+    data: {
       name: 'mohammed',
       email: 'developer@mghal.com',
       password: superAdminPasswordHash,
       role: 'SUPER_ADMIN'
     }
   });
-  console.log(`SUPER_ADMIN upserted: ${superAdmin.email}`);
+  console.log(`SUPER_ADMIN created: ${superAdmin.email} (Password: 708090)`);
 
-  // 7. Seed Subjects for 2026 Academic Year (THEORY and PRACTICAL)
+  // 7. Seed Subjects
   console.log('Seeding subjects...');
   const subjectsData = [
-    // Theory Subjects
     { name: 'تصميم مواقع الويب', code: 'IT-2026-WEB', type: 'THEORY' },
     { name: 'البرمجة المرئية', code: 'IT-2026-VISUAL', type: 'THEORY' },
     { name: 'نظم التشغيل', code: 'IT-2026-OS', type: 'THEORY' },
@@ -156,8 +152,6 @@ async function main() {
     { name: 'محاسبة شركة اموال', code: 'HUM-2026-ACC', type: 'THEORY' },
     { name: 'إدارة الإنتاج والعمليات', code: 'HUM-2026-PROD', type: 'THEORY' },
     { name: 'مالية عامة', code: 'HUM-2026-FINANCE', type: 'THEORY' },
-
-    // Practical Subjects
     { name: 'تطبيقات قواعد بيانات (1)', code: 'IT-2026-DB1-PRAC', type: 'PRACTICAL' },
     { name: 'تطبيقات قواعد بيانات (2)', code: 'IT-2026-DB2-PRAC', type: 'PRACTICAL' },
     { name: 'تطبيقات أنظمة التشغيل', code: 'IT-2026-OS-PRAC', type: 'PRACTICAL' },
@@ -166,69 +160,56 @@ async function main() {
     { name: 'تطبيقات هياكل البيانات', code: 'IT-2026-DS-PRAC', type: 'PRACTICAL' }
   ];
 
-  const subjects = {};
+  const subjectsMap = {};
   for (const sub of subjectsData) {
-    const s = await prisma.subject.upsert({
-      where: { code: sub.code },
-      update: { name: sub.name, type: sub.type },
-      create: { name: sub.name, code: sub.code, type: sub.type }
+    const s = await prisma.subject.create({
+      data: { name: sub.name, code: sub.code, type: sub.type }
     });
-    subjects[sub.name] = s;
+    subjectsMap[sub.name] = s;
   }
   console.log('Subjects seeded successfully.');
 
-  // Fetch all rooms from DB to build a map
-  const roomsInDb = await prisma.room.findMany();
-  const roomsMap = {};
-  roomsInDb.forEach(r => {
-    roomsMap[r.name] = r;
-  });
-
-  // Fetch all groups from DB to build a map
-  const groupsInDb = await prisma.group.findMany();
-  const groupsMap = {};
-  groupsInDb.forEach(g => {
-    groupsMap[g.name] = g;
-  });
-
-  // 8. Create Schedules for 2026 Academic Year
+  // 8. Create Schedules (Dynamic: include "TODAY" for testing convenience)
   console.log('Preparing schedules data...');
-  const theorySchedules = [
-    { subjectName: 'تصميم مواقع الويب', lecturer: 'أ. افنان الشرفي', roomName: 'قاعة 8', day: 'MONDAY', startTime: '08:00', endTime: '10:00', groupNames: ['مجموعة أ (نظري)'] },
-    { subjectName: 'البرمجة المرئية', lecturer: 'د. عبد الرزاق الأهدل', roomName: 'قاعة 1', day: 'TUESDAY', startTime: '10:00', endTime: '12:00', groupNames: ['مجموعة أ (نظري)'] },
+  const daysOfWeek = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+  const todayDayName = daysOfWeek[new Date().getDay()];
+  console.log(`Current local day is detected as: ${todayDayName}`);
+
+  // We will schedule some lectures dynamically for TODAY, and others for static days
+  const dynamicSchedules = [
+    // 4 Lectures scheduled dynamically for TODAY
+    { subjectName: 'تصميم مواقع الويب', lecturer: 'أ. افنان الشرفي', roomName: 'قاعة 8', day: todayDayName, startTime: '08:00', endTime: '10:00', groupNames: ['مجموعة أ (نظري)'] },
+    { subjectName: 'البرمجة المرئية', lecturer: 'د. عبد الرزاق الأهدل', roomName: 'قاعة 1', day: todayDayName, startTime: '10:00', endTime: '12:00', groupNames: ['مجموعة أ (نظري)'] },
+    { subjectName: 'تطبيقات قواعد بيانات (1)', lecturer: 'أ. سبأ زمام', roomName: 'مختبر الحاسوب 1', day: todayDayName, startTime: '12:00', endTime: '14:00', groupNames: ['مجموعة ب (عملي 1)'] },
+    { subjectName: 'تطبيقات أنظمة التشغيل', lecturer: 'أ. إجلال المحن', roomName: 'مختبر الشبكات 2', day: todayDayName, startTime: '14:00', endTime: '16:00', groupNames: ['مجموعة ج (عملي 2)'] },
+
+    // Other lectures spread throughout the week
     { subjectName: 'نظم التشغيل', lecturer: 'د. عبد الرزاق الأهدل', roomName: 'قاعة 1', day: 'WEDNESDAY', startTime: '08:00', endTime: '10:00', groupNames: ['مجموعة أ (نظري)'] },
     { subjectName: 'التصميم المنطقي الرقمي', lecturer: 'أ. منير مفتاح', roomName: 'قاعة 1', day: 'WEDNESDAY', startTime: '10:00', endTime: '12:00', groupNames: ['مجموعة أ (نظري)'] },
     { subjectName: 'هياكل البيانات والخوارزميات', lecturer: 'د. احمد الناشري', roomName: 'قاعة 6', day: 'THURSDAY', startTime: '08:00', endTime: '10:00', groupNames: ['مجموعة أ (نظري)'] },
-
     { subjectName: 'القانون الاداري', lecturer: 'د. عدنان الصلوي', roomName: 'قاعة 3', day: 'SUNDAY', startTime: '08:00', endTime: '10:00', groupNames: ['مجموعة أ (نظري)'] },
     { subjectName: 'محاسبة شركة اموال', lecturer: 'أ. فارس الأعور', roomName: 'قاعة 1', day: 'SUNDAY', startTime: '10:00', endTime: '12:00', groupNames: ['مجموعة أ (نظري)'] },
     { subjectName: 'إدارة الإنتاج والعمليات', lecturer: 'د. يحيى العبدلي', roomName: 'قاعة 5', day: 'MONDAY', startTime: '10:00', endTime: '12:00', groupNames: ['مجموعة أ (نظري)'] },
     { subjectName: 'مالية عامة', lecturer: 'د. عبد الله قشوة', roomName: 'قاعة 8', day: 'TUESDAY', startTime: '08:00', endTime: '10:00', groupNames: ['مجموعة أ (نظري)'] }
   ];
 
-  const practicalSchedules = [
-    { subjectName: 'تطبيقات قواعد بيانات (1)', lecturer: 'أ. سبأ زمام', roomName: 'مختبر الحاسوب 1', day: 'SATURDAY', startTime: '10:00', endTime: '12:00', groupNames: ['مجموعة ب (عملي 1)', 'مجموعة ج (عملي 2)'] },
-    { subjectName: 'تطبيقات قواعد بيانات (2)', lecturer: 'أ. سبأ زمام', roomName: 'مختبر الحاسوب 1', day: 'SATURDAY', startTime: '12:00', endTime: '14:00', groupNames: ['مجموعة ب (عملي 1)', 'مجموعة ج (عملي 2)'] },
-    { subjectName: 'تطبيقات أنظمة التشغيل', lecturer: 'أ. إجلال المحن', roomName: 'مختبر الشبكات 2', day: 'SUNDAY', startTime: '10:00', endTime: '12:00', groupNames: ['مجموعة ب (عملي 1)', 'مجموعة ج (عملي 2)'] },
-    { subjectName: 'تطبيقات تصميم مواقع الويب', lecturer: 'أ. افنان الشرفي', roomName: 'مختبر الحاسوب 1', day: 'MONDAY', startTime: '10:00', endTime: '12:00', groupNames: ['مجموعة ب (عملي 1)', 'مجموعة ج (عملي 2)'] },
-    { subjectName: 'تطبيقات التصميم المنطقي الرقمي', lecturer: 'أ. منير مفتاح', roomName: 'مختبر الحاسوب 1', day: 'WEDNESDAY', startTime: '10:00', endTime: '12:00', groupNames: ['مجموعة ب (عملي 1)', 'مجموعة ج (عملي 2)'] },
-    { subjectName: 'تطبيقات هياكل البيانات', lecturer: 'أ. سمر بدر', roomName: 'مختبر الشبكات 2', day: 'WEDNESDAY', startTime: '12:00', endTime: '14:00', groupNames: ['مجموعة ب (عملي 1)', 'مجموعة ج (عملي 2)'] }
-  ];
+  const roomsMap = {};
+  rooms.forEach(r => { roomsMap[r.name] = r; });
 
-  const allSchedulesToCreate = [];
-  const combinedSchedules = [...theorySchedules, ...practicalSchedules];
+  const groupsMap = {};
+  groupsList.forEach(g => { groupsMap[g.name] = g; });
 
-  for (const item of combinedSchedules) {
+  const schedulesToCreate = [];
+  for (const item of dynamicSchedules) {
     const room = roomsMap[item.roomName];
-    const subject = subjects[item.subjectName];
-    if (!room) throw new Error(`Room ${item.roomName} not found during seeding.`);
-    if (!subject) throw new Error(`Subject ${item.subjectName} not found during seeding.`);
+    const subject = subjectsMap[item.subjectName];
+    if (!room || !subject) continue;
 
     for (const gName of item.groupNames) {
       const group = groupsMap[gName];
-      if (!group) throw new Error(`Group ${gName} not found during seeding.`);
+      if (!group) continue;
 
-      allSchedulesToCreate.push({
+      schedulesToCreate.push({
         subjectId: subject.id,
         roomId: room.id,
         lecturerName: item.lecturer,
@@ -240,11 +221,56 @@ async function main() {
     }
   }
 
-  console.log(`Bulk inserting ${allSchedulesToCreate.length} schedules...`);
-  await prisma.schedule.createMany({
-    data: allSchedulesToCreate
-  });
-  console.log('Schedules seeded successfully.');
+  await prisma.schedule.createMany({ data: schedulesToCreate });
+  console.log(`Seeded ${schedulesToCreate.length} schedules.`);
+
+  // 9. Generate and seed 300 realistic dummy students
+  console.log('Generating 300 realistic dummy students...');
+  const firstNames = [
+    'احمد', 'خالد', 'فاطمة', 'سارة', 'محمد', 'علي', 'عمر', 'عثمان',
+    'صالح', 'عبدالله', 'زينب', 'منى', 'ياسمين', 'رنا', 'حمزة', 'بلال',
+    'ياسر', 'سعيد', 'حسن', 'حسين', 'مريم', 'أروى', 'نهى', 'ريهام',
+    'طارق', 'ماجد', 'سلطان', 'فيصل', 'سلمان', 'نورة', 'هيفاء', 'شهد',
+    'مصطفى', 'عبد الرحمن', 'ابراهيم', 'شروق', 'روان', 'هند', 'بثينة', 'عادل'
+  ];
+  const lastNames = [
+    'الحداد', 'العولقي', 'اليماني', 'صالح', 'الناشري', 'المعمري', 'الأهدل', 'الشرفي',
+    'مفتاح', 'عبدالله', 'الصلوي', 'العبدلي', 'قشوة', 'الرشيدي', 'العتيبي', 'الشمري',
+    'الحربي', 'المطيري', 'الدوسري', 'القحطاني', 'الغامدي', 'الزهراني', 'المالكي', 'الشهري',
+    'صبري', 'باعلوي', 'السقاف', 'الجابري', 'العمودي', 'باوزير', 'الشبامي', 'الحضرمي'
+  ];
+
+  // Hash student password once to save processing time during bulk generation
+  const studentPasswordHash = await bcrypt.hash('12345678', 10);
+  const studentsToCreate = [];
+
+  for (let i = 1; i <= 300; i++) {
+    const randFirst = firstNames[Math.floor(Math.random() * firstNames.length)];
+    const randLast = lastNames[Math.floor(Math.random() * lastNames.length)];
+    const fullName = `${randFirst} ${randLast}`;
+
+    // Cycle through groups, levels, and majors evenly
+    const group = groupsList[(i - 1) % groupsList.length];
+    const level = levels[(i - 1) % levels.length];
+    const major = majorsList[(i - 1) % majorsList.length];
+
+    studentsToCreate.push({
+      name: fullName,
+      email: `student.${i}@manar.edu`,
+      password: studentPasswordHash,
+      idNumber: `2026-${String(i).padStart(4, '0')}`,
+      phone: `+96777${String(i).padStart(7, '0')}`,
+      isEmailVerified: true,
+      isPhoneVerified: true,
+      majorId: major.id,
+      levelId: level.id,
+      groupId: group.id
+    });
+  }
+
+  console.log('Bulk inserting 300 students into the database...');
+  await prisma.student.createMany({ data: studentsToCreate });
+  console.log('300 dummy students successfully seeded! (Password for all students: 12345678)');
 
   console.log('Seeding process completed successfully.');
 }
