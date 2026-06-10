@@ -136,11 +136,11 @@ export default function StudentApp() {
   const nextLecture = schedules.length > 0 ? schedules[0] : null;
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100 font-sans flex flex-col items-center">
-      <div className="w-full max-w-md bg-gray-900 min-h-screen flex flex-col border-x border-gray-800 shadow-2xl">
+    <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans flex flex-col items-center transition-colors duration-300">
+      <div className="w-full max-w-md bg-[var(--bg-card)] min-h-screen flex flex-col border-x border-[var(--border-color)] shadow-2xl transition-colors duration-300">
         
         {/* Header Section */}
-        <header className="px-6 py-5 border-b border-gray-800 bg-gray-900/90 sticky top-0 z-30 backdrop-blur-md flex justify-between items-center">
+        <header className="px-6 py-5 border-b border-[var(--border-color)] bg-[var(--bg-card)]/90 sticky top-0 z-30 backdrop-blur-md flex justify-between items-center transition-colors duration-300">
           <div>
             <h1 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
               <span className="bg-red-500/10 text-red-400 px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase border border-red-500/20">
@@ -148,10 +148,10 @@ export default function StudentApp() {
               </span>
               Manar Schedule
             </h1>
-            <p className="text-xs text-gray-450 mt-1">Class Schedule & Smart Alerts</p>
+            <p className="text-xs text-[var(--text-secondary)] mt-1">Class Schedule & Smart Alerts</p>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-gray-850 px-3 py-1 rounded-full text-[9px] font-bold text-gray-450 border border-gray-800">
+          <div className="flex items-center gap-1.5 bg-white/5 px-3 py-1 rounded-full text-[9px] font-bold text-[var(--text-secondary)] border border-[var(--border-color)]">
             <span className={`h-1.5 w-1.5 rounded-full ${backendOnline ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500 animate-pulse'}`} />
             {backendOnline ? 'LIVE SYNC' : 'OFFLINE MODE'}
           </div>
@@ -160,30 +160,30 @@ export default function StudentApp() {
         {/* Loading Spinner */}
         {loading && schedules.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 py-20">
-            <div className="h-6 w-6 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
-            <span className="text-xs text-gray-500">Syncing with schedule engine...</span>
+            <div className="h-6 w-6 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+            <span className="text-xs text-[var(--text-secondary)]">Syncing with schedule engine...</span>
           </div>
         ) : (
           <div className="flex-1 p-4 md:p-8 space-y-6 print-area">
             
             {/* View Selection Toggle */}
-            <div className="flex justify-between items-center bg-white/5 border border-white/10 p-2 rounded-xl mb-4 no-print">
-              <span className="text-xs font-bold text-gray-300">
+            <div className="flex justify-between items-center bg-white/3 border border-[var(--border-color)] p-2 rounded-xl mb-4 no-print">
+              <span className="text-xs font-bold text-[var(--text-secondary)]">
                 {viewMode === 'list' ? 'القائمة الأسبوعية' : 'الجدول الشبكي'}
               </span>
               <div className="flex gap-2">
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`px-3 py-1 text-[10px] font-black rounded-lg transition ${
-                    viewMode === 'list' ? 'bg-lime-500 text-black' : 'bg-gray-800 text-gray-400 hover:text-white'
+                  className={`px-3 py-1 text-[10px] font-black rounded-lg transition-all duration-200 ${
+                    viewMode === 'list' ? 'bg-[var(--accent)] text-black shadow-md shadow-[var(--accent-glow)]' : 'bg-white/5 text-[var(--text-secondary)] hover:text-white border border-transparent'
                   }`}
                 >
                   📝 List
                 </button>
                 <button
                   onClick={() => setViewMode('calendar')}
-                  className={`px-3 py-1 text-[10px] font-black rounded-lg transition ${
-                    viewMode === 'calendar' ? 'bg-lime-500 text-black' : 'bg-gray-800 text-gray-400 hover:text-white'
+                  className={`px-3 py-1 text-[10px] font-black rounded-lg transition-all duration-200 ${
+                    viewMode === 'calendar' ? 'bg-[var(--accent)] text-black shadow-md shadow-[var(--accent-glow)]' : 'bg-white/5 text-[var(--text-secondary)] hover:text-white border border-transparent'
                   }`}
                 >
                   📅 Calendar
@@ -242,7 +242,7 @@ export default function StudentApp() {
                       )}
                     </div>
                   ) : (
-                    <div className="bg-gray-850/40 border border-gray-800 rounded-xl p-6 text-center text-gray-500 text-xs">
+                    <div className="bg-white/3 border border-[var(--border-color)] rounded-xl p-6 text-center text-[var(--text-secondary)] text-xs">
                       {t('dashboard.noClassesRegistered')}
                     </div>
                   )}
@@ -267,12 +267,12 @@ export default function StudentApp() {
                       return (
                         <div key={day} className="space-y-2 print-card">
                           <div className="flex items-center justify-between px-1">
-                            <span className="text-[10px] font-extrabold uppercase tracking-widest text-gray-450">
+                            <span className="text-[10px] font-extrabold uppercase tracking-widest text-[var(--text-secondary)]">
                               {i18n.language === 'ar'
                                 ? (day === 'SUNDAY' ? 'الأحد' : day === 'MONDAY' ? 'الاثنين' : day === 'TUESDAY' ? 'الثلاثاء' : day === 'WEDNESDAY' ? 'الأربعاء' : day === 'THURSDAY' ? 'الخميس' : day === 'FRIDAY' ? 'الجمعة' : 'السبت')
                                 : day}
                             </span>
-                            <span className="text-[9px] text-gray-650 font-bold">{daySchedules.length} {t('dashboard.classes')}</span>
+                            <span className="text-[9px] text-[var(--text-muted)] font-bold">{daySchedules.length} {t('dashboard.classes')}</span>
                           </div>
 
                           <div className="space-y-2.5">
@@ -293,7 +293,7 @@ export default function StudentApp() {
                                   <div className="flex justify-between items-start gap-1">
                                     <div>
                                       <h4 className="text-sm font-bold text-white">{schedule.subject.name}</h4>
-                                      <p className="text-[10px] font-mono mt-0.5 text-gray-450">{schedule.subject.code}</p>
+                                      <p className="text-[10px] font-mono mt-0.5 text-[var(--text-secondary)]">{schedule.subject.code}</p>
                                     </div>
                                     <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
                                       overridden
@@ -308,7 +308,7 @@ export default function StudentApp() {
 
                                   <div className="flex justify-between items-end pt-2 border-t border-white/5 text-[11px] text-gray-400">
                                     <div>
-                                      {t('dashboard.classroom')}: <span className="font-semibold text-gray-300">{schedule.room?.name || 'N/A'}</span> • <span className="text-gray-450">{schedule.lecturerName}</span>
+                                      {t('dashboard.classroom')}: <span className="font-semibold text-gray-300">{schedule.room?.name || 'N/A'}</span> • <span className="text-[var(--text-secondary)]">{schedule.lecturerName}</span>
                                     </div>
                                     <div className="text-right">
                                       <span className="font-extrabold text-gray-200">
@@ -330,8 +330,8 @@ export default function StudentApp() {
                       );
                     })}
 
-                    {schedules.length === 0 && (
-                      <div className="bg-gray-850/40 border border-gray-850 rounded-xl p-8 text-center text-gray-500 text-xs">
+                     {schedules.length === 0 && (
+                      <div className="bg-white/3 border border-[var(--border-color)] rounded-xl p-8 text-center text-[var(--text-secondary)] text-xs">
                         {t('dashboard.noClassesRegistered')}
                       </div>
                     )}
@@ -343,16 +343,16 @@ export default function StudentApp() {
               <div className="space-y-4">
                 <button
                   onClick={() => window.print()}
-                  className="w-full mb-2 py-2.5 bg-gradient-to-r from-lime-500 to-emerald-500 hover:from-lime-400 hover:to-emerald-400 text-black font-extrabold text-[11px] rounded-xl shadow-lg no-print flex items-center justify-center gap-2"
+                  className="btn-neon w-full mb-2 py-2.5 text-[11px] rounded-xl shadow-lg no-print flex items-center justify-center gap-2"
                 >
-                  🖨️ PDF / Print Schedule
+                  🖨️ {i18n.language === 'ar' ? 'طباعة الجدول' : 'Print Schedule'}
                 </button>
-
-                <div className="overflow-x-auto border border-white/10 rounded-2xl bg-gray-950/40 p-3 shadow-2xl">
+ 
+                <div className="overflow-x-auto border border-[var(--border-color)] rounded-2xl bg-black/45 p-3 shadow-2xl">
                   <table className="w-full border-collapse text-[10px] text-center min-w-[500px]">
                     <thead>
-                      <tr className="border-b border-white/10 bg-white/5 text-[9px] text-gray-400 uppercase font-black">
-                        <th className="p-3 border-r border-white/5 text-left text-gray-300">Time / Day</th>
+                        <tr className="border-b border-[var(--border-color)] bg-white/5 text-[9px] text-[var(--text-secondary)] uppercase font-black">
+                          <th className="p-3 border-r border-white/5 text-left text-white">Time / Day</th>
                         {['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY'].map(day => (
                           <th key={day} className="p-3 border-r border-white/5 text-gray-200 font-extrabold">
                             {day === 'SUNDAY' ? 'الأحد' : day === 'MONDAY' ? 'الاثنين' : day === 'TUESDAY' ? 'الثلاثاء' : day === 'WEDNESDAY' ? 'الأربعاء' : 'الخميس'}
@@ -368,7 +368,7 @@ export default function StudentApp() {
                         { start: '14:00', end: '16:00' }
                       ].map(slot => (
                         <tr key={slot.start} className="border-b border-white/5 hover:bg-white/2 transition">
-                          <td className="p-3 font-mono font-bold text-gray-400 border-r border-white/5 text-left bg-white/2">
+                          <td className="p-3 font-mono font-bold text-[var(--text-secondary)] border-r border-[var(--border-color)] text-left bg-white/1">
                             {slot.start} - {slot.end}
                           </td>
                           {['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY'].map(day => {
@@ -412,7 +412,7 @@ export default function StudentApp() {
         )}
 
         {/* Footer */}
-        <footer className="border-t border-gray-800 bg-gray-950/60 p-4 text-center text-[10px] text-gray-600 no-print">
+        <footer className="border-t border-[var(--border-color)] bg-black/60 p-4 text-center text-[10px] text-[var(--text-muted)] no-print">
           <div>© 2026 Manar Student Alert Portal. All rights reserved.</div>
         </footer>
 

@@ -156,7 +156,7 @@ export default function UserSettings() {
       <div className="flex flex-col items-center text-center space-y-3">
         {/* Profile Avatar Preview */}
         <div className="relative group">
-          <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-lime-500/50 shadow-lg shadow-lime-500/20 bg-[#0a0a0a] flex items-center justify-center transition-all duration-300 group-hover:border-[var(--accent)]">
+          <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-[var(--accent)]/50 shadow-lg shadow-[var(--accent-glow)] bg-[#0a0a0a] flex items-center justify-center transition-all duration-300 group-hover:border-[var(--accent)]">
             {profile.idPhotoUrl ? (
               <img 
                 src={profile.idPhotoUrl} 

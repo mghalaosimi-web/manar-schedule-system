@@ -14,8 +14,8 @@ export default function Welcome() {
     <div dir={i18n.language === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] flex items-center justify-center p-6 relative pt-24 pb-20 overflow-x-hidden transition-colors duration-300">
       
       {/* Background ambient glowing circles */}
-      <div className="absolute top-1/4 left-1/4 h-[350px] w-[350px] bg-lime-500/10 rounded-full blur-[90px] -z-10 animate-pulse" />
-      <div className="absolute bottom-1/4 right-1/4 h-[350px] w-[350px] bg-emerald-500/10 rounded-full blur-[90px] -z-10 animate-pulse" />
+      <div className="absolute top-1/4 left-1/4 h-[350px] w-[350px] bg-[var(--accent)] opacity-10 rounded-full blur-[90px] -z-10 animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 h-[350px] w-[350px] bg-[var(--accent)] opacity-10 rounded-full blur-[90px] -z-10 animate-pulse" />
 
       {/* Global Institution Header */}
       <header className="fixed top-0 left-0 right-0 h-16 bg-[var(--bg-card)] backdrop-blur-lg border-b border-[var(--border-color)] shadow-sm z-40 flex items-center justify-between px-6 transition-all duration-300">

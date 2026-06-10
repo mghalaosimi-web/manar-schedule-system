@@ -107,7 +107,7 @@ export default function Students() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-lime-400 to-emerald-400">
+          <h2 className="text-2xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2,var(--accent))]">
             {t('students.title')}
           </h2>
           <p className="text-sm text-gray-400">{t('students.subtitle')}</p>
@@ -119,7 +119,7 @@ export default function Students() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t('students.searchPlaceholder')}
-            className="w-full bg-gray-950/50 border border-white/10 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-lime-500 font-medium"
+            className="w-full bg-gray-955/50 border border-white/10 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-[var(--accent)] font-medium"
           />
         </div>
       </div>
@@ -127,7 +127,7 @@ export default function Students() {
       {/* Grid of Student Cards */}
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <span className="h-8 w-8 border-4 border-lime-500 border-t-transparent rounded-full animate-spin" />
+          <span className="h-8 w-8 border-4 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
         </div>
       ) : filteredStudents.length === 0 ? (
         <div className="bg-gray-900/30 backdrop-blur-md border border-white/10 rounded-xl p-12 text-center text-gray-450 text-xs">
@@ -144,10 +144,10 @@ export default function Students() {
             <motion.div 
               variants={itemVariants}
               key={student.id} 
-              className="bg-gray-900/20 backdrop-blur-md border border-white/10 rounded-xl p-5 hover:border-lime-500/40 transition duration-300 flex flex-col justify-between space-y-4 shadow-lg group relative overflow-hidden"
+              className="bg-gray-900/20 backdrop-blur-md border border-white/10 rounded-xl p-5 hover:border-[var(--accent-glow)] transition duration-300 flex flex-col justify-between space-y-4 shadow-lg group relative overflow-hidden"
             >
               {/* Highlight accent for super admin impersonation potential */}
-              <div className="absolute top-0 right-0 h-1.5 w-full bg-gradient-to-r from-lime-500 to-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="absolute top-0 right-0 h-1.5 w-full bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2,var(--accent))] opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               
               <div className="space-y-3">
                 {/* Avatar / Profile Row */}
@@ -162,7 +162,7 @@ export default function Students() {
                       }}
                     />
                   ) : (
-                    <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-lime-500/10 to-emerald-500/10 border border-lime-500/30 flex items-center justify-center font-bold text-lime-400">
+                    <div className="h-10 w-10 rounded-full bg-gradient-to-tr from-[var(--accent)]/10 to-[var(--accent-2,var(--accent))]/10 border border-[var(--accent-glow)] flex items-center justify-center font-bold text-[var(--accent)]">
                       {student.name.charAt(0).toUpperCase()}
                     </div>
                   )}
@@ -193,7 +193,7 @@ export default function Students() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-455">{t('students.level')}</span>
-                    <span className="text-lime-400 font-semibold">{student.level?.name || 'N/A'}</span>
+                    <span className="text-lime-450">{student.level?.name || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-455">{t('students.group')}</span>
@@ -203,12 +203,12 @@ export default function Students() {
                     <span className="text-gray-455">{t('students.status')}</span>
                     <div className="flex gap-1">
                       <span className={`px-1.5 py-0.5 rounded-[3px] text-[9px] font-bold ${
-                        student.isEmailVerified ? 'bg-lime-500/10 text-lime-400 border border-lime-500/20' : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                        student.isEmailVerified ? 'bg-[var(--accent-dim)] text-[var(--accent)] border border-[var(--accent-glow)]' : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
                       }`}>
                         📧 {student.isEmailVerified ? t('students.verifiedBadge') : t('students.pendingBadge')}
                       </span>
                       <span className={`px-1.5 py-0.5 rounded-[3px] text-[9px] font-bold ${
-                        student.isPhoneVerified ? 'bg-lime-500/10 text-lime-400 border border-lime-500/20' : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                        student.isPhoneVerified ? 'bg-[var(--accent-dim)] text-[var(--accent)] border border-[var(--accent-glow)]' : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
                       }`}>
                         📱 {student.isPhoneVerified ? t('students.verifiedBadge') : t('students.pendingBadge')}
                       </span>
@@ -221,7 +221,7 @@ export default function Students() {
               <button
                 onClick={() => handleImpersonate(student)}
                 disabled={impersonatingId !== null}
-                className="w-full py-2 bg-gray-900/60 hover:bg-lime-500 hover:text-black text-[11px] font-extrabold rounded-lg border border-white/10 hover:border-lime-500 text-lime-400 transition-all duration-300 flex items-center justify-center gap-1.5"
+                className="w-full py-2 bg-gray-900/60 hover:bg-[var(--accent)] hover:text-black text-[11px] font-extrabold rounded-lg border border-white/10 hover:border-[var(--accent)] text-[var(--accent)] transition-all duration-300 flex items-center justify-center gap-1.5"
               >
                 {impersonatingId === student.id ? (
                   <span className="h-3.5 w-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />

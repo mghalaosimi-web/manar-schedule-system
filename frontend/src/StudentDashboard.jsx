@@ -363,7 +363,7 @@ export default function StudentDashboard() {
 
                 <button
                   onClick={() => navigate('/student/settings')}
-                  className="px-4 py-2 bg-lime-500 hover:bg-lime-400 text-black font-extrabold text-xs rounded-2xl shadow-lg shadow-lime-500/15 hover:shadow-lime-500/30 transition-all duration-300"
+                  className="btn-neon px-4 py-2 text-xs rounded-2xl shadow-lg shadow-[var(--accent-glow)]"
                 >
                   {t('dashboard.manageGroup')}
                 </button>
@@ -381,12 +381,12 @@ export default function StudentDashboard() {
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="relative overflow-hidden rounded-2xl border border-lime-500/30 bg-lime-500/10 backdrop-blur-md p-4 shadow-xl flex justify-between items-center gap-3 transition-all duration-300"
+            className="relative overflow-hidden rounded-2xl border border-[var(--accent-glow)] bg-[var(--accent-dim)] backdrop-blur-md p-4 shadow-xl flex justify-between items-center gap-3 transition-all duration-300"
           >
             <div className="flex items-center gap-3">
               <span className="text-xl">📱</span>
               <div>
-                <h4 className="text-xs font-black text-lime-400">
+                <h4 className="text-xs font-black text-[var(--accent)]">
                   {i18n.language === 'ar' ? 'تثبيت التطبيق على جهازك' : 'Install App on Your Device'}
                 </h4>
                 <p className="text-[10px] text-gray-400 font-bold mt-0.5">
@@ -396,7 +396,7 @@ export default function StudentDashboard() {
             </div>
             <button
               onClick={handleInstallClick}
-              className="px-4 py-2 bg-lime-500 hover:bg-lime-400 active:scale-95 text-black font-extrabold text-xs rounded-xl shadow-lg shadow-lime-500/20 hover:shadow-lime-500/40 transition-all duration-300 whitespace-nowrap"
+              className="btn-neon px-4 py-2 text-xs rounded-xl active:scale-95 shadow-lg shadow-[var(--accent-glow)] whitespace-nowrap"
             >
               {i18n.language === 'ar' ? 'تثبيت التطبيق' : 'Install App'}
             </button>

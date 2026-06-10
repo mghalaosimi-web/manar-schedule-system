@@ -7,6 +7,8 @@ import { motion } from 'framer-motion';
 import { API_URL } from './config';
 import DevSignature from './DevSignature';
 
+import ThemeSwitcher from './ThemeSwitcher';
+
 export default function Verification() {
   const { t, i18n } = useTranslation();
   const location = useLocation();
@@ -83,28 +85,31 @@ export default function Verification() {
     <div dir={i18n.language === 'ar' ? 'rtl' : 'ltr'} className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] flex items-center justify-center p-6 relative pt-24 pb-20 overflow-x-hidden transition-colors duration-300">
       
       {/* Background ambient glowing circles */}
-      <div className="absolute top-1/4 left-1/4 h-72 w-72 bg-lime-500/10 rounded-full blur-[80px] -z-10 animate-pulse" />
-      <div className="absolute bottom-1/4 right-1/4 h-72 w-72 bg-emerald-500/10 rounded-full blur-[80px] -z-10 animate-pulse" />
+      <div className="absolute top-1/4 left-1/4 h-72 w-72 bg-[var(--accent)] opacity-10 rounded-full blur-[80px] -z-10 animate-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 h-72 w-72 bg-[var(--accent)] opacity-10 rounded-full blur-[80px] -z-10 animate-pulse" />
 
       {/* Global Institution Header */}
       <header className="fixed top-0 left-0 right-0 h-16 bg-[var(--bg-card)] backdrop-blur-lg border-b border-[var(--border-color)] shadow-sm z-40 flex items-center justify-between px-6 transition-all duration-300">
         <div className="flex items-center gap-2">
-          <div className="p-1 bg-lime-500/10 rounded border border-lime-500/20 flex items-center justify-center">
-            <svg className="w-5 h-5 text-lime-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <div className="p-1 bg-[var(--accent-dim)] rounded border border-[var(--accent-glow)] flex items-center justify-center">
+            <svg className="w-5 h-5 text-[var(--accent)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
               <path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"/>
             </svg>
           </div>
-          <span className="text-lg md:text-xl font-extrabold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-lime-400 to-emerald-400">
+          <span className="text-lg md:text-xl font-extrabold tracking-wide text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(to right, var(--accent), var(--accent-2, var(--accent)))' }}>
             كلية المنار الجامعية
           </span>
         </div>
-        <button
-          onClick={() => i18n.changeLanguage(i18n.language === 'ar' ? 'en' : 'ar')}
-          className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-bold text-gray-300 transition-all duration-200"
-        >
-          {i18n.language === 'ar' ? 'English' : 'العربية'}
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeSwitcher />
+          <button
+            onClick={() => i18n.changeLanguage(i18n.language === 'ar' ? 'en' : 'ar')}
+            className="px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-bold text-gray-300 transition-all duration-200"
+          >
+            {i18n.language === 'ar' ? 'English' : 'العربية'}
+          </button>
+        </div>
       </header>
 
       <motion.div 

@@ -28,7 +28,7 @@ export default function AnalyticsPanel() {
   if (loading) {
     return (
       <div className="frosted-panel rounded-2xl p-6 flex flex-col items-center justify-center h-80 space-y-3">
-        <div className="h-8 w-8 border-4 border-lime-500 border-t-transparent rounded-full animate-spin" />
+        <div className="h-8 w-8 border-4 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
         <span className="text-xs text-gray-400">جاري تحميل لوحة الإحصائيات...</span>
       </div>
     );
@@ -54,7 +54,7 @@ export default function AnalyticsPanel() {
       
       {/* Metric Card: Total Students */}
       <div className="frosted-panel rounded-2xl p-6 flex flex-col justify-between relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-lime-500/5 rounded-full blur-2xl group-hover:bg-lime-500/10 transition-all duration-500" />
+        <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--accent)]/5 rounded-full blur-2xl group-hover:bg-[var(--accent)]/10 transition-all duration-500" />
         <div>
           <span className="text-gray-450 text-[11px] font-bold uppercase tracking-wider block">إجمالي الطلاب المسجلين</span>
           <h3 className="text-4xl font-extrabold text-white mt-3 tracking-tight">
@@ -80,12 +80,12 @@ export default function AnalyticsPanel() {
                 <div key={m.name} className="space-y-1">
                   <div className="flex justify-between items-center text-[10px] font-bold">
                     <span className="text-gray-300">{m.name}</span>
-                    <span className="text-lime-400 font-mono">{m.count} طالب</span>
+                    <span className="text-[var(--accent)] font-mono">{m.count} طالب</span>
                   </div>
                   <div className="h-2 w-full bg-gray-950 rounded-full overflow-hidden">
                     <div 
                       style={{ width: `${pct}%` }} 
-                      className="h-full bg-gradient-to-l from-lime-500 to-emerald-400 rounded-full transition-all duration-1000 ease-out" 
+                      className="h-full bg-gradient-to-l from-[var(--accent)] to-[var(--accent-2,var(--accent))] rounded-full transition-all duration-1000 ease-out" 
                     />
                   </div>
                 </div>
@@ -108,7 +108,7 @@ export default function AnalyticsPanel() {
             {/* Level breakdown list */}
             <div className="space-y-2 text-right">
               {metrics.studentsByLevel.map((l, index) => {
-                const colors = ['bg-lime-500', 'bg-emerald-500', 'bg-blue-500', 'bg-purple-500'];
+                const colors = ['bg-[var(--accent)]', 'bg-emerald-500', 'bg-blue-500', 'bg-purple-500'];
                 return (
                   <div key={l.name} className="flex items-center gap-2 text-[10px] font-semibold text-gray-300">
                     <span className={`w-2 h-2 rounded-full ${colors[index % colors.length]}`} />
@@ -118,13 +118,13 @@ export default function AnalyticsPanel() {
                 );
               })}
             </div>
-
+ 
             {/* Circular Ring Chart */}
             <div className="relative w-24 h-24">
               <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
                 <circle cx="18" cy="18" r="15.915" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="3" />
                 {metrics.studentsByLevel.map((l, index) => {
-                  const strokeColors = ['#84cc16', '#10b981', '#3b82f6', '#a855f7'];
+                  const strokeColors = ['var(--accent)', '#10b981', '#3b82f6', '#a855f7'];
                   const pct = (l.count / totalStudents) * 100;
                   const strokeDash = `${pct} ${100 - pct}`;
                   const offset = 100 - accumulatedAngle;

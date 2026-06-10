@@ -5,9 +5,9 @@ const THEMES = [
   {
     id: 'default',
     class: '',
-    nameEn: 'Emerald Oasis',
-    nameAr: 'الواحة الزمردية',
-    color: '#10b981'
+    nameEn: 'Neon Lime',
+    nameAr: 'الليموني النيون',
+    color: '#deff9a'
   },
   {
     id: 'purple',
@@ -167,17 +167,22 @@ export default function ThemeSwitcher() {
                         setActiveTheme(theme.id);
                         setIsOpen(false);
                       }}
-                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 ${
+                      style={isSelected ? {
+                        backgroundColor: 'var(--accent-dim)',
+                        color: 'var(--accent)',
+                        borderColor: 'var(--accent-glow)'
+                      } : {}}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold transition-all duration-200 border ${
                         isSelected 
-                          ? 'bg-lime-500/10 text-lime-400 border border-lime-500/20' 
-                          : 'text-gray-400 hover:bg-white/5 hover:text-white border border-transparent'
+                          ? '' 
+                          : 'text-gray-400 hover:bg-white/5 hover:text-white border-transparent'
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
                         <span className="w-3.5 h-3.5 rounded-full ring-2 ring-white/10" style={{ backgroundColor: theme.color }} />
                         <span>{isRtl ? theme.nameAr : theme.nameEn}</span>
                       </div>
-                      {isSelected && <span className="text-lime-400">✓</span>}
+                      {isSelected && <span style={{ color: 'var(--accent)' }}>✓</span>}
                     </button>
                   );
                 })}
