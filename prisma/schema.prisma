@@ -79,6 +79,7 @@ model Student {
   notificationLogs   NotificationLog[]
   verificationCodes  VerificationCode[]
   pushSubscriptions  PushSubscription[]
+  attendanceRecords  AttendanceRecord[]
   createdAt          DateTime           @default(now())
 }
 
@@ -151,6 +152,7 @@ model Schedule {
   endTime            String
   overrides          ScheduleOverride[]
   rescheduleRequests RescheduleRequest[]
+  attendanceRecords  AttendanceRecord[]
 }
 
 model ScheduleOverride {
@@ -216,5 +218,24 @@ model PushSubscription {
   p256dh     String
   auth       String
   createdAt  DateTime  @default(now())
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+}
+
+model AttendanceRecord {
+  id         Int              @id @default(autoincrement())
+  studentId  Int
+  student    Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  scheduleId Int
+  schedule   Schedule         @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  date       DateTime
+  status     AttendanceStatus
+  scannedAt  DateTime         @default(now())
+
+  @@unique([studentId, scheduleId, date])
 }
 

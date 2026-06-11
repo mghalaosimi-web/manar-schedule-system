@@ -28,6 +28,15 @@ export default function Login() {
   const [error,      setError]      = useState(null);
   const navigate = useNavigate();
 
+  const [activeTab, setActiveTab] = useState('STUDENT'); // 'STUDENT' or 'FACULTY'
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setIdentifier('');
+    setPassword('');
+    setError(null);
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -121,7 +130,7 @@ export default function Login() {
             </div>
             <p className="text-[11px] font-black tracking-[0.30em] uppercase mb-4"
                style={{ color: 'var(--accent)' }}>
-              {isAr ? 'بوابة الطالب' : 'Student Portal'}
+              {activeTab === 'STUDENT' ? (isAr ? 'بوابة الطلاب' : 'Student Portal') : (isAr ? 'بوابة أعضاء هيئة التدريس والموظفين' : 'Faculty & Staff Portal')}
             </p>
             <h1
               className="font-black leading-none tracking-tighter whitespace-pre-line"
@@ -129,6 +138,32 @@ export default function Login() {
             >
               {isAr ? 'مرحباً بك' : 'Sign In'}
             </h1>
+          </motion.div>
+
+          {/* Role Selector Tabs */}
+          <motion.div variants={item} className="mb-8 flex p-1 rounded-xl bg-white/2 border border-white/5 max-w-sm mx-auto">
+            <button
+              type="button"
+              onClick={() => handleTabChange('STUDENT')}
+              className={`flex-1 py-2 rounded-lg text-[10px] font-black tracking-wider uppercase transition-all ${
+                activeTab === 'STUDENT'
+                  ? 'bg-white text-black shadow-md'
+                  : 'text-[var(--text-secondary)] hover:text-white hover:bg-white/2'
+              }`}
+            >
+              {isAr ? 'بوابة الطلاب' : 'Student Portal'}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTabChange('FACULTY')}
+              className={`flex-1 py-2 rounded-lg text-[10px] font-black tracking-wider uppercase transition-all ${
+                activeTab === 'FACULTY'
+                  ? 'bg-white text-black shadow-md'
+                  : 'text-[var(--text-secondary)] hover:text-white hover:bg-white/2'
+              }`}
+            >
+              {isAr ? 'الكادر والمحاضرين' : 'Faculty & Lecturers'}
+            </button>
           </motion.div>
 
           {/* Error banner */}
@@ -154,7 +189,9 @@ export default function Login() {
                 className="block text-[11px] font-black tracking-widest uppercase"
                 style={{ color: 'var(--text-secondary)' }}
               >
-                {isAr ? 'الاسم · البريد الإلكتروني · الرقم الدراسي' : 'Name · Email · Student ID'}
+                {activeTab === 'STUDENT' 
+                  ? (isAr ? 'الاسم · البريد الإلكتروني · الرقم الدراسي' : 'Name · Email · Student ID') 
+                  : (isAr ? 'البريد الإلكتروني · اسم المستخدم' : 'Email · Username')}
               </label>
               <input
                 type="text"
@@ -162,7 +199,9 @@ export default function Login() {
                 autoComplete="username"
                 value={identifier}
                 onChange={e => setIdentifier(e.target.value)}
-                placeholder={isAr ? 'أدخل معرّف حسابك' : 'Enter your identifier'}
+                placeholder={activeTab === 'STUDENT' 
+                  ? (isAr ? 'أدخل معرّف حسابك' : 'Enter your identifier') 
+                  : (isAr ? 'أدخل البريد الإلكتروني أو اسم المستخدم' : 'Enter email or username')}
                 className="cmd-input w-full px-5"
                 style={{ height: '58px', fontSize: '1.05rem' }}
               />
@@ -208,19 +247,27 @@ export default function Login() {
             </motion.div>
           </form>
 
-          {/* Register link */}
+          {/* Register link / notice */}
           <motion.div variants={item} className="mt-8 text-center">
-            <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
-              {isAr ? 'لا تملك حساباً؟ ' : "Don't have an account? "}
-            </span>
-            <button
-              type="button"
-              onClick={() => navigate('/register')}
-              className="text-xs font-black underline underline-offset-4 transition-opacity hover:opacity-70"
-              style={{ color: 'var(--accent)' }}
-            >
-              {isAr ? 'سجّل الآن' : 'Register now'}
-            </button>
+            {activeTab === 'STUDENT' ? (
+              <>
+                <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  {isAr ? 'لا تملك حساباً؟ ' : "Don't have an account? "}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => navigate('/register')}
+                  className="text-xs font-black underline underline-offset-4 transition-opacity hover:opacity-70"
+                  style={{ color: 'var(--accent)' }}
+                >
+                  {isAr ? 'سجّل الآن' : 'Register now'}
+                </button>
+              </>
+            ) : (
+              <span className="text-xs italic" style={{ color: 'var(--text-secondary)' }}>
+                {isAr ? '💡 حسابات الكادر يتم إنشاؤها من قبل إدارة الكلية.' : '💡 Faculty accounts are created by the college administration.'}
+              </span>
+            )}
           </motion.div>
 
         </motion.div>
