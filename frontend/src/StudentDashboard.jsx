@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -212,6 +213,7 @@ function DailyProgress({ schedules, getActiveDay: gad, getActiveStartTime: gast,
 export default function StudentDashboard() {
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
+  const navigate = useNavigate();
   const { isInstallable, installApp } = usePWAInstall();
 
   const handleInstallClick = async () => {
@@ -254,6 +256,7 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState([]);
   const [selectedGroupId, setSelectedGroupId] = useState(() => getInitialProfile().groupId);
+  const [attendanceStats, setAttendanceStats] = useState(null);
 
   // ── Data fetching ───────────────────────────────────────────────────
   useEffect(() => {
@@ -261,10 +264,13 @@ export default function StudentDashboard() {
       try {
         setLoading(true);
         const token = localStorage.getItem('manar_token');
-        const [schedRes, groupsRes, profileRes] = await Promise.all([
+        const [schedRes, groupsRes, profileRes, statsRes] = await Promise.all([
           axios.get(`${API_URL}/api/schedules?groupId=${selectedGroupId}`),
           axios.get(`${API_URL}/api/groups`),
           axios.get(`${API_URL}/api/student/settings`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+          }).catch(() => null),
+          axios.get(`${API_URL}/api/student/attendance/stats`, {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
           }).catch(() => null)
         ]);
@@ -314,6 +320,10 @@ export default function StudentDashboard() {
             groupId: s.groupId || p.groupId,
             groupName: s.groupName || p.groupName
           }));
+        }
+
+        if (statsRes?.data?.success) {
+          setAttendanceStats(statsRes.data.data);
         }
       } catch {
         setOriginalSchedules(MOCK_SCHEDULES);
@@ -456,6 +466,55 @@ export default function StudentDashboard() {
           isAr={isAr}
         />
 
+        {/* ── Active Lecture Check-in Banner ────────────────── */}
+        {(() => {
+          const getActiveLecture = () => {
+            if (!schedules.length) return null;
+            const now = new Date();
+            const todayName = DAYS[now.getDay()];
+            const curTime = now.toTimeString().substring(0, 5); // "HH:MM"
+            
+            return schedules.find(s => {
+              if (getActiveDay(s) !== todayName) return false;
+              const start = getActiveStartTime(s);
+              const end = getActiveEndTime(s);
+              return curTime >= start && curTime <= end;
+            });
+          };
+
+          const activeLecture = getActiveLecture();
+          if (!activeLecture) return null;
+
+          return (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="relative overflow-hidden rounded-2xl border border-emerald-500/35 bg-emerald-950/15 backdrop-blur-md p-4 flex justify-between items-center gap-3 shadow-[0_0_25px_rgba(16,185,129,0.18)]"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="text-xl animate-bounce shrink-0">📸</span>
+                <div className="min-w-0">
+                  <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-widest leading-none">
+                    {isAr ? 'محاضرة نشطة الآن' : 'Class Active Now'}
+                  </h4>
+                  <p className="text-xs font-black text-white mt-1.5 leading-tight truncate">
+                    {activeLecture.subject.name}
+                  </p>
+                  <p className="text-[9px] text-gray-300 font-semibold mt-0.5 truncate">
+                    {isAr ? 'اضغط لتسجيل حضورك بالـ QR' : 'Tap to register attendance via QR'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate('/student/scan')}
+                className="px-3 py-2 bg-emerald-500 hover:bg-emerald-400 text-black text-[10px] font-black rounded-lg active:scale-95 shadow-md shadow-emerald-500/20 whitespace-nowrap shrink-0 transition-transform"
+              >
+                {isAr ? 'تسجيل حضور' : 'Check In'}
+              </button>
+            </motion.div>
+          );
+        })()}
+
         {/* ── Sandbox notice ────────────────────────────────── */}
         <AnimatePresence>
           {sandboxMode && (
@@ -592,6 +651,37 @@ export default function StudentDashboard() {
             </div>
           )}
         </section>
+
+        {/* ── Attendance Statistics ─────────────────────────── */}
+        {attendanceStats && (
+          <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-4 space-y-3">
+            <p className="text-[9px] font-black tracking-widest uppercase text-[var(--text-secondary)]">
+              {isAr ? 'تقرير حضور الطالب العام' : 'Overall Attendance Summary'}
+            </p>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <span className="text-2xl font-black text-[var(--accent)]">{attendanceStats.percentage}%</span>
+                <span className="text-[10px] text-gray-400 block font-bold">
+                  {isAr ? `إجمالي الجلسات: ${attendanceStats.total}` : `Total Sessions: ${attendanceStats.total}`}
+                </span>
+              </div>
+              <div className="flex gap-2 text-center text-[10px] font-black uppercase">
+                <div className="bg-emerald-500/5 px-2.5 py-1.5 rounded-xl border border-emerald-500/10">
+                  <span className="text-emerald-400 block">{attendanceStats.present}</span>
+                  <span className="text-[8px] text-gray-500 block">{isAr ? 'حاضر' : 'Pres'}</span>
+                </div>
+                <div className="bg-amber-500/5 px-2.5 py-1.5 rounded-xl border border-amber-500/10">
+                  <span className="text-amber-400 block">{attendanceStats.late}</span>
+                  <span className="text-[8px] text-gray-500 block">{isAr ? 'متأخر' : 'Late'}</span>
+                </div>
+                <div className="bg-red-500/5 px-2.5 py-1.5 rounded-xl border border-red-500/10">
+                  <span className="text-red-400 block">{attendanceStats.absent}</span>
+                  <span className="text-[8px] text-gray-500 block">{isAr ? 'غائب' : 'Abs'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Today's Schedule ──────────────────────────────── */}
         <section className="space-y-3">

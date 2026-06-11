@@ -29,6 +29,8 @@ import Instructions from './Instructions';
 import DevSignature from './DevSignature';
 import DevPortal from './DevPortal';
 import ErrorBoundary from './ErrorBoundary';
+import AttendanceScanner from './AttendanceScanner';
+import LecturerAttendanceSession from './LecturerAttendanceSession';
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -151,6 +153,8 @@ function AppLayout() {
             });
             window.dispatchEvent(new CustomEvent('MANAR_BROADCAST_RECEIVE'));
           }
+        } else if (payload.type === 'ATTENDANCE_MARKED') {
+          window.dispatchEvent(new CustomEvent('MANAR_ATTENDANCE_MARKED', { detail: payload.data }));
         }
       } catch (err) {
         console.error('[SSE] Error processing incoming event:', err);
@@ -418,6 +422,7 @@ function AppLayout() {
             <Routes>
               <Route path="/lecturer/home" element={<LecturerDashboard />} />
               <Route path="/lecturer/requests" element={<LecturerRequests />} />
+              <Route path="/lecturer/attendance/:scheduleId" element={<LecturerAttendanceSession />} />
               <Route path="*" element={<Navigate to="/lecturer/home" replace />} />
             </Routes>
           </div>
@@ -525,6 +530,7 @@ function AppLayout() {
               <Route path="/student/schedule"      element={<StudentApp />} />
               <Route path="/student/notifications" element={<NotificationCenter />} />
               <Route path="/student/settings"      element={<Settings />} />
+              <Route path="/student/scan"          element={<AttendanceScanner />} />
               <Route path="*" element={<Navigate to="/student/home" replace />} />
             </Routes>
           </div>

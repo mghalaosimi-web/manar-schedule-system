@@ -1820,6 +1820,271 @@ app.post('/api/admin/requests/:id/resolve', verifyToken, async (req, res) => {
 
 
 // ==========================================
+// ATTENDANCE & QR CODE TRACKING ENDPOINTS
+// ==========================================
+
+// Helper for distance calculation (Haversine formula)
+function getCoordinateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371e3; // Earth radius in meters
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // Distance in meters
+}
+
+// GET QR Check-in Token (Lecturer only)
+app.get('/api/lecturer/attendance/token', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'LECTURER') {
+      return res.status(403).json({ success: false, error: 'Forbidden: Lecturer access required' });
+    }
+    const { scheduleId } = req.query;
+    if (!scheduleId) {
+      return res.status(400).json({ success: false, error: 'Missing scheduleId query parameter' });
+    }
+
+    const schedule = await prisma.schedule.findFirst({
+      where: { id: parseInt(scheduleId), lecturerId: req.user.id }
+    });
+
+    if (!schedule) {
+      return res.status(404).json({ success: false, error: 'Schedule not found or not owned by lecturer' });
+    }
+
+    // Generate token with 15 seconds expiration
+    const token = jwt.sign(
+      { scheduleId: schedule.id, role: 'ATTENDANCE_QR', timestamp: Date.now() },
+      JWT_SECRET,
+      { expiresIn: '15s' }
+    );
+
+    res.status(200).json({ success: true, token });
+  } catch (error) {
+    console.error('[API] Error generating QR token:', error);
+    res.status(500).json({ success: false, error: 'Failed to generate attendance token' });
+  }
+});
+
+// POST Scan QR Check-in (Student only)
+app.post('/api/attendance/scan', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'STUDENT') {
+      return res.status(403).json({ success: false, error: 'Forbidden: Student access required' });
+    }
+
+    const { token, latitude, longitude, bypassGPS } = req.body;
+    if (!token) {
+      return res.status(400).json({ success: false, error: 'Missing QR code token' });
+    }
+
+    // Decode and verify the token
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (err) {
+      return res.status(400).json({ success: false, error: 'Invalid or expired QR code' });
+    }
+
+    if (decoded.role !== 'ATTENDANCE_QR') {
+      return res.status(400).json({ success: false, error: 'Invalid QR token payload' });
+    }
+
+    // Verify coordinates
+    const CAMPUS_LAT = 15.35;
+    const CAMPUS_LON = 44.20;
+    const ALLOWED_RADIUS = 150; // meters
+
+    if (!bypassGPS) {
+      if (latitude === undefined || longitude === undefined) {
+        return res.status(400).json({ success: false, error: 'GPS coordinates are required to verify location' });
+      }
+
+      const distance = getCoordinateDistance(latitude, longitude, CAMPUS_LAT, CAMPUS_LON);
+      if (distance > ALLOWED_RADIUS) {
+        return res.status(400).json({
+          success: false,
+          error: `خارج النطاق الجغرافي المسموح به. مسافتك: ${Math.round(distance)} متر من الكلية.`,
+          distance
+        });
+      }
+    }
+
+    // Load schedule to compute status
+    const schedule = await prisma.schedule.findUnique({
+      where: { id: decoded.scheduleId },
+      include: { subject: true }
+    });
+
+    if (!schedule) {
+      return res.status(404).json({ success: false, error: 'Schedule not found' });
+    }
+
+    const now = new Date();
+    const DAYS_MAP = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+    const todayDay = DAYS_MAP[now.getDay()];
+
+    let status = 'PRESENT';
+    if (schedule.dayOfWeek === todayDay) {
+      const [schedHours, schedMins] = schedule.startTime.split(':').map(Number);
+      const schedTimeInMinutes = schedHours * 60 + schedMins;
+      const nowTimeInMinutes = now.getHours() * 60 + now.getMinutes();
+
+      // If check-in is more than 15 minutes after class starts
+      if (nowTimeInMinutes > schedTimeInMinutes + 15) {
+        status = 'LATE';
+      }
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const record = await prisma.attendanceRecord.upsert({
+      where: {
+        studentId_scheduleId_date: {
+          studentId: req.user.id,
+          scheduleId: decoded.scheduleId,
+          date: today
+        }
+      },
+      update: {
+        status,
+        scannedAt: new Date()
+      },
+      create: {
+        studentId: req.user.id,
+        scheduleId: decoded.scheduleId,
+        date: today,
+        status,
+        scannedAt: new Date()
+      },
+      include: {
+        student: true
+      }
+    });
+
+    // Broadcast SSE to Lecturer screen
+    broadcastSSE('ATTENDANCE_MARKED', {
+      scheduleId: decoded.scheduleId,
+      studentId: req.user.id,
+      studentName: record.student.name,
+      status: record.status,
+      scannedAt: record.scannedAt
+    });
+
+    res.status(200).json({
+      success: true,
+      message: status === 'PRESENT' ? 'تم تسجيل حضورك بنجاح!' : 'تم تسجيل حضورك (متأخر)!',
+      data: record
+    });
+  } catch (error) {
+    console.error('[API] Error scanning attendance:', error);
+    res.status(500).json({ success: false, error: 'Failed to record attendance' });
+  }
+});
+
+// GET Attendance Report for a schedule (Lecturer only)
+app.get('/api/lecturer/attendance/report', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'LECTURER') {
+      return res.status(403).json({ success: false, error: 'Forbidden: Lecturer access required' });
+    }
+
+    const { scheduleId, date } = req.query;
+    if (!scheduleId) {
+      return res.status(400).json({ success: false, error: 'Missing scheduleId parameter' });
+    }
+
+    const targetDate = date ? new Date(date) : new Date();
+    targetDate.setHours(0, 0, 0, 0);
+
+    const schedule = await prisma.schedule.findFirst({
+      where: { id: parseInt(scheduleId), lecturerId: req.user.id },
+      include: {
+        group: {
+          include: {
+            students: {
+              orderBy: { name: 'asc' }
+            }
+          }
+        }
+      }
+    });
+
+    if (!schedule) {
+      return res.status(404).json({ success: false, error: 'Schedule not found or not owned by lecturer' });
+    }
+
+    // Fetch existing records for this day
+    const records = await prisma.attendanceRecord.findMany({
+      where: {
+        scheduleId: schedule.id,
+        date: targetDate
+      }
+    });
+
+    // Merge group students with attendance records
+    const report = schedule.group.students.map(student => {
+      const record = records.find(r => r.studentId === student.id);
+      return {
+        studentId: student.id,
+        studentName: student.name,
+        idNumber: student.idNumber,
+        email: student.email,
+        status: record ? record.status : 'ABSENT',
+        scannedAt: record ? record.scannedAt : null
+      };
+    });
+
+    res.status(200).json({ success: true, data: report });
+  } catch (error) {
+    console.error('[API] Error fetching attendance report:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch attendance report' });
+  }
+});
+
+// GET Student Attendance Stats (Student only)
+app.get('/api/student/attendance/stats', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'STUDENT') {
+      return res.status(403).json({ success: false, error: 'Forbidden: Student access required' });
+    }
+
+    // Fetch all records for this student
+    const records = await prisma.attendanceRecord.findMany({
+      where: { studentId: req.user.id }
+    });
+
+    const total = records.length;
+    const present = records.filter(r => r.status === 'PRESENT').length;
+    const late = records.filter(r => r.status === 'LATE').length;
+    const absent = records.filter(r => r.status === 'ABSENT').length;
+    
+    // Percentage counts Present and Late as attending
+    const percentage = total > 0 ? Math.round(((present + late) / total) * 100) : 100;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        percentage,
+        present,
+        late,
+        absent,
+        total
+      }
+    });
+  } catch (error) {
+    console.error('[API] Error fetching student attendance stats:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch attendance stats' });
+  }
+});
+
+
+
+// ==========================================
 // STATIC SERVING & ROUTING FOR SPA
 // ==========================================
 
