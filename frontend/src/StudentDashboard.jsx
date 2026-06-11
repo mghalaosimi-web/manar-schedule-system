@@ -245,6 +245,12 @@ export default function StudentDashboard() {
 
   const [profile, setProfile] = useState(getInitialProfile);
   const [schedules, setSchedules] = useState([]);
+  const [originalSchedules, setOriginalSchedules] = useState([]);
+  const [sandboxMode, setSandboxMode] = useState(false);
+  const [activeSimulatorSchedule, setActiveSimulatorSchedule] = useState(null);
+  const [simulatorDay, setSimulatorDay] = useState('SUNDAY');
+  const [simulatorStart, setSimulatorStart] = useState('08:00');
+  const [simulatorEnd, setSimulatorEnd] = useState('10:00');
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState([]);
   const [selectedGroupId, setSelectedGroupId] = useState(() => getInitialProfile().groupId);
@@ -262,6 +268,32 @@ export default function StudentDashboard() {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
           }).catch(() => null)
         ]);
+
+        let officialScheds = [];
+        if (schedRes.data?.success) {
+          officialScheds = schedRes.data.data;
+        } else {
+          officialScheds = MOCK_SCHEDULES;
+        }
+
+        setOriginalSchedules(officialScheds);
+
+        const isSandbox = localStorage.getItem('manar_sandbox_mode') === 'true';
+        setSandboxMode(isSandbox);
+        if (isSandbox) {
+          const savedSandbox = localStorage.getItem('manar_sandbox_schedules');
+          if (savedSandbox) {
+            try {
+              setSchedules(JSON.parse(savedSandbox));
+            } catch {
+              setSchedules(officialScheds);
+            }
+          } else {
+            setSchedules(officialScheds);
+          }
+        } else {
+          setSchedules(officialScheds);
+        }
 
         if (groupsRes.data?.success) {
           setGroups(groupsRes.data.data);
@@ -283,18 +315,73 @@ export default function StudentDashboard() {
             groupName: s.groupName || p.groupName
           }));
         }
-
-        if (schedRes.data?.success) {
-          setSchedules(schedRes.data.data);
-        } else throw new Error('API failed');
       } catch {
-        setSchedules(MOCK_SCHEDULES);
+        setOriginalSchedules(MOCK_SCHEDULES);
+        const isSandbox = localStorage.getItem('manar_sandbox_mode') === 'true';
+        setSandboxMode(isSandbox);
+        if (isSandbox) {
+          const savedSandbox = localStorage.getItem('manar_sandbox_schedules');
+          if (savedSandbox) {
+            try {
+              setSchedules(JSON.parse(savedSandbox));
+            } catch {
+              setSchedules(MOCK_SCHEDULES);
+            }
+          } else {
+            setSchedules(MOCK_SCHEDULES);
+          }
+        } else {
+          setSchedules(MOCK_SCHEDULES);
+        }
       } finally {
         setLoading(false);
       }
     };
     fetch();
   }, [selectedGroupId]);
+
+  useEffect(() => {
+    const handleSandboxUpdate = () => {
+      const isSandbox = localStorage.getItem('manar_sandbox_mode') === 'true';
+      setSandboxMode(isSandbox);
+      if (isSandbox) {
+        const savedSandbox = localStorage.getItem('manar_sandbox_schedules');
+        if (savedSandbox) {
+          try {
+            setSchedules(JSON.parse(savedSandbox));
+          } catch {}
+        }
+      } else {
+        setSchedules(originalSchedules);
+      }
+    };
+    window.addEventListener('MANAR_SANDBOX_UPDATE', handleSandboxUpdate);
+    return () => window.removeEventListener('MANAR_SANDBOX_UPDATE', handleSandboxUpdate);
+  }, [originalSchedules]);
+
+  const handleSimulateReschedule = (e) => {
+    e.preventDefault();
+    if (!activeSimulatorSchedule) return;
+    const updated = schedules.map(s =>
+      s.id === activeSimulatorSchedule.id
+        ? { ...s, dayOfWeek: simulatorDay, startTime: simulatorStart, endTime: simulatorEnd, overrides: [] }
+        : s
+    );
+    setSchedules(updated);
+    localStorage.setItem('manar_sandbox_schedules', JSON.stringify(updated));
+    setActiveSimulatorSchedule(null);
+    window.dispatchEvent(new Event('MANAR_SANDBOX_UPDATE'));
+    toast.success(isAr ? 'تمت المحاكاة بنجاح!' : 'Simulation applied!');
+  };
+
+  const toggleSandbox = () => {
+    localStorage.removeItem('manar_sandbox_mode');
+    localStorage.removeItem('manar_sandbox_schedules');
+    setSandboxMode(false);
+    setSchedules(originalSchedules);
+    window.dispatchEvent(new Event('MANAR_SANDBOX_UPDATE'));
+    toast.success(isAr ? 'تم استعادة الجدول الرسمي!' : 'Official timetable restored!');
+  };
 
   useEffect(() => {
     const fetchToast = async () => {
@@ -369,6 +456,36 @@ export default function StudentDashboard() {
           isAr={isAr}
         />
 
+        {/* ── Sandbox notice ────────────────────────────────── */}
+        <AnimatePresence>
+          {sandboxMode && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative overflow-hidden rounded-2xl border border-amber-500/40 bg-amber-500/8 p-4 flex justify-between items-center gap-3 shadow-xl"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-xl">🧪</span>
+                <div>
+                  <span className="text-xs font-black text-amber-400 uppercase tracking-widest block leading-tight">
+                    🧪 {isAr ? 'محاكي التعديل نشط' : 'Simulator Active'}
+                  </span>
+                  <span className="text-[10px] text-gray-300 font-bold block mt-0.5">
+                    {isAr ? 'التغييرات مؤقتة ومحلية فقط' : 'Changes are temporary & local only'}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={toggleSandbox}
+                className="px-3 py-1.5 bg-amber-500 text-black text-[9px] font-black rounded-lg shrink-0 active:scale-95 transition-transform"
+              >
+                {isAr ? 'خروج' : 'Exit'}
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
 
 
         {/* ── Group Switcher ────────────────────────────────── */}
@@ -430,8 +547,16 @@ export default function StudentDashboard() {
           </h2>
           {nextLecture ? (
             <motion.div
-              whileTap={{ scale: 0.985 }}
-              style={{}}
+              whileTap={sandboxMode ? { scale: 0.98 } : { scale: 0.985 }}
+              onClick={() => {
+                if (sandboxMode) {
+                  setActiveSimulatorSchedule(nextLecture);
+                  setSimulatorDay(nextLecture.dayOfWeek);
+                  setSimulatorStart(getActiveStartTime(nextLecture));
+                  setSimulatorEnd(getActiveEndTime(nextLecture));
+                }
+              }}
+              style={sandboxMode ? { cursor: 'pointer' } : {}}
               className="relative overflow-hidden rounded-2xl border border-red-500/30 bg-red-950/20 backdrop-blur-md p-5 shadow-[0_0_24px_rgba(239,68,68,0.18)] space-y-4"
             >
               <div className="self-start flex items-center gap-1.5 bg-red-500/10 border border-red-500/25 px-2.5 py-0.5 rounded-full text-[9px] font-bold text-red-400 uppercase tracking-wide w-fit">
@@ -490,7 +615,16 @@ export default function StudentDashboard() {
                 return (
                   <motion.div
                     key={schedule.id}
-                    whileTap={{ scale: 0.985 }}
+                    whileTap={sandboxMode ? { scale: 0.97 } : { scale: 0.985 }}
+                    onClick={() => {
+                      if (sandboxMode) {
+                        setActiveSimulatorSchedule(schedule);
+                        setSimulatorDay(schedule.dayOfWeek);
+                        setSimulatorStart(getActiveStartTime(schedule));
+                        setSimulatorEnd(getActiveEndTime(schedule));
+                      }
+                    }}
+                    style={sandboxMode ? { cursor: 'pointer' } : {}}
                     className={`p-4 rounded-2xl border flex justify-between items-center gap-3 transition-all duration-200 hover:scale-[1.015] ${
                       isTheory
                         ? 'bg-blue-950/20 border-blue-500/25 text-blue-200 hover:shadow-[0_0_16px_rgba(59,130,246,0.2)]'
@@ -526,6 +660,63 @@ export default function StudentDashboard() {
           )}
         </section>
       </div>
+
+      {/* ── Sandbox Rescheduling Modal ────────────────────── */}
+      <AnimatePresence>
+        {activeSimulatorSchedule && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="frosted-panel w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-5 text-[var(--text-primary)]"
+            >
+              <div className="flex justify-between items-center border-b border-white/5 pb-3">
+                <h3 className="text-sm font-black uppercase tracking-wider text-amber-400">
+                  🧪 {isAr ? 'محاكي تعديل الحصة' : 'Reschedule Simulator'}
+                </h3>
+                <button onClick={() => setActiveSimulatorSchedule(null)} className="text-gray-400 hover:text-white transition-colors text-lg leading-none">✕</button>
+              </div>
+
+              <div className="p-3 bg-white/5 border border-white/5 rounded-xl text-[11px] text-gray-300 font-bold">
+                {isAr ? 'المحاضرة:' : 'Lecture:'}{' '}
+                <span className="text-white font-black">{activeSimulatorSchedule.subject.name}</span>
+              </div>
+
+              <form onSubmit={handleSimulateReschedule} className="space-y-4 text-xs">
+                <div className="space-y-1">
+                  <label className="text-gray-400 font-bold block">{isAr ? 'اليوم' : 'Day'}</label>
+                  <select value={simulatorDay} onChange={e => setSimulatorDay(e.target.value)} className="w-full cmd-input p-3 font-bold cursor-pointer">
+                    {DAYS.map(day => (
+                      <option key={day} value={day} className="bg-[#0c0c0c] text-white">
+                        {isAr ? ({SUNDAY:'الأحد',MONDAY:'الاثنين',TUESDAY:'الثلاثاء',WEDNESDAY:'الأربعاء',THURSDAY:'الخميس',FRIDAY:'الجمعة',SATURDAY:'السبت'}[day]) : day}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-gray-400 font-bold block">{isAr ? 'البداية' : 'Start'}</label>
+                    <input type="time" required value={simulatorStart} onChange={e => setSimulatorStart(e.target.value)} className="w-full cmd-input p-3 font-bold" dir="ltr" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-gray-400 font-bold block">{isAr ? 'النهاية' : 'End'}</label>
+                    <input type="time" required value={simulatorEnd} onChange={e => setSimulatorEnd(e.target.value)} className="w-full cmd-input p-3 font-bold" dir="ltr" />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2.5 pt-3 border-t border-white/5">
+                  <button type="button" onClick={() => setActiveSimulatorSchedule(null)} className="btn-ghost px-4 py-2 text-xs font-bold">
+                    {isAr ? 'إلغاء' : 'Cancel'}
+                  </button>
+                  <button type="submit" className="px-5 py-2 text-xs font-black rounded-lg bg-amber-500 text-black hover:bg-amber-400 transition-colors">
+                    ⚡ {isAr ? 'تطبيق' : 'Apply'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </motion.div>
   );
