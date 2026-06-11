@@ -1576,10 +1576,6 @@ app.get('/api/student/settings', verifyToken, async (req, res) => {
 
 
 
-});
-
-
-
 // ==========================================
 // LECTURER PORTAL & RESCHEDULING ENDPOINTS
 // ==========================================
