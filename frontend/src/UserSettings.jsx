@@ -404,16 +404,40 @@ export default function UserSettings() {
     }
   };
 
-  const handleTestNotification = () => {
-    if (!('Notification' in window)) { toast.error(isAr ? 'التنبيهات غير مدعومة' : 'Notifications not supported'); return; }
-    const send = () => {
-      new Notification(isAr ? 'كلية المنار' : 'Al-Manar University', { body: isAr ? 'هذا تنبيه تجريبي!' : 'Test notification!', icon: '/pwa-192x192.png' });
-      toast.success(isAr ? 'تم إرسال التنبيه!' : 'Notification sent!');
+  const handleTestNotification = async () => {
+    if (!('Notification' in window)) {
+      toast.error(isAr ? 'التنبيهات غير مدعومة في هذا المتصفح' : 'Notifications not supported in this browser');
+      return;
+    }
+
+    const sendNative = () => {
+      new Notification(
+        isAr ? 'كلية المنارة الجامعية' : 'Al-Manar University College',
+        {
+          body: isAr ? 'هذا تنبيه تجريبي، النظام يعمل بنجاح!' : 'This is a test notification, the system is working successfully!',
+          icon: '/pwa-192x192.png',
+          vibrate: [200, 100, 200]
+        }
+      );
+      toast.success(isAr ? 'تم إرسال التنبيه التجريبي!' : 'Test notification sent!');
     };
-    if (Notification.permission === 'granted') { send(); }
-    else if (Notification.permission !== 'denied') {
-      Notification.requestPermission().then(p => { if (p === 'granted') send(); else toast.error(isAr ? 'لم يتم منح الإذن' : 'Permission denied'); });
-    } else { toast.error(isAr ? 'تم حظر التنبيهات' : 'Notifications blocked'); }
+
+    if (Notification.permission === 'granted') {
+      sendNative();
+    } else if (Notification.permission !== 'denied') {
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          sendNative();
+        } else {
+          toast.error(isAr ? 'لم يتم منح إذن التنبيهات' : 'Notification permission denied');
+        }
+      } catch (err) {
+        console.error('Permission request failed', err);
+      }
+    } else {
+      toast.error(isAr ? 'التنبيهات محظورة في إعدادات المتصفح' : 'Notifications blocked in browser settings');
+    }
   };
 
   const toggleSandbox = () => {
@@ -866,6 +890,17 @@ export default function UserSettings() {
             <option value="60" className="bg-[#0c0c0c]">{t('settings.hourBefore')}</option>
           </select>
         </Field>
+
+        {/* Download Android App */}
+        <a
+          href="/Manar_Schedule.apk"
+          download
+          className="w-full flex items-center justify-center gap-2 py-3.5 bg-[var(--accent-dim)] border border-[var(--accent-glow)] hover:bg-[var(--accent)] hover:text-black text-[var(--accent)] rounded-xl text-xs font-black transition-all duration-200 text-center"
+          style={{ textDecoration: 'none' }}
+        >
+          <span>🤖</span>
+          <span>{isAr ? 'تنزيل تطبيق الأندرويد (APK)' : 'Download Android App (APK)'}</span>
+        </a>
 
         {/* Check for updates */}
         <button
