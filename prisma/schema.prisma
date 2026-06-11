@@ -58,6 +58,7 @@ model Group {
   students         Student[]
   schedules        Schedule[]
   notificationLogs NotificationLog[]
+  examSchedules    ExamSchedule[]
 }
 
 model Student {
@@ -80,6 +81,7 @@ model Student {
   verificationCodes  VerificationCode[]
   pushSubscriptions  PushSubscription[]
   attendanceRecords  AttendanceRecord[]
+  seatAllocations    SeatAllocation[]
   createdAt          DateTime           @default(now())
 }
 
@@ -89,6 +91,7 @@ model Subject {
   code      String      @unique
   type      SubjectType
   schedules Schedule[]
+  examSchedules ExamSchedule[]
 }
 
 model Room {
@@ -98,6 +101,7 @@ model Room {
   schedules          Schedule[]
   overrides          ScheduleOverride[]
   rescheduleRequests RescheduleRequest[]
+  examSchedules      ExamSchedule[]
 }
 
 model Lecturer {
@@ -238,4 +242,31 @@ model AttendanceRecord {
 
   @@unique([studentId, scheduleId, date])
 }
+
+model ExamSchedule {
+  id              Int              @id @default(autoincrement())
+  subjectId       Int
+  subject         Subject          @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  roomId          Int
+  room            Room             @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  groupId         Int
+  group           Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  date            DateTime
+  startTime       String           // e.g. "09:00"
+  endTime         String           // e.g. "11:00"
+  seatAllocations SeatAllocation[]
+}
+
+model SeatAllocation {
+  id             Int          @id @default(autoincrement())
+  studentId      Int
+  student        Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  examScheduleId Int
+  examSchedule   ExamSchedule @relation(fields: [examScheduleId], references: [id], onDelete: Cascade)
+  seatNumber     String       // e.g. "Seat 1", "Seat 2"
+  
+  @@unique([studentId, examScheduleId])
+  @@unique([examScheduleId, seatNumber])
+}
+
 
