@@ -91,26 +91,66 @@ model Subject {
 }
 
 model Room {
-  id        Int                @id @default(autoincrement())
-  name      String             @unique
-  capacity  Int
-  schedules Schedule[]
-  overrides ScheduleOverride[]
+  id                 Int                @id @default(autoincrement())
+  name               String             @unique
+  capacity           Int
+  schedules          Schedule[]
+  overrides          ScheduleOverride[]
+  rescheduleRequests RescheduleRequest[]
+}
+
+model Lecturer {
+  id                 Int                 @id @default(autoincrement())
+  name               String
+  email              String              @unique
+  password           String
+  phone              String?
+  schedules          Schedule[]
+  rescheduleRequests RescheduleRequest[]
+  pushSubscriptions  PushSubscription[]
+  createdAt          DateTime            @default(now())
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model RescheduleRequest {
+  id           Int           @id @default(autoincrement())
+  scheduleId   Int
+  schedule     Schedule      @relation(fields: [scheduleId], references: [id])
+  lecturerId   Int
+  lecturer     Lecturer      @relation(fields: [lecturerId], references: [id])
+  requestType  String        // 'CANCEL' or 'RESCHEDULE'
+  newDayOfWeek DayOfWeek?
+  newStartTime String?
+  newEndTime   String?
+  newRoomId    Int?
+  newRoom      Room?         @relation(fields: [newRoomId], references: [id])
+  reason       String?
+  status       RequestStatus @default(PENDING)
+  adminNotes   String?
+  createdAt    DateTime      @default(now())
 }
 
 model Schedule {
-  id           Int                @id @default(autoincrement())
-  subjectId    Int
-  subject      Subject            @relation(fields: [subjectId], references: [id])
-  roomId       Int
-  room         Room               @relation(fields: [roomId], references: [id])
-  lecturerName String
-  groupId      Int
-  group        Group              @relation(fields: [groupId], references: [id])
-  dayOfWeek    DayOfWeek
-  startTime    String
-  endTime      String
-  overrides    ScheduleOverride[]
+  id                 Int                @id @default(autoincrement())
+  subjectId          Int
+  subject            Subject            @relation(fields: [subjectId], references: [id])
+  roomId             Int
+  room               Room               @relation(fields: [roomId], references: [id])
+  lecturerName       String
+  lecturerId         Int?
+  lecturer           Lecturer?          @relation(fields: [lecturerId], references: [id])
+  groupId            Int
+  group              Group              @relation(fields: [groupId], references: [id])
+  dayOfWeek          DayOfWeek
+  startTime          String
+  endTime            String
+  overrides          ScheduleOverride[]
+  rescheduleRequests RescheduleRequest[]
 }
 
 model ScheduleOverride {
@@ -165,14 +205,16 @@ model VerificationCode {
 }
 
 model PushSubscription {
-  id        Int      @id @default(autoincrement())
-  studentId Int?
-  student   Student? @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  adminId   Int?
-  admin     Admin?   @relation(fields: [adminId], references: [id], onDelete: Cascade)
-  endpoint  String   @unique
-  p256dh    String
-  auth      String
-  createdAt DateTime @default(now())
+  id         Int       @id @default(autoincrement())
+  studentId  Int?
+  student    Student?  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  adminId    Int?
+  admin      Admin?    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  lecturerId Int?
+  lecturer   Lecturer? @relation(fields: [lecturerId], references: [id], onDelete: Cascade)
+  endpoint   String    @unique
+  p256dh     String
+  auth       String
+  createdAt  DateTime  @default(now())
 }
 

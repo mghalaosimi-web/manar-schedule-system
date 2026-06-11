@@ -41,6 +41,8 @@ export default function Login() {
         toast.success(isAr ? 'تم تسجيل الدخول بنجاح' : 'Welcome back');
         if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
           navigate('/admin/overview');
+        } else if (user.role === 'LECTURER') {
+          navigate('/lecturer/home');
         } else {
           localStorage.setItem('student_profile', JSON.stringify({
             name: user.name, email: user.email,

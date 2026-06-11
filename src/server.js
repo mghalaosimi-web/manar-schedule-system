@@ -406,8 +406,12 @@ app.post('/api/notifications/subscribe', verifyToken, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Subscription object with endpoint, p256dh, and auth keys is required' });
     }
 
-    const isStudent = req.user.role === 'STUDENT';
-    const userIdField = isStudent ? 'studentId' : 'adminId';
+    let userIdField = 'adminId';
+    if (req.user.role === 'STUDENT') {
+      userIdField = 'studentId';
+    } else if (req.user.role === 'LECTURER') {
+      userIdField = 'lecturerId';
+    }
 
     await prisma.pushSubscription.upsert({
       where: { endpoint: subscription.endpoint },
@@ -457,6 +461,25 @@ app.post('/api/auth/login', async (req, res) => {
         if (isMatch) {
           user = adminUser;
           role = adminUser.role; // Use actual role (ADMIN or SUPER_ADMIN)
+        }
+      }
+
+      if (!user) {
+        // Check Lecturer
+        const lecturerUser = await prisma.lecturer.findFirst({
+          where: {
+            OR: [
+              { email: identifier },
+              { name: identifier }
+            ]
+          }
+        });
+        if (lecturerUser) {
+          const isMatch = await bcrypt.compare(password, lecturerUser.password);
+          if (isMatch) {
+            user = lecturerUser;
+            role = 'LECTURER';
+          }
         }
       }
 
@@ -1551,6 +1574,253 @@ app.get('/api/student/settings', verifyToken, async (req, res) => {
   }
 });
 
+
+
+});
+
+
+
+// ==========================================
+// LECTURER PORTAL & RESCHEDULING ENDPOINTS
+// ==========================================
+
+// GET Lecturer's assigned schedule
+app.get('/api/lecturer/schedule', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'LECTURER') {
+      return res.status(403).json({ success: false, error: 'Forbidden: Lecturer access required' });
+    }
+    const schedules = await prisma.schedule.findMany({
+      where: { lecturerId: req.user.id },
+      include: {
+        subject: true,
+        room: true,
+        group: true,
+        overrides: {
+          where: { date: { gte: new Date() } },
+          include: { newRoom: true }
+        }
+      }
+    });
+    res.status(200).json({ success: true, data: schedules });
+  } catch (error) {
+    console.error('[API] Error fetching lecturer schedule:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch lecturer schedule' });
+  }
+});
+
+// POST a new rescheduling/cancellation request
+app.post('/api/lecturer/requests', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'LECTURER') {
+      return res.status(403).json({ success: false, error: 'Forbidden: Lecturer access required' });
+    }
+    const { scheduleId, requestType, newDayOfWeek, newStartTime, newEndTime, newRoomId, reason } = req.body;
+
+    if (!scheduleId || !requestType) {
+      return res.status(400).json({ success: false, error: 'Missing required request fields' });
+    }
+
+    const schedule = await prisma.schedule.findFirst({
+      where: { id: parseInt(scheduleId), lecturerId: req.user.id }
+    });
+    if (!schedule) {
+      return res.status(404).json({ success: false, error: 'Lecturer schedule not found' });
+    }
+
+    // Check for room clash if it's a reschedule
+    if (requestType === 'RESCHEDULE') {
+      if (!newDayOfWeek || !newStartTime || !newEndTime) {
+        return res.status(400).json({ success: false, error: 'Rescheduling requires day, start time, and end time' });
+      }
+      const targetRoomId = newRoomId ? parseInt(newRoomId) : schedule.roomId;
+      const clash = await prisma.schedule.findFirst({
+        where: {
+          dayOfWeek: newDayOfWeek,
+          startTime: newStartTime,
+          roomId: targetRoomId,
+          id: { not: parseInt(scheduleId) }
+        }
+      });
+      if (clash) {
+        return res.status(409).json({ success: false, error: 'Conflict: Room is already booked for another class during this time slot.' });
+      }
+    }
+
+    const request = await prisma.rescheduleRequest.create({
+      data: {
+        scheduleId: parseInt(scheduleId),
+        lecturerId: req.user.id,
+        requestType,
+        newDayOfWeek: requestType === 'RESCHEDULE' ? newDayOfWeek : null,
+        newStartTime: requestType === 'RESCHEDULE' ? newStartTime : null,
+        newEndTime: requestType === 'RESCHEDULE' ? newEndTime : null,
+        newRoomId: (requestType === 'RESCHEDULE' && newRoomId) ? parseInt(newRoomId) : null,
+        reason,
+        status: 'PENDING'
+      }
+    });
+
+    res.status(201).json({ success: true, message: 'Request submitted successfully', data: request });
+  } catch (error) {
+    console.error('[API] Error submitting request:', error);
+    res.status(500).json({ success: false, error: 'Failed to submit request' });
+  }
+});
+
+// GET Lecturer's submitted requests
+app.get('/api/lecturer/requests', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'LECTURER') {
+      return res.status(403).json({ success: false, error: 'Forbidden: Lecturer access required' });
+    }
+    const requests = await prisma.rescheduleRequest.findMany({
+      where: { lecturerId: req.user.id },
+      include: {
+        schedule: {
+          include: { subject: true, room: true, group: true }
+        },
+        newRoom: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.status(200).json({ success: true, data: requests });
+  } catch (error) {
+    console.error('[API] Error fetching lecturer requests:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch requests' });
+  }
+});
+
+// GET all rescheduling requests (Admin view)
+app.get('/api/admin/requests', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ success: false, error: 'Forbidden: Admin access required' });
+    }
+    const requests = await prisma.rescheduleRequest.findMany({
+      include: {
+        lecturer: true,
+        schedule: {
+          include: { subject: true, room: true, group: true }
+        },
+        newRoom: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.status(200).json({ success: true, data: requests });
+  } catch (error) {
+    console.error('[API] Error fetching admin requests:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch requests' });
+  }
+});
+
+// POST resolve rescheduling request (Admin view)
+app.post('/api/admin/requests/:id/resolve', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ success: false, error: 'Forbidden: Admin access required' });
+    }
+    const requestId = parseInt(req.params.id);
+    const { status, overrideType, date, adminNotes } = req.body; // overrideType is 'TEMPORARY' or 'PERMANENT'
+
+    if (!status || !['APPROVED', 'REJECTED'].includes(status)) {
+      return res.status(400).json({ success: false, error: 'Invalid or missing status field' });
+    }
+
+    const request = await prisma.rescheduleRequest.findUnique({
+      where: { id: requestId },
+      include: {
+        schedule: { include: { subject: true, group: true, room: true } },
+        lecturer: true
+      }
+    });
+
+    if (!request) {
+      return res.status(404).json({ success: false, error: 'Request not found' });
+    }
+
+    if (request.status !== 'PENDING') {
+      return res.status(400).json({ success: false, error: 'Request is already resolved' });
+    }
+
+    if (status === 'APPROVED') {
+      const isReschedule = request.requestType === 'RESCHEDULE';
+      const resolvedOverrideType = overrideType || 'TEMPORARY'; // Fallback to TEMPORARY
+
+      if (resolvedOverrideType === 'TEMPORARY') {
+        const targetDate = date ? new Date(date) : new Date();
+        // Create a ScheduleOverride entry
+        await prisma.scheduleOverride.create({
+          data: {
+            scheduleId: request.scheduleId,
+            newStartTime: isReschedule ? request.newStartTime : null,
+            newEndTime: isReschedule ? request.newEndTime : null,
+            newRoomId: isReschedule ? request.newRoomId : null,
+            date: targetDate,
+            overrideType: 'TEMPORARY'
+          }
+        });
+      } else {
+        // Permanent modification of base Schedule
+        await prisma.schedule.update({
+          where: { id: request.scheduleId },
+          data: {
+            dayOfWeek: isReschedule ? request.newDayOfWeek : request.schedule.dayOfWeek,
+            startTime: isReschedule ? request.newStartTime : request.schedule.startTime,
+            endTime: isReschedule ? request.newEndTime : request.schedule.endTime,
+            roomId: isReschedule ? (request.newRoomId || request.schedule.roomId) : request.schedule.roomId
+          }
+        });
+      }
+
+      // Format notification message in Arabic
+      let alertMessage = '';
+      if (request.requestType === 'CANCEL') {
+        alertMessage = `تنبيه: تم إلغاء محاضرة ${request.schedule.subject.name} المقررة يوم ${request.schedule.dayOfWeek} للشعبة ${request.schedule.group.name}.`;
+      } else {
+        const dayNamesAr = {
+          SUNDAY: 'الأحد', MONDAY: 'الإثنين', TUESDAY: 'الثلاثاء',
+          WEDNESDAY: 'الأربعاء', THURSDAY: 'الخميس', FRIDAY: 'الجمعة', SATURDAY: 'السبت'
+        };
+        const dayAr = dayNamesAr[request.newDayOfWeek] || request.newDayOfWeek;
+        alertMessage = `تنبيه: تم إعادة جدولة محاضرة ${request.schedule.subject.name} للشعبة ${request.schedule.group.name} لتصبح يوم ${dayAr} من ${request.newStartTime} إلى ${request.newEndTime}.`;
+      }
+
+      // Log notification
+      await prisma.notificationLog.create({
+        data: {
+          groupId: request.schedule.groupId,
+          message: alertMessage,
+          status: 'PENDING'
+        }
+      });
+
+      // Broadcast update
+      broadcastSSE('SCHEDULE_UPDATE', { scheduleId: request.scheduleId });
+
+      // Send push notification
+      sendPushNotification(request.schedule.groupId, {
+        title: 'تحديث طارئ في الجدول',
+        body: alertMessage,
+        url: '/student/home'
+      });
+    }
+
+    // Update the request status
+    const updatedRequest = await prisma.rescheduleRequest.update({
+      where: { id: requestId },
+      data: {
+        status,
+        adminNotes
+      }
+    });
+
+    res.status(200).json({ success: true, message: `Request successfully ${status.toLowerCase()}`, data: updatedRequest });
+  } catch (error) {
+    console.error('[API] Error resolving request:', error);
+    res.status(500).json({ success: false, error: 'Failed to resolve request' });
+  }
+});
 
 
 // ==========================================

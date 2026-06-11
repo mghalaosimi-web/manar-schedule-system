@@ -63,6 +63,13 @@ export default function AdminOverview() {
   const [stats,   setStats]   = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Rescheduling requests queue state
+  const [requests, setRequests] = useState([]);
+  const [requestsLoading, setRequestsLoading] = useState(false);
+  const [noteMap, setNoteMap] = useState({});
+  const [dateMap, setDateMap] = useState({});
+  const [resolvingMap, setResolvingMap] = useState({});
+
   const fetchMetrics = async () => {
     setLoading(true);
     try {
@@ -78,7 +85,59 @@ export default function AdminOverview() {
     }
   };
 
-  useEffect(() => { fetchMetrics(); }, []);
+  const fetchRequests = async () => {
+    setRequestsLoading(true);
+    try {
+      const token = localStorage.getItem('manar_token');
+      const res = await axios.get(`${API_URL}/api/admin/requests`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.data?.success) {
+        setRequests(res.data.data);
+        const todayStr = new Date().toISOString().substring(0, 10);
+        const dates = {};
+        res.data.data.forEach(r => {
+          dates[r.id] = todayStr;
+        });
+        setDateMap(dates);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setRequestsLoading(false);
+    }
+  };
+
+  const resolveRequest = async (id, status, overrideType) => {
+    setResolvingMap(prev => ({ ...prev, [id]: true }));
+    try {
+      const token = localStorage.getItem('manar_token');
+      const payload = {
+        status,
+        overrideType,
+        date: dateMap[id],
+        adminNotes: noteMap[id] || ''
+      };
+      const res = await axios.post(`${API_URL}/api/admin/requests/${id}/resolve`, payload, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (res.data?.success) {
+        toast.success(isAr ? 'تمت معالجة الطلب بنجاح' : 'Request resolved successfully');
+        fetchRequests();
+        fetchMetrics();
+      }
+    } catch (err) {
+      const msg = err.response?.data?.error || (isAr ? 'فشل معالجة الطلب' : 'Failed to resolve request');
+      toast.error(msg);
+    } finally {
+      setResolvingMap(prev => ({ ...prev, [id]: false }));
+    }
+  };
+
+  useEffect(() => {
+    fetchMetrics();
+    fetchRequests();
+  }, []);
 
   return (
     <div dir={isAr ? 'rtl' : 'ltr'} className="flex-1 bg-[#000] text-[var(--text-primary)] p-4 md:p-8 space-y-12">
@@ -199,6 +258,152 @@ export default function AdminOverview() {
             </button>
           </div>
         </div>
+      </motion.div>
+
+      {/* ── Rescheduling Requests Queue ──────────────────────── */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.4 }}
+        className="frosted-panel rounded-2xl p-7 space-y-6"
+      >
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] font-black tracking-[0.28em] uppercase" style={{ color: 'var(--text-secondary)' }}>
+            {isAr ? 'طلبات إعادة الجدولة المعلقة' : 'Pending Rescheduling Requests'}
+          </p>
+          <span className="px-2.5 py-1 text-[10px] font-black bg-white/5 rounded-lg border border-white/8 text-[var(--accent)]">
+            {requests.filter(r => r.status === 'PENDING').length} {isAr ? 'معلق' : 'Pending'}
+          </span>
+        </div>
+
+        {requestsLoading ? (
+          <div className="space-y-3">
+            {[1, 2].map(i => (
+              <div key={i} className="frosted-panel p-5 rounded-2xl animate-pulse space-y-3">
+                <div className="h-4 bg-white/5 rounded w-2/3" />
+                <div className="h-3 bg-white/5 rounded w-1/2" />
+              </div>
+            ))}
+          </div>
+        ) : requests.filter(r => r.status === 'PENDING').length > 0 ? (
+          <div className="space-y-4">
+            {requests.filter(r => r.status === 'PENDING').map((req) => {
+              const isReschedule = req.requestType === 'RESCHEDULE';
+              const dayNamesAr = {
+                SUNDAY: 'الأحد', MONDAY: 'الإثنين', TUESDAY: 'الثلاثاء',
+                WEDNESDAY: 'الأربعاء', THURSDAY: 'الخميس', FRIDAY: 'الجمعة', SATURDAY: 'السبت'
+              };
+
+              return (
+                <div
+                  key={req.id}
+                  className="p-5 rounded-xl border border-white/5 bg-white/2 space-y-4 relative overflow-hidden"
+                >
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <h4 className="font-extrabold text-sm text-white flex items-center gap-2">
+                        <span>👤 {req.lecturer.name}</span>
+                        <span className="text-xs font-normal text-[var(--text-secondary)]">({req.lecturer.email})</span>
+                      </h4>
+                      <p className="text-xs font-bold text-[var(--text-secondary)] mt-1">
+                        {isReschedule ? (isAr ? '🔄 طلب إعادة جدولة' : '🔄 Reschedule Request') : (isAr ? '🚫 طلب إلغاء محاضرة' : '🚫 Cancel Request')}
+                        {' '}({req.schedule.subject.name} - {req.schedule.group.name})
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-[var(--text-secondary)]">
+                    <div className="space-y-1">
+                      <p className="font-extrabold text-white">{isAr ? 'الجدول الأصلي:' : 'Original Schedule:'}</p>
+                      <p>
+                        {isAr ? dayNamesAr[req.schedule.dayOfWeek] : req.schedule.dayOfWeek} · {req.schedule.startTime} - {req.schedule.endTime} · {req.schedule.room.name}
+                      </p>
+                    </div>
+
+                    {isReschedule && (
+                      <div className="space-y-1">
+                        <p className="font-extrabold text-[var(--accent)]">{isAr ? 'الجدول المقترح:' : 'Proposed Schedule:'}</p>
+                        <p className="text-[var(--accent)] font-bold">
+                          {isAr ? dayNamesAr[req.newDayOfWeek] : req.newDayOfWeek} · {req.newStartTime} - {req.newEndTime} · {req.newRoom?.name}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {req.reason && (
+                    <div className="text-xs text-[var(--text-secondary)]">
+                      <span className="font-extrabold text-white">{isAr ? 'السبب:' : 'Reason:'} </span>
+                      <span className="italic">"{req.reason}"</span>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col md:flex-row gap-4 pt-3 border-t border-white/5">
+                    {/* Date select for temporary overrides */}
+                    <div className="flex-1 flex flex-col gap-1.5 justify-center">
+                      <label className="text-[10px] font-black uppercase tracking-wider text-[var(--text-secondary)]">
+                        {isAr ? 'تاريخ الاستثناء (للموافقة المؤقتة)' : 'Override Date (for Temp Approve)'}
+                      </label>
+                      <input
+                        type="date"
+                        value={dateMap[req.id] || ''}
+                        onChange={e => setDateMap(prev => ({ ...prev, [req.id]: e.target.value }))}
+                        className="cmd-input px-3 text-xs"
+                        style={{ height: '40px' }}
+                      />
+                    </div>
+
+                    {/* Admin Notes input */}
+                    <div className="flex-[2] flex flex-col gap-1.5 justify-center">
+                      <label className="text-[10px] font-black uppercase tracking-wider text-[var(--text-secondary)]">
+                        {isAr ? 'رد/ملاحظات المسؤول' : 'Admin Notes/Reply'}
+                      </label>
+                      <input
+                        type="text"
+                        placeholder={isAr ? 'أدخل رداً للمحاضر...' : 'Enter a reply for the lecturer...'}
+                        value={noteMap[req.id] || ''}
+                        onChange={e => setNoteMap(prev => ({ ...prev, [req.id]: e.target.value }))}
+                        className="cmd-input px-3 text-xs"
+                        style={{ height: '40px' }}
+                      />
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="flex-1 flex items-end gap-2">
+                      <button
+                        onClick={() => resolveRequest(req.id, 'APPROVED', 'TEMPORARY')}
+                        disabled={resolvingMap[req.id]}
+                        className="flex-1 h-10 bg-[var(--accent)] hover:bg-[var(--accent-glow)] text-black text-xs font-black rounded-xl transition-all flex items-center justify-center"
+                      >
+                        {isAr ? 'قبول مؤقت' : 'Temp Approve'}
+                      </button>
+                      <button
+                        onClick={() => resolveRequest(req.id, 'APPROVED', 'PERMANENT')}
+                        disabled={resolvingMap[req.id]}
+                        className="flex-1 h-10 bg-white/5 hover:bg-white/10 text-white border border-white/10 text-xs font-black rounded-xl transition-all flex items-center justify-center"
+                      >
+                        {isAr ? 'قبول دائم' : 'Perm Approve'}
+                      </button>
+                      <button
+                        onClick={() => resolveRequest(req.id, 'REJECTED')}
+                        disabled={resolvingMap[req.id]}
+                        className="flex-1 h-10 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/15 hover:border-red-500/30 text-xs font-black rounded-xl transition-all flex items-center justify-center"
+                      >
+                        {isAr ? 'رفض' : 'Reject'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="p-8 text-center text-[var(--text-secondary)] space-y-2">
+            <span className="text-3xl block">📋</span>
+            <p className="text-xs font-bold">
+              {isAr ? 'لا توجد طلبات إعادة جدولة معلقة حالياً' : 'No pending rescheduling requests at this time.'}
+            </p>
+          </div>
+        )}
       </motion.div>
     </div>
   );

@@ -46,8 +46,10 @@ async function main() {
   await prisma.scheduleOverride.deleteMany();
   await prisma.notificationLog.deleteMany();
   await prisma.verificationCode.deleteMany();
+  await prisma.rescheduleRequest.deleteMany();
   await prisma.student.deleteMany();
   await prisma.schedule.deleteMany();
+  await prisma.lecturer.deleteMany();
   await prisma.room.deleteMany();
   await prisma.subject.deleteMany();
   await prisma.group.deleteMany();
@@ -140,6 +142,29 @@ async function main() {
   });
   console.log(`SUPER_ADMIN created: ${superAdmin.email} (Password: 708090)`);
 
+  // 6b. Create Lecturers
+  const lecturerNames = [
+    'أ. افنان الشرفي', 'د. عبد الرزاق الأهدل', 'أ. سبأ زمام', 'أ. إجلال المحن',
+    'أ. منير مفتاح', 'د. احمد الناشري', 'د. عدنان الصلوي', 'أ. فارس الأعور',
+    'د. يحيى العبدلي', 'د. عبد الله قشوة'
+  ];
+  const lecturerPasswordHash = await bcrypt.hash('12345678', 10);
+  const lecturersMap = {};
+  for (let idx = 0; idx < lecturerNames.length; idx++) {
+    const name = lecturerNames[idx];
+    const email = `lecturer.${idx + 1}@manar.edu`;
+    const lecturer = await prisma.lecturer.create({
+      data: {
+        name,
+        email,
+        password: lecturerPasswordHash,
+        phone: `+9677800000${idx + 1}`
+      }
+    });
+    lecturersMap[name] = lecturer;
+    console.log(`Lecturer created: ${name} (Email: ${email}, Password: 12345678)`);
+  }
+
   // 7. Seed Subjects
   console.log('Seeding subjects...');
   const subjectsData = [
@@ -203,6 +228,7 @@ async function main() {
   for (const item of dynamicSchedules) {
     const room = roomsMap[item.roomName];
     const subject = subjectsMap[item.subjectName];
+    const lecturer = lecturersMap[item.lecturer];
     if (!room || !subject) continue;
 
     for (const gName of item.groupNames) {
@@ -213,6 +239,7 @@ async function main() {
         subjectId: subject.id,
         roomId: room.id,
         lecturerName: item.lecturer,
+        lecturerId: lecturer ? lecturer.id : null,
         groupId: group.id,
         dayOfWeek: item.day,
         startTime: item.startTime,

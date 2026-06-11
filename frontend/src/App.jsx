@@ -16,6 +16,8 @@ import BroadcastCenter from './BroadcastCenter';
 import SystemLog from './SystemLog';
 import StudentDashboard from './StudentDashboard';
 import StudentApp from './StudentApp';
+import LecturerDashboard from './LecturerDashboard';
+import LecturerRequests from './LecturerRequests';
 import NotificationCenter from './NotificationCenter';
 import Settings from './Settings';
 import GodMode from './GodMode';
@@ -66,6 +68,8 @@ function AppLayout() {
 
     if (user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') {
       navigate('/admin/overview', { replace: true });
+    } else if (user.role === 'LECTURER') {
+      navigate('/lecturer/home', { replace: true });
     } else if (user.role === 'STUDENT') {
       navigate('/student/home', { replace: true });
     }
@@ -167,6 +171,7 @@ function AppLayout() {
 
   const isAdminPath = path.startsWith('/admin');
   const isStudentPath = path.startsWith('/student');
+  const isLecturerPath = path.startsWith('/lecturer');
 
   const token = localStorage.getItem('manar_token');
   const userJson = localStorage.getItem('manar_user');
@@ -359,6 +364,110 @@ function AppLayout() {
         <ConfirmationModal
           isOpen={isLogoutModalOpen}
           title={isAr ? 'تأكيد تسجيل الخروج' : 'Confirm Sign Out'}
+          message={isAr ? 'هل أنت متأكد من الخروج؟' : 'Are you sure you want to sign out?'}
+          onConfirm={confirmLogout}
+          onCancel={() => setIsLogoutModalOpen(false)}
+          confirmText={isAr ? 'خروج' : 'Sign Out'}
+          cancelText={isAr ? 'إلغاء' : 'Cancel'}
+        />
+      </div>
+    );
+  }
+
+  if (isLecturerPath) {
+    if (!token || !user || user.role !== 'LECTURER') {
+      return <Navigate to="/login" replace />;
+    }
+
+    const isAr = i18n.language === 'ar';
+
+    return (
+      <div dir={isAr ? 'rtl' : 'ltr'} className="min-h-screen bg-[#000] text-[var(--text-primary)] flex flex-col items-center">
+        <div className="w-full max-w-md min-h-screen flex flex-col relative pb-24" style={{ paddingTop: '60px', borderLeft: '1px solid var(--border-color)', borderRight: '1px solid var(--border-color)' }}>
+          
+          {/* Lecturer top header */}
+          <header
+            className="fixed top-0 z-40 flex items-center justify-between px-5"
+            style={{
+              width: 'inherit', maxWidth: '448px',
+              height: '60px',
+              background: 'rgba(0,0,0,0.88)',
+              backdropFilter: 'blur(20px)',
+              borderBottom: '1px solid var(--border-color)',
+            }}
+          >
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <Logo size="sm" />
+              <span className="text-xs font-black tracking-wider uppercase truncate" style={{ color: 'var(--accent)' }}>
+                {isAr ? 'كلية المنارة الجامعية' : 'Al-Manar University College'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <ThemeSwitcher />
+              <button
+                onClick={() => i18n.changeLanguage(isAr ? 'en' : 'ar')}
+                className="btn-ghost px-3 py-1 text-[10px] tracking-widest uppercase"
+              >
+                {isAr ? 'EN' : 'عربي'}
+              </button>
+            </div>
+          </header>
+
+          {/* Content */}
+          <div className="flex-1 flex flex-col overflow-y-auto">
+            <Routes>
+              <Route path="/lecturer/home" element={<LecturerDashboard />} />
+              <Route path="/lecturer/requests" element={<LecturerRequests />} />
+              <Route path="*" element={<Navigate to="/lecturer/home" replace />} />
+            </Routes>
+          </div>
+
+          {/* Premium floating glass nav dock for Lecturer */}
+          <nav
+            className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center"
+            style={{
+              width: 'calc(100% - 2rem)', maxWidth: '400px',
+              background: 'rgba(8,8,8,0.90)',
+              backdropFilter: 'blur(24px)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '20px',
+              padding: '10px 16px',
+              gap: '4px',
+              boxShadow: '0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.02) inset',
+            }}
+          >
+            {[
+              { to: '/lecturer/home',     icon: '🏠', label: isAr ? 'الرئيسية' : 'Home' },
+              { to: '/lecturer/requests', icon: '📝', label: isAr ? 'الطلبات' : 'Requests' }
+            ].map(({ to, icon, label }) => {
+              const active = path === to;
+              return (
+                <Link key={to} to={to}
+                  className="flex-1 flex flex-col items-center py-1.5 rounded-xl transition-all duration-200 relative"
+                  style={{ color: active ? 'var(--accent)' : 'var(--text-secondary)' }}
+                >
+                  <span className="text-[17px] leading-none mb-0.5">{icon}</span>
+                  <span className="text-[9px] font-black tracking-wide">{label}</span>
+                  {active && <span className="absolute bottom-0.5 h-0.5 w-4 rounded-full" style={{ background: 'var(--accent)', boxShadow: '0 0 8px var(--accent)' }} />}
+                </Link>
+              );
+            })}
+            <button
+              onClick={handleLogoutClick}
+              className="flex-1 flex flex-col items-center py-1.5 rounded-xl transition-all duration-200"
+              style={{ color: 'var(--text-secondary)' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#f87171'}
+              onMouseLeave={e => e.currentTarget.style.color = 'var(--text-secondary)'}
+            >
+              <span className="text-[17px] leading-none mb-0.5">🚪</span>
+              <span className="text-[9px] font-black tracking-wide">{isAr ? 'خروج' : 'Logout'}</span>
+            </button>
+          </nav>
+        </div>
+
+        <ConfirmationModal
+          isOpen={isLogoutModalOpen}
+          title={isAr ? 'تأكيد الخروج' : 'Confirm Sign Out'}
           message={isAr ? 'هل أنت متأكد من الخروج؟' : 'Are you sure you want to sign out?'}
           onConfirm={confirmLogout}
           onCancel={() => setIsLogoutModalOpen(false)}
