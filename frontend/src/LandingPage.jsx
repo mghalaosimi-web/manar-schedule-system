@@ -30,7 +30,7 @@ export default function LandingPage() {
         }
       } catch (err) {
         console.error('Failed to fetch tenants:', err);
-        setError(isAr ? 'خطأ في الاتصال بالخادم. يرجى التحقق من الرابط.' : 'Connection error. Please check the API URL.');
+        setError(isAr ? 'فشل الاتصال بالخادم. يرجى التأكد من اتصال الشبكة' : 'Connection error. Please check the network connection.');
         toast.error(isAr ? 'فشل تحميل البيانات' : 'Failed to load data');
       } finally {
         setLoading(false);
@@ -158,7 +158,7 @@ export default function LandingPage() {
             }}
             className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full"
           >
-            {universities.map((uni) => (
+            {(universities || []).map((uni) => (
               <motion.div 
                 key={uni.id}
                 variants={{
