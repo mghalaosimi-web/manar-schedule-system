@@ -12,43 +12,63 @@ const pool = new Pool({
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-async function upsertMajor(name, departmentId) {
-  let major = await prisma.major.findFirst({
-    where: { name, departmentId }
-  });
-  if (!major) {
-    major = await prisma.major.create({
-      data: { name, departmentId }
-    });
+const collegesConfig = [
+  {
+    name: "كلية الطب والعلوم الصحية",
+    slug: "medicine-health",
+    location: "Hajjah",
+    majors: ["الطب البشري", "الرعاية التنفسية", "الصيدلة", "التمريض", "القبالة", "المختبرات", "طب الطوارئ"]
+  },
+  {
+    name: "كلية العلوم التطبيقية",
+    slug: "applied-sciences",
+    location: "Hajjah",
+    majors: ["علوم الحاسوب", "الذكاء الاصطناعي", "تقنية المعلومات IT", "الأمن السيبراني", "الاتصالات والشبكات", "الكيمياء الصناعية", "الجيولوجيا والتعدين", "ميكروبيولوجي"]
+  },
+  {
+    name: "كلية الشريعة والقانون",
+    slug: "sharia-law",
+    location: "Hajjah",
+    majors: ["شريعة وقانون"]
+  },
+  {
+    name: "كلية العلوم المالية والمصرفية",
+    slug: "finance-banking",
+    location: "Hajjah",
+    majors: ["محاسبة", "إدارة أعمال", "تسويق", "مصارف", "نظم معلومات إدارية"]
+  },
+  {
+    name: "كلية التربية والعلوم الإنسانية",
+    slug: "education-humanities",
+    location: "Hajjah",
+    majors: ["القرآن الكريم", "الدراسات الإسلامية", "اللغة العربية", "معلم حاسوب", "معلم صف", "الفيزياء", "الكيمياء", "الرياضيات", "اللغة الإنجليزية", "الجغرافيا والسياحة", "التاريخ والآثار", "علوم الحياة"]
+  },
+  {
+    name: "كلية الزراعة والطب البيطري - عبس",
+    slug: "agriculture-veterinary",
+    location: "Abs",
+    majors: ["بساتين", "محاصيل", "إنتاج نباتي", "إنتاج حيواني", "علوم الأغذية", "تقانة زراعية", "الطب البيطري"]
+  },
+  {
+    name: "مركز التدريب وخدمة المجتمع",
+    slug: "training-community",
+    location: "Hajjah",
+    majors: ["دبلوم مختبرات", "دبلوم صيدلة", "دبلوم رعاية تنفسية", "دبلوم طب طوارئ", "دبلوم تمريض", "دبلوم العلاج الطبيعي"]
   }
-  return major;
-}
-
-async function upsertLevel(name) {
-  let lvl = await prisma.level.findFirst({ where: { name } });
-  if (!lvl) {
-    lvl = await prisma.level.create({ data: { name } });
-  }
-  return lvl;
-}
-
-async function upsertGroup(name) {
-  let grp = await prisma.group.findFirst({ where: { name } });
-  if (!grp) {
-    grp = await prisma.group.create({ data: { name } });
-  }
-  return grp;
-}
+];
 
 async function main() {
   console.log('Clearing existing database tables...');
+  await prisma.seatAllocation.deleteMany();
+  await prisma.attendanceRecord.deleteMany();
+  await prisma.verificationCode.deleteMany();
   await prisma.pushSubscription.deleteMany();
   await prisma.scheduleOverride.deleteMany();
   await prisma.notificationLog.deleteMany();
-  await prisma.verificationCode.deleteMany();
   await prisma.rescheduleRequest.deleteMany();
   await prisma.student.deleteMany();
   await prisma.schedule.deleteMany();
+  await prisma.examSchedule.deleteMany();
   await prisma.lecturer.deleteMany();
   await prisma.room.deleteMany();
   await prisma.subject.deleteMany();
@@ -57,92 +77,70 @@ async function main() {
   await prisma.major.deleteMany();
   await prisma.department.deleteMany();
   await prisma.admin.deleteMany();
+  await prisma.college.deleteMany();
+  await prisma.university.deleteMany();
   console.log('All tables cleared.');
 
-  console.log('Seeding database with academic data...');
-
-  // 1. Create Departments
-  const itDept = await prisma.department.create({
-    data: { name: 'كلية الحاسبات وتكنولوجيا المعلومات' }
+  console.log('Creating Hajjah University...');
+  const university = await prisma.university.create({
+    data: {
+      name: "جامعة حجة",
+      slug: "hajjah-university",
+      logoUrl: "/hajjah-logo.png",
+      themeColor: "#1e3a8a"
+    }
   });
-  console.log(`Department created: ${itDept.name}`);
 
-  const humDept = await prisma.department.create({
-    data: { name: 'كلية العلوم الإدارية والإنسانية' }
-  });
-  console.log(`Department created: ${humDept.name}`);
+  const allMajors = [];
+  const createdColleges = [];
 
-  // 2. Create Majors
-  const majorsList = [];
-  // IT Dept
-  const itMajors = ['تقنية المعلومات', 'أمن سيبراني'];
-  for (const majorName of itMajors) {
-    const maj = await upsertMajor(majorName, itDept.id);
-    majorsList.push(maj);
-    console.log(`Major created: ${maj.name} (IT Department)`);
-  }
-
-  // Humanities Dept
-  const humMajors = ['شريعة وقانون', 'محاسبة', 'إدارة صحية', 'إدارة أعمال'];
-  for (const majorName of humMajors) {
-    const maj = await upsertMajor(majorName, humDept.id);
-    majorsList.push(maj);
-    console.log(`Major created: ${maj.name} (Humanities Department)`);
-  }
-
-  // 3. Create Rooms
-  const roomsData = [
-    { name: 'قاعة 1', capacity: 45 },
-    { name: 'قاعة 2', capacity: 45 },
-    { name: 'قاعة 3', capacity: 45 },
-    { name: 'قاعة 4', capacity: 45 },
-    { name: 'قاعة 5', capacity: 45 },
-    { name: 'قاعة 6', capacity: 45 },
-    { name: 'قاعة 7', capacity: 45 },
-    { name: 'قاعة 8', capacity: 45 },
-    { name: 'مختبر الحاسوب 1', capacity: 30 },
-    { name: 'مختبر الشبكات 2', capacity: 30 }
-  ];
-
-  const rooms = [];
-  for (const rData of roomsData) {
-    const rm = await prisma.room.create({
-      data: { name: rData.name, capacity: rData.capacity }
+  console.log('Creating Colleges, Departments, and Majors...');
+  for (const config of collegesConfig) {
+    const college = await prisma.college.create({
+      data: {
+        name: config.name,
+        slug: config.slug,
+        location: config.location,
+        universityId: university.id
+      }
     });
-    rooms.push(rm);
-    console.log(`Room created: ${rm.name} (Capacity: ${rm.capacity})`);
-  }
+    createdColleges.push(college);
+    console.log(`College created: ${college.name} (Slug: ${college.slug}, Location: ${college.location})`);
 
-  // 4. Create Levels
-  const levels = [];
-  for (let i = 1; i <= 4; i++) {
-    const lvl = await upsertLevel(`Level ${i}`);
-    levels.push(lvl);
-    console.log(`Level created: ${lvl.name}`);
-  }
+    const dept = await prisma.department.create({
+      data: {
+        name: college.name,
+        collegeId: college.id
+      }
+    });
 
-  // 5. Create Groups
-  const groupsList = [];
-  const groupNames = ['مجموعة أ (نظري)', 'مجموعة ب (عملي 1)', 'مجموعة ج (عملي 2)'];
-  for (const gName of groupNames) {
-    const grp = await upsertGroup(gName);
-    groupsList.push(grp);
-    console.log(`Group created: ${grp.name}`);
+    for (const majorName of config.majors) {
+      const major = await prisma.major.create({
+        data: {
+          name: majorName,
+          departmentId: dept.id
+        }
+      });
+      allMajors.push({ ...major, collegeId: college.id });
+    }
   }
+  console.log('Colleges, Departments, and Majors successfully seeded.');
 
-  // 6. Create SUPER_ADMIN Account
-  const superAdminPasswordHash = await bcrypt.hash('708090', 10);
+  // Create SUPER_ADMIN Account
+  console.log('Creating SUPER_ADMIN user...');
+  const superAdminPasswordHash = await bcrypt.hash('securepassword', 10);
   const superAdmin = await prisma.admin.create({
     data: {
-      name: 'mohammed',
+      name: 'Chief Architect',
       email: 'developer@mghal.com',
       password: superAdminPasswordHash,
       role: 'SUPER_ADMIN'
     }
   });
-  console.log(`SUPER_ADMIN created: ${superAdmin.email} (Password: 708090)`);
+  console.log(`SUPER_ADMIN created: ${superAdmin.email} (Role: SUPER_ADMIN)`);
 
-  // 6b. Create Lecturers
+  // Create Lecturers
+  console.log('Creating Lecturers...');
   const lecturerNames = [
     'أ. افنان الشرفي', 'د. عبد الرزاق الأهدل', 'أ. سبأ زمام', 'أ. إجلال المحن',
     'أ. منير مفتاح', 'د. احمد الناشري', 'د. عدنان الصلوي', 'أ. فارس الأعور',
@@ -162,11 +160,49 @@ async function main() {
       }
     });
     lecturersMap[name] = lecturer;
-    console.log(`Lecturer created: ${name} (Email: ${email}, Password: 12345678)`);
   }
 
-  // 7. Seed Subjects
-  console.log('Seeding subjects...');
+  // Create Rooms
+  console.log('Creating Rooms...');
+  const roomsData = [
+    { name: 'قاعة 1', capacity: 45 },
+    { name: 'قاعة 2', capacity: 45 },
+    { name: 'قاعة 3', capacity: 45 },
+    { name: 'قاعة 4', capacity: 45 },
+    { name: 'قاعة 5', capacity: 45 },
+    { name: 'قاعة 6', capacity: 45 },
+    { name: 'قاعة 7', capacity: 45 },
+    { name: 'قاعة 8', capacity: 45 },
+    { name: 'مختبر الحاسوب 1', capacity: 30 },
+    { name: 'مختبر الشبكات 2', capacity: 30 }
+  ];
+  const rooms = [];
+  for (const rData of roomsData) {
+    const rm = await prisma.room.create({
+      data: { name: rData.name, capacity: rData.capacity }
+    });
+    rooms.push(rm);
+  }
+
+  // Create Levels
+  console.log('Creating Levels...');
+  const levels = [];
+  for (let i = 1; i <= 4; i++) {
+    const lvl = await prisma.level.create({ data: { name: `Level ${i}` } });
+    levels.push(lvl);
+  }
+
+  // Create Groups
+  console.log('Creating Groups...');
+  const groupsList = [];
+  const groupNames = ['مجموعة أ (نظري)', 'مجموعة ب (عملي 1)', 'مجموعة ج (عملي 2)'];
+  for (const gName of groupNames) {
+    const grp = await prisma.group.create({ data: { name: gName } });
+    groupsList.push(grp);
+  }
+
+  // Seed Subjects
+  console.log('Creating Subjects...');
   const subjectsData = [
     { name: 'تصميم مواقع الويب', code: 'IT-2026-WEB', type: 'THEORY' },
     { name: 'البرمجة المرئية', code: 'IT-2026-VISUAL', type: 'THEORY' },
@@ -184,7 +220,6 @@ async function main() {
     { name: 'تطبيقات التصميم المنطقي الرقمي', code: 'IT-2026-DIGITAL-PRAC', type: 'PRACTICAL' },
     { name: 'تطبيقات هياكل البيانات', code: 'IT-2026-DS-PRAC', type: 'PRACTICAL' }
   ];
-
   const subjectsMap = {};
   for (const sub of subjectsData) {
     const s = await prisma.subject.create({
@@ -192,23 +227,18 @@ async function main() {
     });
     subjectsMap[sub.name] = s;
   }
-  console.log('Subjects seeded successfully.');
 
-  // 8. Create Schedules (Dynamic: include "TODAY" for testing convenience)
-  console.log('Preparing schedules data...');
+  // Create Schedules
+  console.log('Creating Schedules...');
   const daysOfWeek = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
   const todayDayName = daysOfWeek[new Date().getDay()];
-  console.log(`Current local day is detected as: ${todayDayName}`);
 
-  // We will schedule some lectures dynamically for TODAY, and others for static days
   const dynamicSchedules = [
-    // 4 Lectures scheduled dynamically for TODAY
     { subjectName: 'تصميم مواقع الويب', lecturer: 'أ. افنان الشرفي', roomName: 'قاعة 8', day: todayDayName, startTime: '08:00', endTime: '10:00', groupNames: ['مجموعة أ (نظري)'] },
     { subjectName: 'البرمجة المرئية', lecturer: 'د. عبد الرزاق الأهدل', roomName: 'قاعة 1', day: todayDayName, startTime: '10:00', endTime: '12:00', groupNames: ['مجموعة أ (نظري)'] },
     { subjectName: 'تطبيقات قواعد بيانات (1)', lecturer: 'أ. سبأ زمام', roomName: 'مختبر الحاسوب 1', day: todayDayName, startTime: '12:00', endTime: '14:00', groupNames: ['مجموعة ب (عملي 1)'] },
     { subjectName: 'تطبيقات أنظمة التشغيل', lecturer: 'أ. إجلال المحن', roomName: 'مختبر الشبكات 2', day: todayDayName, startTime: '14:00', endTime: '16:00', groupNames: ['مجموعة ج (عملي 2)'] },
 
-    // Other lectures spread throughout the week
     { subjectName: 'نظم التشغيل', lecturer: 'د. عبد الرزاق الأهدل', roomName: 'قاعة 1', day: 'WEDNESDAY', startTime: '08:00', endTime: '10:00', groupNames: ['مجموعة أ (نظري)'] },
     { subjectName: 'التصميم المنطقي الرقمي', lecturer: 'أ. منير مفتاح', roomName: 'قاعة 1', day: 'WEDNESDAY', startTime: '10:00', endTime: '12:00', groupNames: ['مجموعة أ (نظري)'] },
     { subjectName: 'هياكل البيانات والخوارزميات', lecturer: 'د. احمد الناشري', roomName: 'قاعة 6', day: 'THURSDAY', startTime: '08:00', endTime: '10:00', groupNames: ['مجموعة أ (نظري)'] },
@@ -218,21 +248,15 @@ async function main() {
     { subjectName: 'مالية عامة', lecturer: 'د. عبد الله قشوة', roomName: 'قاعة 8', day: 'TUESDAY', startTime: '08:00', endTime: '10:00', groupNames: ['مجموعة أ (نظري)'] }
   ];
 
-  const roomsMap = {};
-  rooms.forEach(r => { roomsMap[r.name] = r; });
-
-  const groupsMap = {};
-  groupsList.forEach(g => { groupsMap[g.name] = g; });
-
   const schedulesToCreate = [];
   for (const item of dynamicSchedules) {
-    const room = roomsMap[item.roomName];
+    const room = rooms.find(r => r.name === item.roomName);
     const subject = subjectsMap[item.subjectName];
     const lecturer = lecturersMap[item.lecturer];
     if (!room || !subject) continue;
 
     for (const gName of item.groupNames) {
-      const group = groupsMap[gName];
+      const group = groupsList.find(g => g.name === gName);
       if (!group) continue;
 
       schedulesToCreate.push({
@@ -247,11 +271,10 @@ async function main() {
       });
     }
   }
-
   await prisma.schedule.createMany({ data: schedulesToCreate });
   console.log(`Seeded ${schedulesToCreate.length} schedules.`);
 
-  // 9. Generate and seed 300 realistic dummy students
+  // Generate 300 realistic students
   console.log('Generating 300 realistic dummy students...');
   const firstNames = [
     'احمد', 'خالد', 'فاطمة', 'سارة', 'محمد', 'علي', 'عمر', 'عثمان',
@@ -267,7 +290,6 @@ async function main() {
     'صبري', 'باعلوي', 'السقاف', 'الجابري', 'العمودي', 'باوزير', 'الشبامي', 'الحضرمي'
   ];
 
-  // Hash student password once to save processing time during bulk generation
   const studentPasswordHash = await bcrypt.hash('12345678', 10);
   const studentsToCreate = [];
 
@@ -276,10 +298,9 @@ async function main() {
     const randLast = lastNames[Math.floor(Math.random() * lastNames.length)];
     const fullName = `${randFirst} ${randLast}`;
 
-    // Cycle through groups, levels, and majors evenly
     const group = groupsList[(i - 1) % groupsList.length];
     const level = levels[(i - 1) % levels.length];
-    const major = majorsList[(i - 1) % majorsList.length];
+    const major = allMajors[(i - 1) % allMajors.length];
 
     studentsToCreate.push({
       name: fullName,
@@ -289,6 +310,7 @@ async function main() {
       phone: `+96777${String(i).padStart(7, '0')}`,
       isEmailVerified: true,
       isPhoneVerified: true,
+      collegeId: major.collegeId,
       majorId: major.id,
       levelId: level.id,
       groupId: group.id

@@ -372,6 +372,19 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'OK', message: 'Manar Schedule System Backend is running.' });
 });
 
+// Tenants Endpoint (Get Universities and Colleges)
+app.get('/api/tenants', async (req, res) => {
+  try {
+    const universities = await prisma.university.findMany({
+      include: { colleges: true }
+    });
+    res.status(200).json({ success: true, data: universities });
+  } catch (error) {
+    console.error('[API] Fetch tenants error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch tenants' });
+  }
+});
+
 // Server-Sent Events (SSE) Live Schedule Update Endpoint
 app.get('/api/schedules/live', (req, res) => {
   res.writeHead(200, {
@@ -436,7 +449,7 @@ app.post('/api/notifications/subscribe', verifyToken, async (req, res) => {
 // Authentication Endpoint
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { identifier, password } = req.body;
+    const { identifier, password, collegeId } = req.body;
     if (!identifier || !password) {
       return res.status(400).json({ success: false, error: 'Identifier (Name/Email/ID) and password are required' });
     }
@@ -495,6 +508,9 @@ app.post('/api/auth/login', async (req, res) => {
           }
         });
         if (studentUser) {
+          if (collegeId && studentUser.collegeId !== parseInt(collegeId)) {
+            return res.status(401).json({ success: false, error: 'User does not belong to the selected college' });
+          }
           const isMatch = await bcrypt.compare(password, studentUser.password);
           if (isMatch) {
             user = studentUser;

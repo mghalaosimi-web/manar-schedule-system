@@ -33,9 +33,11 @@ enum NotificationStatus {
 }
 
 model Department {
-  id     Int     @id @default(autoincrement())
-  name   String  @unique
-  majors Major[]
+  id        Int     @id @default(autoincrement())
+  name      String
+  collegeId Int
+  college   College @relation(fields: [collegeId], references: [id])
+  majors    Major[]
 }
 
 model Major {
@@ -71,6 +73,8 @@ model Student {
   phone            String             @unique
   isEmailVerified  Boolean            @default(false)
   isPhoneVerified  Boolean            @default(false)
+  collegeId        Int
+  college          College            @relation(fields: [collegeId], references: [id])
   majorId          Int
   major            Major              @relation(fields: [majorId], references: [id])
   levelId          Int
@@ -267,6 +271,26 @@ model SeatAllocation {
   
   @@unique([studentId, examScheduleId])
   @@unique([examScheduleId, seatNumber])
+}
+
+model University {
+  id         Int       @id @default(autoincrement())
+  name       String
+  slug       String    @unique
+  logoUrl    String?
+  themeColor String?
+  colleges   College[]
+}
+
+model College {
+  id           Int          @id @default(autoincrement())
+  name         String
+  slug         String       @unique
+  location     String?
+  universityId Int
+  university   University   @relation(fields: [universityId], references: [id])
+  departments  Department[]
+  students     Student[]
 }
 
 

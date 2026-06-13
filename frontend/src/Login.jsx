@@ -28,6 +28,11 @@ export default function Login() {
   const [error,      setError]      = useState(null);
   const navigate = useNavigate();
 
+  const selectedCollegeId = localStorage.getItem('selectedCollegeId');
+  const selectedCollegeName = localStorage.getItem('selectedCollegeName');
+  const selectedUniversityName = localStorage.getItem('selectedUniversityName');
+  const selectedUniversityLogo = localStorage.getItem('selectedUniversityLogo');
+
   const [activeTab, setActiveTab] = useState('STUDENT'); // 'STUDENT' or 'FACULTY'
 
   const handleTabChange = (tab) => {
@@ -42,7 +47,11 @@ export default function Login() {
     setLoading(true);
     setError(null);
     try {
-      const res = await axios.post(`${API_URL}/api/auth/login`, { identifier, password });
+      const res = await axios.post(`${API_URL}/api/auth/login`, { 
+        identifier, 
+        password, 
+        collegeId: selectedCollegeId || undefined 
+      });
       if (res.data?.success) {
         const { token, user } = res.data;
         localStorage.setItem('manar_token', token);
@@ -89,17 +98,19 @@ export default function Login() {
           initial={{ opacity: 0, x: isAr ? 20 : -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
-          className="flex items-center gap-3"
+          className="flex items-center gap-3 cursor-pointer"
+          onClick={() => navigate('/')}
+          title={isAr ? 'العودة للبوابة' : 'Back to Gateway'}
         >
           {/* University wordmark */}
           <span
             className="text-sm font-black tracking-[0.22em] uppercase"
             style={{ color: 'var(--accent)' }}
           >
-            MANAR
+            {selectedUniversityName ? selectedUniversityName.toUpperCase() : 'MANAR'}
           </span>
           <span className="text-[var(--text-muted)] text-xs font-medium tracking-wide">
-            {isAr ? 'كلية المنار الجامعية' : 'Al-Manar University'}
+            {selectedCollegeName ? selectedCollegeName : (isAr ? 'كلية المنار الجامعية' : 'Al-Manar University')}
           </span>
         </motion.div>
 
@@ -126,7 +137,11 @@ export default function Login() {
           {/* Headline */}
           <motion.div variants={item} className="mb-12 text-center flex flex-col items-center">
             <div className="mb-5 flex justify-center">
-              <Logo size="lg" />
+              {selectedUniversityLogo ? (
+                <img src={selectedUniversityLogo} alt="Logo" className="w-20 h-20 object-contain drop-shadow-[0_0_15px_rgba(255,255,255,0.2)]" />
+              ) : (
+                <Logo size="lg" />
+              )}
             </div>
             <p className="text-[11px] font-black tracking-[0.30em] uppercase mb-4"
                style={{ color: 'var(--accent)' }}>

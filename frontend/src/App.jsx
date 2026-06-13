@@ -4,6 +4,7 @@ import ConfirmationModal from './ConfirmationModal';
 import { Toaster, toast } from 'react-hot-toast';
 import axios from 'axios';
 import { API_URL } from './config';
+import LandingPage from './LandingPage';
 import Welcome from './Welcome';
 import Login from './Login';
 import Register from './Register';
@@ -596,7 +597,7 @@ function AppLayout() {
   // Welcome / Default Landing Page Layout
   return (
     <Routes>
-      <Route path="/"             element={<Welcome />} />
+      <Route path="/"             element={<LandingPage />} />
       <Route path="/login"        element={<Login />} />
       <Route path="/register"     element={<Register />} />
       <Route path="/verify"       element={<Verification />} />
