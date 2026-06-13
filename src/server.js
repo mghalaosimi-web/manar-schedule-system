@@ -510,6 +510,9 @@ app.post('/api/auth/login', async (req, res) => {
         }
       });
       if (adminUser) {
+        if (adminUser.role !== 'SUPER_ADMIN' && collegeId && adminUser.collegeId !== parseInt(collegeId)) {
+          return res.status(401).json({ success: false, error: 'User does not belong to the selected college' });
+        }
         const isMatch = await bcrypt.compare(password, adminUser.password);
         if (isMatch) {
           user = adminUser;
@@ -528,6 +531,9 @@ app.post('/api/auth/login', async (req, res) => {
           }
         });
         if (lecturerUser) {
+          if (collegeId && lecturerUser.collegeId !== parseInt(collegeId)) {
+            return res.status(401).json({ success: false, error: 'User does not belong to the selected college' });
+          }
           const isMatch = await bcrypt.compare(password, lecturerUser.password);
           if (isMatch) {
             user = lecturerUser;
@@ -567,9 +573,30 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Invalid name, email, ID or password' });
     }
 
+    const userCollegeId = user.collegeId || null;
+    let collegeName = null;
+    let universityName = null;
+    let universityLogo = null;
+    let themeColor = null;
+
+    if (userCollegeId) {
+      const college = await prisma.college.findUnique({
+        where: { id: userCollegeId },
+        include: { university: true }
+      });
+      if (college) {
+        collegeName = college.name;
+        if (college.university) {
+          universityName = college.university.name;
+          universityLogo = college.university.logoUrl;
+          themeColor = college.university.themeColor;
+        }
+      }
+    }
+
     // 3. Sign JWT Token (90-day persistent session)
     const token = jwt.sign(
-      { id: user.id, name: user.name, role, groupId },
+      { id: user.id, name: user.name, role, groupId, collegeId: userCollegeId },
       JWT_SECRET,
       { expiresIn: '90d' }
     );
@@ -582,7 +609,12 @@ app.post('/api/auth/login', async (req, res) => {
         name: user.name,
         email: user.email,
         role,
-        groupId
+        groupId,
+        collegeId: userCollegeId,
+        collegeName,
+        universityName,
+        universityLogo,
+        themeColor
       }
     });
 

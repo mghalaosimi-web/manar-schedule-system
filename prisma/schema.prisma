@@ -61,6 +61,8 @@ model Group {
   schedules        Schedule[]
   notificationLogs NotificationLog[]
   examSchedules    ExamSchedule[]
+  collegeId        Int
+  college          College           @relation(fields: [collegeId], references: [id])
 }
 
 model Student {
@@ -96,6 +98,8 @@ model Subject {
   type      SubjectType
   schedules Schedule[]
   examSchedules ExamSchedule[]
+  collegeId Int
+  college   College     @relation(fields: [collegeId], references: [id])
 }
 
 model Room {
@@ -106,6 +110,8 @@ model Room {
   overrides          ScheduleOverride[]
   rescheduleRequests RescheduleRequest[]
   examSchedules      ExamSchedule[]
+  collegeId          Int
+  college            College            @relation(fields: [collegeId], references: [id])
 }
 
 model Lecturer {
@@ -118,6 +124,8 @@ model Lecturer {
   rescheduleRequests RescheduleRequest[]
   pushSubscriptions  PushSubscription[]
   createdAt          DateTime            @default(now())
+  collegeId          Int
+  college            College             @relation(fields: [collegeId], references: [id])
 }
 
 enum RequestStatus {
@@ -161,6 +169,8 @@ model Schedule {
   overrides          ScheduleOverride[]
   rescheduleRequests RescheduleRequest[]
   attendanceRecords  AttendanceRecord[]
+  collegeId          Int
+  college            College            @relation(fields: [collegeId], references: [id])
 }
 
 model ScheduleOverride {
@@ -198,6 +208,8 @@ model Admin {
   password          String
   role              AdminRole          @default(ADMIN)
   pushSubscriptions PushSubscription[]
+  collegeId         Int?
+  college           College?           @relation(fields: [collegeId], references: [id])
 }
 
 enum VerificationType {
@@ -259,6 +271,8 @@ model ExamSchedule {
   startTime       String           // e.g. "09:00"
   endTime         String           // e.g. "11:00"
   seatAllocations SeatAllocation[]
+  collegeId       Int
+  college         College          @relation(fields: [collegeId], references: [id])
 }
 
 model SeatAllocation {
@@ -283,14 +297,21 @@ model University {
 }
 
 model College {
-  id           Int          @id @default(autoincrement())
+  id           Int            @id @default(autoincrement())
   name         String
-  slug         String       @unique
+  slug         String         @unique
   location     String?
   universityId Int
-  university   University   @relation(fields: [universityId], references: [id])
+  university   University     @relation(fields: [universityId], references: [id])
   departments  Department[]
   students     Student[]
+  admins       Admin[]
+  lecturers    Lecturer[]
+  rooms        Room[]
+  subjects     Subject[]
+  groups       Group[]
+  schedules    Schedule[]
+  examSchedules ExamSchedule[]
 }
 
 

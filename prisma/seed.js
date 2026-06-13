@@ -91,6 +91,25 @@ async function main() {
     }
   });
 
+  console.log('Creating Al-Manar University...');
+  const almanarUniversity = await prisma.university.create({
+    data: {
+      name: "كلية المنار الجامعية",
+      slug: "almanar-college",
+      logoUrl: null,
+      themeColor: "#059669"
+    }
+  });
+
+  const almanarCollege = await prisma.college.create({
+    data: {
+      name: "كلية المنار الجامعية",
+      slug: "almanar-main",
+      location: "Sanaa",
+      universityId: almanarUniversity.id
+    }
+  });
+
   const allMajors = [];
   const createdColleges = [];
 
@@ -126,6 +145,8 @@ async function main() {
   }
   console.log('Colleges, Departments, and Majors successfully seeded.');
 
+  const appliedCollege = createdColleges.find(c => c.slug === 'applied-sciences') || createdColleges[0];
+
   // Create SUPER_ADMIN Account
   console.log('Creating SUPER_ADMIN user...');
   const superAdminPasswordHash = await bcrypt.hash('securepassword', 10);
@@ -138,6 +159,20 @@ async function main() {
     }
   });
   console.log(`SUPER_ADMIN created: ${superAdmin.email} (Role: SUPER_ADMIN)`);
+
+  // Create standard ADMIN Account
+  console.log('Creating standard ADMIN user for Applied Sciences college...');
+  const adminPasswordHash = await bcrypt.hash('12345678', 10);
+  const standardAdmin = await prisma.admin.create({
+    data: {
+      name: 'Applied Sciences Admin',
+      email: 'admin.applied@manar.edu',
+      password: adminPasswordHash,
+      role: 'ADMIN',
+      collegeId: appliedCollege.id
+    }
+  });
+  console.log(`Standard ADMIN created: ${standardAdmin.email} (College: ${appliedCollege.name})`);
 
   // Create Lecturers
   console.log('Creating Lecturers...');
@@ -156,7 +191,8 @@ async function main() {
         name,
         email,
         password: lecturerPasswordHash,
-        phone: `+9677800000${idx + 1}`
+        phone: `+9677800000${idx + 1}`,
+        collegeId: appliedCollege.id
       }
     });
     lecturersMap[name] = lecturer;
@@ -179,7 +215,7 @@ async function main() {
   const rooms = [];
   for (const rData of roomsData) {
     const rm = await prisma.room.create({
-      data: { name: rData.name, capacity: rData.capacity }
+      data: { name: rData.name, capacity: rData.capacity, collegeId: appliedCollege.id }
     });
     rooms.push(rm);
   }
@@ -197,7 +233,7 @@ async function main() {
   const groupsList = [];
   const groupNames = ['مجموعة أ (نظري)', 'مجموعة ب (عملي 1)', 'مجموعة ج (عملي 2)'];
   for (const gName of groupNames) {
-    const grp = await prisma.group.create({ data: { name: gName } });
+    const grp = await prisma.group.create({ data: { name: gName, collegeId: appliedCollege.id } });
     groupsList.push(grp);
   }
 
@@ -223,7 +259,7 @@ async function main() {
   const subjectsMap = {};
   for (const sub of subjectsData) {
     const s = await prisma.subject.create({
-      data: { name: sub.name, code: sub.code, type: sub.type }
+      data: { name: sub.name, code: sub.code, type: sub.type, collegeId: appliedCollege.id }
     });
     subjectsMap[sub.name] = s;
   }
@@ -267,7 +303,8 @@ async function main() {
         groupId: group.id,
         dayOfWeek: item.day,
         startTime: item.startTime,
-        endTime: item.endTime
+        endTime: item.endTime,
+        collegeId: appliedCollege.id
       });
     }
   }
