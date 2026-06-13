@@ -22,7 +22,15 @@ export default function LandingPage() {
       setLoading(true);
       setError(null);
       try {
-        const response = await axios.get(`${API_URL}/api/tenants`);
+        let backendUrl = import.meta.env.VITE_API_URL;
+        if (!backendUrl) {
+          backendUrl = import.meta.env.PROD
+            ? 'https://manar-schedule-system.onrender.com/api'
+            : `${window.location.protocol}//${window.location.hostname}:5000/api`;
+        } else if (!backendUrl.endsWith('/api') && !backendUrl.endsWith('/api/')) {
+          backendUrl = backendUrl.endsWith('/') ? `${backendUrl}api` : `${backendUrl}/api`;
+        }
+        const response = await axios.get(`${backendUrl}/tenants`);
         const rawResponse = response.data;
         console.log("🔍 SaaS Gateway Debug - Received Payload:", rawResponse);
 

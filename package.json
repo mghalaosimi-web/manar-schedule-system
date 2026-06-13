@@ -9,7 +9,7 @@
     "dev:backend": "nodemon src/server.js",
     "dev:frontend": "npm run dev --prefix frontend",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "build:frontend": "npm run build --prefix frontend",
+    "build:frontend": "node build.js",
     "build": "npm run build:frontend",
     "seed:prod": "node prisma/seed.js"
   },

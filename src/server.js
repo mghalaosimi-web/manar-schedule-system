@@ -208,17 +208,24 @@ async function boot() {
 
     await runStartupMigrations();
 
-    // Execute seed script and print logs directly to console output
-    const { exec } = require('child_process');
-    exec('node prisma/seed.js', (err, stdout, stderr) => {
-      if (err) {
-        console.error('[DATABASE] Seeding process failed:', err.message);
-        console.error(stderr);
-      } else {
-        console.log('[DATABASE] Seeding completed successfully.');
-        if (stdout) console.log(stdout);
-      }
-    });
+    // Check if seeding is needed (e.g. if university table is empty)
+    const uniCount = await prisma.university.count().catch(() => 0);
+    if (uniCount === 0) {
+      console.log('[DATABASE] University table is empty. Auto-triggering database seeding...');
+      // Execute seed script and print logs directly to console output
+      const { exec } = require('child_process');
+      exec('node prisma/seed.js', (err, stdout, stderr) => {
+        if (err) {
+          console.error('[DATABASE] Seeding process failed:', err.message);
+          console.error(stderr);
+        } else {
+          console.log('[DATABASE] Seeding completed successfully.');
+          if (stdout) console.log(stdout);
+        }
+      });
+    } else {
+      console.log(`[DATABASE] Database already populated with ${uniCount} universities. Skipping startup seeding.`);
+    }
 
     const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {
@@ -2307,7 +2314,61 @@ app.get('/api/student/attendance/stats', verifyToken, async (req, res) => {
   }
 });
 
+// GET Database Status Check
+app.get('/api/db/status', async (req, res) => {
+  try {
+    const uniCount = await prisma.university.count().catch(() => 0);
+    const collegeCount = await prisma.college.count().catch(() => 0);
+    const studentCount = await prisma.student.count().catch(() => 0);
+    res.status(200).json({
+      success: true,
+      seeded: uniCount > 0,
+      counts: {
+        universities: uniCount,
+        colleges: collegeCount,
+        students: studentCount
+      }
+    });
+  } catch (error) {
+    console.error('[API] DB status error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
+// POST Database Seed (Trigger once, only if empty)
+app.post('/api/db/seed', async (req, res) => {
+  try {
+    const uniCount = await prisma.university.count().catch(() => 0);
+    if (uniCount > 0) {
+      return res.status(200).json({
+        success: true,
+        seeded: false,
+        message: `Database already populated with ${uniCount} universities. Seeding skipped to avoid data wipe.`
+      });
+    }
+
+    console.log('[API] Triggering database seeding via API request...');
+    const { exec } = require('child_process');
+    exec('node prisma/seed.js', (err, stdout, stderr) => {
+      if (err) {
+        console.error('[DATABASE] API-triggered seeding process failed:', err.message);
+        console.error(stderr);
+      } else {
+        console.log('[DATABASE] API-triggered seeding completed successfully.');
+        if (stdout) console.log(stdout);
+      }
+    });
+
+    res.status(202).json({
+      success: true,
+      seeded: true,
+      message: 'Database is empty. Seeding process has been triggered in the background.'
+    });
+  } catch (error) {
+    console.error('[API] Trigger seed error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 // ==========================================
 // STATIC SERVING & ROUTING FOR SPA
