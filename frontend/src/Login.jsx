@@ -263,9 +263,9 @@ export default function Login() {
           </form>
 
           {/* Register link / notice */}
-          <motion.div variants={item} className="mt-8 text-center">
+          <motion.div variants={item} className="mt-8 text-center flex flex-col items-center gap-4">
             {activeTab === 'STUDENT' ? (
-              <>
+              <div>
                 <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                   {isAr ? 'لا تملك حساباً؟ ' : "Don't have an account? "}
                 </span>
@@ -277,12 +277,22 @@ export default function Login() {
                 >
                   {isAr ? 'سجّل الآن' : 'Register now'}
                 </button>
-              </>
+              </div>
             ) : (
               <span className="text-xs italic" style={{ color: 'var(--text-secondary)' }}>
                 {isAr ? '💡 حسابات الكادر يتم إنشاؤها من قبل إدارة الكلية.' : '💡 Faculty accounts are created by the college administration.'}
               </span>
             )}
+
+            {/* Back to Gateway Button */}
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="text-[11px] font-bold text-[var(--text-secondary)] hover:text-white transition-colors flex items-center gap-1.5 opacity-80 hover:opacity-100 mt-2"
+            >
+              <span>{isAr ? '←' : '→'}</span>
+              <span>{isAr ? 'العودة لاختيار الجامعة' : 'Back to Gateway'}</span>
+            </button>
           </motion.div>
 
         </motion.div>

@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import ThemeSwitcher from './ThemeSwitcher';
+import Logo from './Logo';
 import DevSignature from './DevSignature';
 
 const container = {
@@ -59,6 +60,11 @@ export default function Register() {
   const [captchaChallengeId, setCaptchaChallengeId] = useState('');
   const [captchaAnswer,     setCaptchaAnswer]     = useState('');
 
+  const selectedCollegeId = localStorage.getItem('selectedCollegeId');
+  const selectedCollegeName = localStorage.getItem('selectedCollegeName');
+  const selectedUniversityName = localStorage.getItem('selectedUniversityName');
+  const selectedUniversityLogo = localStorage.getItem('selectedUniversityLogo');
+
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState(null);
 
@@ -77,9 +83,9 @@ export default function Register() {
     const load = async () => {
       try {
         const [deptRes, lvlRes, grpRes] = await Promise.all([
-          axios.get(`${API_URL}/api/departments`),
+          axios.get(`${API_URL}/api/departments?collegeId=${selectedCollegeId || ''}`),
           axios.get(`${API_URL}/api/levels`),
-          axios.get(`${API_URL}/api/groups`),
+          axios.get(`${API_URL}/api/groups?collegeId=${selectedCollegeId || ''}`),
         ]);
         if (deptRes.data.success) setDepartments(deptRes.data.data);
         if (lvlRes.data.success)  setLevels(lvlRes.data.data);
@@ -96,7 +102,7 @@ export default function Register() {
     const fetchMajors = async () => {
       if (!selectedDeptId) { setMajors([]); setSelectedMajorId(''); return; }
       try {
-        const res = await axios.get(`${API_URL}/api/majors?departmentId=${selectedDeptId}`);
+        const res = await axios.get(`${API_URL}/api/majors?departmentId=${selectedDeptId}&collegeId=${selectedCollegeId || ''}`);
         if (res.data.success) setMajors(res.data.data);
       } catch { /* silent */ }
     };
@@ -113,6 +119,7 @@ export default function Register() {
         phone: `+967${phoneSuffix}`,
         idNumber, idPhotoUrl: idPhotoUrl || undefined,
         majorId: selectedMajorId, levelId: selectedLevelId, groupId: selectedGroupId,
+        collegeId: selectedCollegeId,
         captchaAnswer, captchaChallengeId,
       });
       if (res.data?.success) {
@@ -158,12 +165,17 @@ export default function Register() {
 
       {/* Header */}
       <header className="relative z-10 flex items-center justify-between px-8 pt-7">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
+          {selectedUniversityLogo ? (
+            <img src={selectedUniversityLogo} alt="Logo" className="w-8 h-8 object-contain" />
+          ) : (
+            <Logo size="xs" />
+          )}
           <span className="text-sm font-black tracking-[0.22em] uppercase" style={{ color: 'var(--accent)' }}>
-            MANAR
+            {selectedUniversityName ? selectedUniversityName.toUpperCase() : 'MANAR'}
           </span>
           <span className="text-[var(--text-muted)] text-xs font-medium tracking-wide">
-            {isAr ? 'كلية المنار الجامعية' : 'Al-Manar University'}
+            {selectedCollegeName ? selectedCollegeName : (isAr ? 'كلية المنار الجامعية' : 'Al-Manar University')}
           </span>
         </div>
         <div className="flex items-center gap-3">

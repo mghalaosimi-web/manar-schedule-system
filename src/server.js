@@ -649,10 +649,10 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const {
       fullName, email, password, phone, idNumber, idPhotoUrl,
-      majorId, levelId, groupId, captchaAnswer, captchaChallengeId
+      majorId, levelId, groupId, collegeId, captchaAnswer, captchaChallengeId
     } = req.body;
 
-    if (!fullName || !email || !password || !phone || !idNumber || !majorId || !levelId || !groupId) {
+    if (!fullName || !email || !password || !phone || !idNumber || !majorId || !levelId || !groupId || !collegeId) {
       return res.status(400).json({ success: false, error: 'All fields except ID Photo URL are required' });
     }
 
@@ -696,6 +696,7 @@ app.post('/api/auth/register', async (req, res) => {
         majorId: parseInt(majorId),
         levelId: parseInt(levelId),
         groupId: parseInt(groupId),
+        collegeId: parseInt(collegeId),
         isEmailVerified: true,
         isPhoneVerified: true
       }
@@ -703,7 +704,7 @@ app.post('/api/auth/register', async (req, res) => {
 
     // Sign a 90-day JWT token for auto-login
     const token = jwt.sign(
-      { id: student.id, name: student.name, role: 'STUDENT', groupId: student.groupId },
+      { id: student.id, name: student.name, role: 'STUDENT', groupId: student.groupId, collegeId: student.collegeId },
       JWT_SECRET,
       { expiresIn: '90d' }
     );
@@ -717,7 +718,8 @@ app.post('/api/auth/register', async (req, res) => {
         name: student.name,
         email: student.email,
         role: 'STUDENT',
-        groupId: student.groupId
+        groupId: student.groupId,
+        collegeId: student.collegeId
       }
     });
 
@@ -863,7 +865,10 @@ app.post('/api/auth/impersonate', verifyToken, async (req, res) => {
 // GET all departments
 app.get('/api/departments', async (req, res) => {
   try {
+    const { collegeId } = req.query;
+    const filter = collegeId ? { collegeId: parseInt(collegeId) } : {};
     const departments = await prisma.department.findMany({
+      where: filter,
       orderBy: { name: 'asc' }
     });
     res.status(200).json({ success: true, data: departments });
@@ -876,8 +881,14 @@ app.get('/api/departments', async (req, res) => {
 // GET all majors (with optional departmentId filter)
 app.get('/api/majors', async (req, res) => {
   try {
-    const { departmentId } = req.query;
-    const filter = departmentId ? { departmentId: parseInt(departmentId) } : {};
+    const { departmentId, collegeId } = req.query;
+    const filter = {};
+    if (departmentId) {
+      filter.departmentId = parseInt(departmentId);
+    }
+    if (collegeId) {
+      filter.department = { collegeId: parseInt(collegeId) };
+    }
     const majors = await prisma.major.findMany({
       where: filter,
       orderBy: { name: 'asc' }
@@ -1006,7 +1017,16 @@ app.get('/api/students', verifyToken, async (req, res) => {
     if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN') {
       return res.status(403).json({ success: false, error: 'Forbidden' });
     }
+    const { collegeId } = req.query;
+    const whereClause = {};
+    if (req.user.role !== 'SUPER_ADMIN') {
+      whereClause.collegeId = req.user.collegeId;
+    } else if (collegeId) {
+      whereClause.collegeId = parseInt(collegeId);
+    }
+
     const students = await prisma.student.findMany({
+      where: whereClause,
       include: {
         major: { include: { department: true } },
         level: true,
@@ -1022,12 +1042,22 @@ app.get('/api/students', verifyToken, async (req, res) => {
 });
 
 // 1. GET ALL SCHEDULES (With active overrides)
-app.get('/api/schedules', async (req, res) => {
+app.get('/api/schedules', verifyToken, async (req, res) => {
   try {
-    const { groupId } = req.query;
+    const { groupId, collegeId } = req.query;
+
+    const whereClause = {};
+    if (groupId) {
+      whereClause.groupId = parseInt(groupId);
+    }
+    if (req.user.role !== 'SUPER_ADMIN') {
+      whereClause.collegeId = req.user.collegeId;
+    } else if (collegeId) {
+      whereClause.collegeId = parseInt(collegeId);
+    }
 
     const schedules = await prisma.schedule.findMany({
-      where: groupId ? { groupId: parseInt(groupId) } : {},
+      where: whereClause,
       include: {
         subject: true,
         room: true,
@@ -1061,11 +1091,14 @@ app.post('/api/schedules/override', verifyToken, async (req, res) => {
 
     const { scheduleId, newStartTime, newEndTime, newRoomId, date, overrideType } = req.body;
 
-    const schedule = await prisma.schedule.findUnique({
-      where: { id: parseInt(scheduleId) }
+    const schedule = await prisma.schedule.findFirst({
+      where: {
+        id: parseInt(scheduleId),
+        ...(req.user.role !== 'SUPER_ADMIN' ? { collegeId: req.user.collegeId } : {})
+      }
     });
     if (!schedule) {
-      return res.status(404).json({ success: false, error: 'Schedule not found' });
+      return res.status(404).json({ success: false, error: 'Schedule not found or unauthorized' });
     }
 
     const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
@@ -1078,6 +1111,7 @@ app.post('/api/schedules/override', verifyToken, async (req, res) => {
         dayOfWeek,
         startTime: targetStartTime,
         id: { not: parseInt(scheduleId) },
+        collegeId: schedule.collegeId,
         OR: [{ roomId: targetRoomId }, { lecturerName: schedule.lecturerName }]
       }
     });
@@ -1153,11 +1187,20 @@ app.post('/api/schedules', verifyToken, async (req, res) => {
       groupName,
       dayOfWeek,
       startTime,
-      endTime
+      endTime,
+      collegeId
     } = req.body;
 
     if (!subjectName || !subjectCode || !subjectType || !roomName || !lecturerName || !groupName || !dayOfWeek || !startTime || !endTime) {
       return res.status(400).json({ success: false, error: 'Missing required schedule fields' });
+    }
+
+    const targetCollegeId = req.user.role === 'SUPER_ADMIN'
+      ? (collegeId ? parseInt(collegeId) : undefined)
+      : req.user.collegeId;
+
+    if (!targetCollegeId) {
+      return res.status(400).json({ success: false, error: 'College ID is required for schedule creation' });
     }
 
     const upperSubjectType = subjectType.toUpperCase();
@@ -1174,24 +1217,24 @@ app.post('/api/schedules', verifyToken, async (req, res) => {
     // A. Find or create Subject
     const subject = await prisma.subject.upsert({
       where: { code: subjectCode },
-      update: { name: subjectName, type: upperSubjectType },
-      create: { name: subjectName, code: subjectCode, type: upperSubjectType }
+      update: { name: subjectName, type: upperSubjectType, collegeId: targetCollegeId },
+      create: { name: subjectName, code: subjectCode, type: upperSubjectType, collegeId: targetCollegeId }
     });
 
     // B. Find or create Room
     const room = await prisma.room.upsert({
       where: { name: roomName },
-      update: { capacity: parseInt(roomCapacity) || 45 },
-      create: { name: roomName, capacity: parseInt(roomCapacity) || 45 }
+      update: { capacity: parseInt(roomCapacity) || 45, collegeId: targetCollegeId },
+      create: { name: roomName, capacity: parseInt(roomCapacity) || 45, collegeId: targetCollegeId }
     });
 
     // C. Find or create Group
     let group = await prisma.group.findFirst({
-      where: { name: groupName }
+      where: { name: groupName, collegeId: targetCollegeId }
     });
     if (!group) {
       group = await prisma.group.create({
-        data: { name: groupName }
+        data: { name: groupName, collegeId: targetCollegeId }
       });
     }
 
@@ -1200,6 +1243,7 @@ app.post('/api/schedules', verifyToken, async (req, res) => {
       where: {
         dayOfWeek: upperDayOfWeek,
         startTime,
+        collegeId: targetCollegeId,
         OR: [{ roomId: room.id }, { lecturerName }]
       }
     });
@@ -1216,7 +1260,8 @@ app.post('/api/schedules', verifyToken, async (req, res) => {
         lecturerName,
         dayOfWeek: upperDayOfWeek,
         startTime,
-        endTime
+        endTime,
+        collegeId: targetCollegeId
       },
       include: {
         subject: true,
@@ -1253,7 +1298,10 @@ app.post('/api/schedules', verifyToken, async (req, res) => {
 // ==========================================
 app.get('/api/groups', async (req, res) => {
   try {
+    const { collegeId } = req.query;
+    const filter = collegeId ? { collegeId: parseInt(collegeId) } : {};
     const groups = await prisma.group.findMany({
+      where: filter,
       orderBy: { name: 'asc' }
     });
     res.status(200).json({ success: true, data: groups });
@@ -1268,20 +1316,35 @@ app.post('/api/groups', verifyToken, async (req, res) => {
     if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN') {
       return res.status(403).json({ success: false, error: 'Forbidden' });
     }
-    const { id, name } = req.body;
+    const { id, name, collegeId } = req.body;
     if (!name) {
       return res.status(400).json({ success: false, error: 'Group name is required' });
     }
 
+    const targetCollegeId = req.user.role === 'SUPER_ADMIN'
+      ? (collegeId ? parseInt(collegeId) : undefined)
+      : req.user.collegeId;
+
+    if (!targetCollegeId) {
+      return res.status(400).json({ success: false, error: 'College ID is required' });
+    }
+
     let group;
     if (id) {
+      if (req.user.role !== 'SUPER_ADMIN') {
+        const existing = await prisma.group.findFirst({
+          where: { id: parseInt(id), collegeId: req.user.collegeId }
+        });
+        if (!existing) return res.status(403).json({ success: false, error: 'Forbidden' });
+      }
+
       group = await prisma.group.update({
         where: { id: parseInt(id) },
         data: { name }
       });
     } else {
       group = await prisma.group.create({
-        data: { name }
+        data: { name, collegeId: targetCollegeId }
       });
     }
     res.status(201).json({ success: true, data: group });
@@ -1297,6 +1360,13 @@ app.delete('/api/groups/:id', verifyToken, async (req, res) => {
       return res.status(403).json({ success: false, error: 'Forbidden' });
     }
     const { id } = req.params;
+
+    if (req.user.role !== 'SUPER_ADMIN') {
+      const existing = await prisma.group.findFirst({
+        where: { id: parseInt(id), collegeId: req.user.collegeId }
+      });
+      if (!existing) return res.status(403).json({ success: false, error: 'Forbidden' });
+    }
 
     const scheduleCount = await prisma.schedule.count({
       where: { groupId: parseInt(id) }
@@ -1328,9 +1398,18 @@ app.delete('/api/groups/:id', verifyToken, async (req, res) => {
 // ==========================================
 // ROOMS CRUD
 // ==========================================
-app.get('/api/rooms', async (req, res) => {
+app.get('/api/rooms', verifyToken, async (req, res) => {
   try {
+    const { collegeId } = req.query;
+    const whereClause = {};
+    if (req.user.role !== 'SUPER_ADMIN') {
+      whereClause.collegeId = req.user.collegeId;
+    } else if (collegeId) {
+      whereClause.collegeId = parseInt(collegeId);
+    }
+
     const rooms = await prisma.room.findMany({
+      where: whereClause,
       orderBy: { name: 'asc' }
     });
     res.status(200).json({ success: true, data: rooms });
@@ -1345,20 +1424,35 @@ app.post('/api/rooms', verifyToken, async (req, res) => {
     if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN') {
       return res.status(403).json({ success: false, error: 'Forbidden' });
     }
-    const { id, name, capacity } = req.body;
+    const { id, name, capacity, collegeId } = req.body;
     if (!name || !capacity) {
       return res.status(400).json({ success: false, error: 'Room name and capacity are required' });
     }
 
+    const targetCollegeId = req.user.role === 'SUPER_ADMIN'
+      ? (collegeId ? parseInt(collegeId) : undefined)
+      : req.user.collegeId;
+
+    if (!targetCollegeId) {
+      return res.status(400).json({ success: false, error: 'College ID is required' });
+    }
+
     let room;
     if (id) {
+      if (req.user.role !== 'SUPER_ADMIN') {
+        const existing = await prisma.room.findFirst({
+          where: { id: parseInt(id), collegeId: req.user.collegeId }
+        });
+        if (!existing) return res.status(403).json({ success: false, error: 'Forbidden' });
+      }
+
       room = await prisma.room.update({
         where: { id: parseInt(id) },
         data: { name, capacity: parseInt(capacity) }
       });
     } else {
       room = await prisma.room.create({
-        data: { name, capacity: parseInt(capacity) }
+        data: { name, capacity: parseInt(capacity), collegeId: targetCollegeId }
       });
     }
     res.status(201).json({ success: true, data: room });
@@ -1374,6 +1468,13 @@ app.delete('/api/rooms/:id', verifyToken, async (req, res) => {
       return res.status(403).json({ success: false, error: 'Forbidden' });
     }
     const { id } = req.params;
+
+    if (req.user.role !== 'SUPER_ADMIN') {
+      const existing = await prisma.room.findFirst({
+        where: { id: parseInt(id), collegeId: req.user.collegeId }
+      });
+      if (!existing) return res.status(403).json({ success: false, error: 'Forbidden' });
+    }
 
     const scheduleCount = await prisma.schedule.count({
       where: { roomId: parseInt(id) }
@@ -1396,6 +1497,30 @@ app.delete('/api/rooms/:id', verifyToken, async (req, res) => {
   } catch (error) {
     console.error('[API] Error deleting room:', error);
     res.status(500).json({ success: false, error: 'Failed to delete room' });
+  }
+});
+
+// ==========================================
+// LECTURERS
+// ==========================================
+app.get('/api/lecturers', verifyToken, async (req, res) => {
+  try {
+    const { collegeId } = req.query;
+    const whereClause = {};
+    if (req.user.role !== 'SUPER_ADMIN') {
+      whereClause.collegeId = req.user.collegeId;
+    } else if (collegeId) {
+      whereClause.collegeId = parseInt(collegeId);
+    }
+
+    const lecturers = await prisma.lecturer.findMany({
+      where: whereClause,
+      orderBy: { name: 'asc' }
+    });
+    res.status(200).json({ success: true, data: lecturers });
+  } catch (error) {
+    console.error('[API] Error fetching lecturers:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch lecturers' });
   }
 });
 
@@ -1781,7 +1906,16 @@ app.get('/api/admin/requests', verifyToken, async (req, res) => {
     if (req.user.role !== 'ADMIN' && req.user.role !== 'SUPER_ADMIN') {
       return res.status(403).json({ success: false, error: 'Forbidden: Admin access required' });
     }
+    const { collegeId } = req.query;
+    const whereClause = {};
+    if (req.user.role !== 'SUPER_ADMIN') {
+      whereClause.schedule = { collegeId: req.user.collegeId };
+    } else if (collegeId) {
+      whereClause.schedule = { collegeId: parseInt(collegeId) };
+    }
+
     const requests = await prisma.rescheduleRequest.findMany({
+      where: whereClause,
       include: {
         lecturer: true,
         schedule: {
@@ -1811,8 +1945,11 @@ app.post('/api/admin/requests/:id/resolve', verifyToken, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid or missing status field' });
     }
 
-    const request = await prisma.rescheduleRequest.findUnique({
-      where: { id: requestId },
+    const request = await prisma.rescheduleRequest.findFirst({
+      where: {
+        id: requestId,
+        ...(req.user.role !== 'SUPER_ADMIN' ? { schedule: { collegeId: req.user.collegeId } } : {})
+      },
       include: {
         schedule: { include: { subject: true, group: true, room: true } },
         lecturer: true
@@ -1820,7 +1957,7 @@ app.post('/api/admin/requests/:id/resolve', verifyToken, async (req, res) => {
     });
 
     if (!request) {
-      return res.status(404).json({ success: false, error: 'Request not found' });
+      return res.status(404).json({ success: false, error: 'Request not found or unauthorized' });
     }
 
     if (request.status !== 'PENDING') {

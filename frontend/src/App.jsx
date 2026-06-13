@@ -189,6 +189,33 @@ function AppLayout() {
       console.error(e);
     }
   }
+  const universityLogoUrl = user?.universityLogo || localStorage.getItem('selectedUniversityLogo');
+
+  const getBrandedTitle = (isAr) => {
+    const uniName = user?.universityName || localStorage.getItem('selectedUniversityName');
+    const colName = user?.collegeName || localStorage.getItem('selectedCollegeName');
+    
+    if (uniName && colName) {
+      if (uniName === colName) return uniName;
+      return `${uniName} - ${colName}`;
+    }
+    return colName || uniName || (isAr ? 'كلية المنار الجامعية' : 'Al-Manar University College');
+  };
+
+  const renderLogo = (size) => {
+    if (universityLogoUrl) {
+      return (
+        <img 
+          src={universityLogoUrl} 
+          alt="Logo" 
+          className={`object-contain rounded-md drop-shadow-[0_0_8px_rgba(255,255,255,0.15)] ${
+            size === 'sm' ? 'w-7 h-7' : 'w-10 h-10'
+          }`} 
+        />
+      );
+    }
+    return <Logo size={size} />;
+  };
 
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
@@ -254,9 +281,9 @@ function AppLayout() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d={isSidebarOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
               </svg>
             </button>
-            <Logo size="sm" />
+            {renderLogo('sm')}
             <span className="text-xs md:text-sm font-black tracking-wider uppercase truncate" style={{ color: 'var(--accent)' }}>
-              {isAr ? 'كلية المنارة الجامعية' : 'Al-Manar University College'}
+              {getBrandedTitle(isAr)}
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -405,9 +432,9 @@ function AppLayout() {
             }}
           >
             <div className="flex items-center gap-2 min-w-0 flex-1">
-              <Logo size="sm" />
+              {renderLogo('sm')}
               <span className="text-xs font-black tracking-wider uppercase truncate" style={{ color: 'var(--accent)' }}>
-                {isAr ? 'كلية المنارة الجامعية' : 'Al-Manar University College'}
+                {getBrandedTitle(isAr)}
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -511,9 +538,9 @@ function AppLayout() {
             }}
           >
             <div className="flex items-center gap-2 min-w-0 flex-1">
-              <Logo size="sm" />
+              {renderLogo('sm')}
               <span className="text-xs font-black tracking-wider uppercase truncate" style={{ color: 'var(--accent)' }}>
-                {isAr ? 'كلية المنارة الجامعية' : 'Al-Manar University College'}
+                {getBrandedTitle(isAr)}
               </span>
             </div>
             <div className="flex items-center gap-2">
