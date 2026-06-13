@@ -12,19 +12,25 @@ export default function LandingPage() {
   const [universities, setUniversities] = useState([]);
   const [activeUniId, setActiveUniId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
   const { i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
 
   useEffect(() => {
     const fetchTenants = async () => {
+      setLoading(true);
+      setError(null);
       try {
         const response = await axios.get(`${API_URL}/api/tenants`);
-        if (response.data.success) {
-          setUniversities(response.data.data);
+        if (response.data && response.data.success) {
+          setUniversities(response.data.data || []);
+        } else {
+          setError(isAr ? 'فشل استجابة الخادم' : 'Server response failure');
         }
-      } catch (error) {
-        console.error('Failed to fetch tenants:', error);
+      } catch (err) {
+        console.error('Failed to fetch tenants:', err);
+        setError(isAr ? 'خطأ في الاتصال بالخادم. يرجى التحقق من الرابط.' : 'Connection error. Please check the API URL.');
         toast.error(isAr ? 'فشل تحميل البيانات' : 'Failed to load data');
       } finally {
         setLoading(false);
@@ -34,6 +40,7 @@ export default function LandingPage() {
   }, [isAr]);
 
   const handleUniClick = (uni) => {
+    if (!uni) return;
     // Dynamically apply theme color
     if (uni.themeColor) {
       document.documentElement.style.setProperty('--accent', uni.themeColor);
@@ -55,8 +62,9 @@ export default function LandingPage() {
   };
 
   const handleCollegeSelect = (uni, college) => {
+    if (!uni) return;
     localStorage.setItem('selectedUniversityId', uni.id);
-    localStorage.setItem('selectedUniversityName', uni.name);
+    localStorage.setItem('selectedUniversityName', uni.name || '');
     
     if (uni.logoUrl) {
       localStorage.setItem('selectedUniversityLogo', uni.logoUrl);
@@ -66,10 +74,10 @@ export default function LandingPage() {
     
     if (college) {
       localStorage.setItem('selectedCollegeId', college.id);
-      localStorage.setItem('selectedCollegeName', college.name);
+      localStorage.setItem('selectedCollegeName', college.name || '');
     } else {
       localStorage.removeItem('selectedCollegeId');
-      localStorage.setItem('selectedCollegeName', uni.name);
+      localStorage.setItem('selectedCollegeName', uni.name || '');
     }
     
     navigate('/login');
@@ -111,8 +119,34 @@ export default function LandingPage() {
         </motion.div>
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 opacity-50">
-             <div className="w-10 h-10 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin mb-4" />
+          <div className="flex flex-col items-center justify-center py-20 px-8 frosted-panel rounded-3xl border border-white/5 bg-white/2 max-w-md w-full text-center">
+             <div className="w-12 h-12 rounded-full border-4 border-[var(--accent)] border-t-transparent animate-spin mb-6 mx-auto" />
+             <p className="text-sm font-bold tracking-wide text-[var(--text-secondary)]">
+               {isAr ? 'جاري الاتصال بالخادم الأكاديمي...' : 'Connecting to the central academic server...'}
+             </p>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-16 px-8 frosted-panel rounded-3xl border border-red-500/20 bg-red-950/10 max-w-md w-full text-center">
+             <div className="text-4xl mb-4">⚠️</div>
+             <h3 className="text-lg font-black text-red-400 mb-2">
+               {isAr ? 'فشل الاتصال' : 'Connection Failed'}
+             </h3>
+             <p className="text-sm text-red-300/85 mb-6 leading-relaxed">
+               {error}
+             </p>
+             <button
+               onClick={() => window.location.reload()}
+               className="btn-ghost px-5 py-2.5 text-xs font-bold uppercase border border-red-500/30 text-red-300 hover:bg-red-500/20 rounded-full transition-all"
+             >
+               {isAr ? 'إعادة المحاولة' : 'Retry'}
+             </button>
+          </div>
+        ) : universities.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 px-8 frosted-panel rounded-3xl border border-white/5 bg-white/2 max-w-md w-full text-center">
+             <div className="text-4xl mb-4">🗂️</div>
+             <p className="text-sm font-bold text-[var(--text-secondary)] leading-relaxed">
+               {isAr ? 'لا توجد جامعات مسجلة حالياً. يرجى إضافتها من لوحة الإدارة.' : 'No institutions registered currently. Please add them from the admin panel.'}
+             </p>
           </div>
         ) : (
           <motion.div 

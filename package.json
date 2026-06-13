@@ -10,7 +10,8 @@
     "dev:frontend": "npm run dev --prefix frontend",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "build:frontend": "npm run build --prefix frontend",
-    "build": "npm run build:frontend"
+    "build": "npm run build:frontend",
+    "seed:prod": "node prisma/seed.js"
   },
   "keywords": [],
   "author": "",
