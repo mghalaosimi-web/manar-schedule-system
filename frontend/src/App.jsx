@@ -32,6 +32,7 @@ import DevPortal from './DevPortal';
 import ErrorBoundary from './ErrorBoundary';
 import AttendanceScanner from './AttendanceScanner';
 import LecturerAttendanceSession from './LecturerAttendanceSession';
+import SuperAdminDashboard from './SuperAdminDashboard';
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -174,7 +175,7 @@ function AppLayout() {
   }, [path]);
   // ─────────────────────────────────────────────────────────────────────────
 
-  const isAdminPath = path.startsWith('/admin');
+  const isAdminPath = path.startsWith('/admin') || path.startsWith('/super-admin');
   const isStudentPath = path.startsWith('/student');
   const isLecturerPath = path.startsWith('/lecturer');
 
@@ -305,6 +306,7 @@ function AppLayout() {
               {navLink('/admin/logs',      '📜', isAr ? 'السجلات' : 'Logs')}
               {user?.role === 'SUPER_ADMIN' && (
                 <>
+                  {navLink('/super-admin/dashboard', '🏢', isAr ? 'المؤسسات (Tenants)' : 'Tenants', '#fbbf24')}
                   {navLink('/admin/god-mode',   '👑', isAr ? 'God Mode'   : 'God Mode',   '#e879f9')}
                   {navLink('/admin/dev-portal', '⌨️', isAr ? 'Dev Portal' : 'Dev Portal', '#60c4ff')}
                   <button
@@ -361,6 +363,7 @@ function AppLayout() {
             <Route path="/admin/logs"       element={<SystemLog />} />
             <Route path="/admin/god-mode"   element={<GodMode />} />
             <Route path="/admin/dev-portal" element={<DevPortal />} />
+            <Route path="/super-admin/dashboard" element={<SuperAdminDashboard />} />
             <Route path="/admin/instructions" element={<Instructions />} />
             <Route path="*" element={<Navigate to="/admin/overview" replace />} />
           </Routes>

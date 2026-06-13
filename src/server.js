@@ -385,6 +385,46 @@ app.get('/api/tenants', async (req, res) => {
   }
 });
 
+// Admin Endpoint: Create University
+app.post('/api/admin/universities', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ success: false, error: 'Requires SUPER_ADMIN privileges' });
+    }
+    const { name, slug, themeColor, logoUrl } = req.body;
+    if (!name || !slug) {
+      return res.status(400).json({ success: false, error: 'Name and slug are required' });
+    }
+    const university = await prisma.university.create({
+      data: { name, slug, themeColor, logoUrl }
+    });
+    res.status(201).json({ success: true, data: university });
+  } catch (error) {
+    console.error('[API] Create university error:', error);
+    res.status(500).json({ success: false, error: 'Failed to create university' });
+  }
+});
+
+// Admin Endpoint: Create College
+app.post('/api/admin/colleges', verifyToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ success: false, error: 'Requires SUPER_ADMIN privileges' });
+    }
+    const { name, slug, location, universityId } = req.body;
+    if (!name || !slug || !universityId) {
+      return res.status(400).json({ success: false, error: 'Name, slug, and universityId are required' });
+    }
+    const college = await prisma.college.create({
+      data: { name, slug, location, universityId: parseInt(universityId) }
+    });
+    res.status(201).json({ success: true, data: college });
+  } catch (error) {
+    console.error('[API] Create college error:', error);
+    res.status(500).json({ success: false, error: 'Failed to create college' });
+  }
+});
+
 // Server-Sent Events (SSE) Live Schedule Update Endpoint
 app.get('/api/schedules/live', (req, res) => {
   res.writeHead(200, {

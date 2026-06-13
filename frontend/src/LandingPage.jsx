@@ -10,10 +10,10 @@ import ThemeSwitcher from './ThemeSwitcher';
 
 export default function LandingPage() {
   const [universities, setUniversities] = useState([]);
-  const [selectedUniversity, setSelectedUniversity] = useState(null);
+  const [activeUniId, setActiveUniId] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const isAr = i18n.language === 'ar';
 
   useEffect(() => {
@@ -22,10 +22,6 @@ export default function LandingPage() {
         const response = await axios.get(`${API_URL}/api/tenants`);
         if (response.data.success) {
           setUniversities(response.data.data);
-          // Auto-select first university if only one
-          if (response.data.data.length === 1) {
-            setSelectedUniversity(response.data.data[0]);
-          }
         }
       } catch (error) {
         console.error('Failed to fetch tenants:', error);
@@ -37,30 +33,56 @@ export default function LandingPage() {
     fetchTenants();
   }, [isAr]);
 
-  const handleCollegeSelect = (college) => {
-    if (!selectedUniversity) return;
+  const handleUniClick = (uni) => {
+    // Dynamically apply theme color
+    if (uni.themeColor) {
+      document.documentElement.style.setProperty('--accent', uni.themeColor);
+      document.documentElement.style.setProperty('--accent-glow', `${uni.themeColor}33`);
+      document.documentElement.style.setProperty('--accent-dim', `${uni.themeColor}1a`);
+    } else {
+      document.documentElement.style.setProperty('--accent', '#3b82f6');
+      document.documentElement.style.setProperty('--accent-glow', 'rgba(59,130,246,0.2)');
+      document.documentElement.style.setProperty('--accent-dim', 'rgba(59,130,246,0.1)');
+    }
+
+    if (!uni.colleges || uni.colleges.length === 0) {
+      handleCollegeSelect(uni, null);
+    } else if (uni.colleges.length === 1) {
+      handleCollegeSelect(uni, uni.colleges[0]);
+    } else {
+      setActiveUniId(activeUniId === uni.id ? null : uni.id);
+    }
+  };
+
+  const handleCollegeSelect = (uni, college) => {
+    localStorage.setItem('selectedUniversityId', uni.id);
+    localStorage.setItem('selectedUniversityName', uni.name);
     
-    // Store selected tenant data in localStorage
-    localStorage.setItem('selectedCollegeId', college.id);
-    localStorage.setItem('selectedCollegeName', college.name);
-    localStorage.setItem('selectedUniversityId', selectedUniversity.id);
-    localStorage.setItem('selectedUniversityName', selectedUniversity.name);
-    if (selectedUniversity.logoUrl) {
-      localStorage.setItem('selectedUniversityLogo', selectedUniversity.logoUrl);
+    if (uni.logoUrl) {
+      localStorage.setItem('selectedUniversityLogo', uni.logoUrl);
+    } else {
+      localStorage.removeItem('selectedUniversityLogo');
     }
     
-    // Proceed to login
+    if (college) {
+      localStorage.setItem('selectedCollegeId', college.id);
+      localStorage.setItem('selectedCollegeName', college.name);
+    } else {
+      localStorage.removeItem('selectedCollegeId');
+      localStorage.setItem('selectedCollegeName', uni.name);
+    }
+    
     navigate('/login');
   };
 
   return (
-    <div dir={isAr ? 'rtl' : 'ltr'} className="min-h-screen bg-[#050505] text-[var(--text-primary)] flex flex-col items-center justify-center relative overflow-hidden font-urbanist selection:bg-[var(--accent)] selection:text-white">
+    <div dir={isAr ? 'rtl' : 'ltr'} className="min-h-screen bg-[#050505] text-[var(--text-primary)] flex flex-col items-center justify-center relative overflow-hidden font-urbanist selection:bg-[var(--accent)] selection:text-white transition-colors duration-700">
       
-      {/* Background Orbs */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] bg-[var(--accent)] opacity-10 rounded-full blur-[120px] mix-blend-screen pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-purple-600 opacity-10 rounded-full blur-[150px] mix-blend-screen pointer-events-none" />
+      {/* Background Ambient Effects */}
+      <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full blur-[120px] mix-blend-screen pointer-events-none transition-colors duration-700 opacity-20" style={{ backgroundColor: 'var(--accent)' }} />
+      <div className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] rounded-full blur-[150px] mix-blend-screen pointer-events-none transition-colors duration-700 opacity-10" style={{ backgroundColor: 'var(--accent)' }} />
       
-      {/* Header Utilities */}
+      {/* Top Utilities */}
       <div className="absolute top-6 right-6 z-50 flex items-center gap-4">
         <ThemeSwitcher />
         <button
@@ -71,111 +93,105 @@ export default function LandingPage() {
         </button>
       </div>
 
-      <motion.div 
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        className="relative z-10 w-full max-w-xl px-6 py-12 flex flex-col items-center"
-      >
-        <div className="mb-10 relative">
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.5, type: 'spring' }}
-            className="flex items-center justify-center"
-          >
-             <Logo size="xl" glow={true} />
-          </motion.div>
-          <motion.div 
-            className="absolute -bottom-2 -right-2 bg-[var(--accent)] text-white text-[9px] font-black tracking-widest px-2 py-0.5 rounded-sm uppercase"
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.6 }}
-          >
-            GATEWAY
-          </motion.div>
-        </div>
-
-        <div className="text-center mb-12">
-          <motion.h1 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="text-4xl md:text-5xl font-black tracking-tight mb-4"
-          >
-            {isAr ? 'اختر بوابتك الأكاديمية' : 'Select Your Academic Gateway'}
-          </motion.h1>
-          <motion.p 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="text-[var(--text-secondary)] text-sm md:text-base max-w-md mx-auto"
-          >
-            {isAr 
-              ? 'يرجى اختيار الكلية التي تنتمي إليها للمتابعة إلى بوابة الدخول الخاصة بك.' 
-              : 'Please select your affiliated college to proceed to your dedicated portal.'}
-          </motion.p>
-        </div>
+      <div className="relative z-10 w-full max-w-4xl px-6 py-12 flex flex-col items-center">
+        
+        {/* Main Title */}
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-16"
+        >
+          <h1 className="text-3xl md:text-5xl font-black tracking-tight mb-3">
+            {isAr ? 'اختر بوابتك' : 'Select Your Portal'}
+          </h1>
+          <p className="text-[var(--text-secondary)] text-sm md:text-base">
+            {isAr ? 'مرحباً بك في النظام المركزي الأكاديمي.' : 'Welcome to the Central Academic System.'}
+          </p>
+        </motion.div>
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-10 opacity-50">
-             <div className="w-8 h-8 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin mb-4" />
-             <p className="text-xs tracking-widest uppercase font-bold">{isAr ? 'جاري التحميل...' : 'Loading...'}</p>
+          <div className="flex flex-col items-center justify-center py-20 opacity-50">
+             <div className="w-10 h-10 rounded-full border-2 border-[var(--accent)] border-t-transparent animate-spin mb-4" />
           </div>
         ) : (
-          <div className="w-full space-y-8">
-            {universities.map((uni, index) => (
+          <motion.div 
+            initial="hidden"
+            animate="show"
+            variants={{
+              hidden: { opacity: 0 },
+              show: { transition: { staggerChildren: 0.1 } }
+            }}
+            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 w-full"
+          >
+            {universities.map((uni) => (
               <motion.div 
                 key={uni.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 + index * 0.1 }}
-                className="w-full flex flex-col gap-4"
+                variants={{
+                  hidden: { opacity: 0, scale: 0.9 },
+                  show: { opacity: 1, scale: 1, transition: { type: 'spring', stiffness: 200, damping: 20 } }
+                }}
+                className="flex flex-col gap-3"
               >
-                <div className="flex items-center gap-3 px-2">
-                  <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent flex-1" />
-                  <h2 className="text-lg font-bold tracking-wide text-white/80">{uni.name}</h2>
-                  <div className="h-px bg-gradient-to-r from-white/20 via-white/20 to-transparent flex-1" />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {uni.colleges.map((college, colIndex) => (
-                    <motion.button
-                      key={college.id}
-                      onClick={() => {
-                        setSelectedUniversity(uni);
-                        handleCollegeSelect(college);
-                      }}
-                      whileHover={{ scale: 1.02, backgroundColor: 'rgba(255,255,255,0.08)' }}
-                      whileTap={{ scale: 0.98 }}
-                      className="group relative overflow-hidden bg-white/5 border border-white/10 rounded-2xl p-5 text-left flex flex-col gap-2 transition-all"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent)]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                      <div className="relative z-10 flex items-center justify-between">
-                        <span className="font-bold text-[15px] leading-tight text-white/90 group-hover:text-white transition-colors">{college.name}</span>
-                        <span className="text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0">
-                          {isAr ? '←' : '→'}
-                        </span>
-                      </div>
-                      {college.location && (
-                        <span className="relative z-10 text-[11px] font-medium text-[var(--text-muted)] tracking-wider uppercase">
-                          📍 {college.location}
-                        </span>
-                      )}
-                    </motion.button>
-                  ))}
+                {/* Institution Card */}
+                <button
+                  onClick={() => handleUniClick(uni)}
+                  className={`relative overflow-hidden flex flex-col items-center justify-center p-8 rounded-3xl border transition-all duration-300 group
+                    ${activeUniId === uni.id 
+                      ? 'bg-white/10 border-white/20 shadow-[0_0_40px_var(--accent-glow)] scale-[1.02]' 
+                      : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/20 hover:shadow-[0_0_30px_var(--accent-glow)] hover:-translate-y-1'
+                    }`}
+                  style={{ minHeight: '220px' }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-t from-[var(--accent-dim)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                   
-                  {uni.colleges.length === 0 && (
-                    <div className="col-span-1 md:col-span-2 text-center py-4 text-sm text-[var(--text-muted)] border border-dashed border-white/10 rounded-xl">
-                      {isAr ? 'لا توجد كليات متاحة حالياً.' : 'No colleges available currently.'}
-                    </div>
+                  <div className="relative z-10 w-24 h-24 mb-4 flex items-center justify-center transition-transform duration-500 group-hover:scale-110">
+                    {uni.logoUrl ? (
+                      <img src={uni.logoUrl} alt={uni.name} className="max-w-full max-h-full object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]" />
+                    ) : (
+                      <Logo size="lg" />
+                    )}
+                  </div>
+                  
+                  <h2 className="relative z-10 text-lg font-black text-white/90 text-center tracking-wide group-hover:text-white">
+                    {uni.name}
+                  </h2>
+                </button>
+
+                {/* Sub-menu (Colleges) */}
+                <AnimatePresence>
+                  {activeUniId === uni.id && uni.colleges?.length > 1 && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0, y: -10 }}
+                      animate={{ opacity: 1, height: 'auto', y: 0 }}
+                      exit={{ opacity: 0, height: 0, y: -10 }}
+                      transition={{ duration: 0.3 }}
+                      className="flex flex-col gap-2 overflow-hidden"
+                    >
+                      {uni.colleges.map((college, idx) => (
+                        <motion.button
+                          key={college.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: idx * 0.05 }}
+                          onClick={() => handleCollegeSelect(uni, college)}
+                          className="w-full text-left bg-black/40 border border-white/5 hover:border-[var(--accent)] hover:bg-[var(--accent-dim)] rounded-xl px-4 py-3 text-[13px] font-bold text-white/80 hover:text-white transition-all flex items-center justify-between group/item"
+                        >
+                          <span className="truncate pr-4">{college.name}</span>
+                          <span className="text-[var(--accent)] opacity-0 -translate-x-2 transition-all duration-300 group-hover/item:opacity-100 group-hover/item:translate-x-0">
+                            {isAr ? '←' : '→'}
+                          </span>
+                        </motion.button>
+                      ))}
+                    </motion.div>
                   )}
-                </div>
+                </AnimatePresence>
+
               </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
-      </motion.div>
+      </div>
     </div>
   );
 }
