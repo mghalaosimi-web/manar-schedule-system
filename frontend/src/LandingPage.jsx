@@ -23,11 +23,19 @@ export default function LandingPage() {
       setError(null);
       try {
         const response = await axios.get(`${API_URL}/api/tenants`);
-        if (response.data && response.data.success) {
-          setUniversities(response.data.data || []);
-        } else {
-          setError(isAr ? 'فشل استجابة الخادم' : 'Server response failure');
+        const rawResponse = response.data;
+        console.log("🔍 SaaS Gateway Debug - Received Payload:", rawResponse);
+
+        let extractedUniversities = [];
+        if (Array.isArray(rawResponse)) {
+          extractedUniversities = rawResponse;
+        } else if (rawResponse && Array.isArray(rawResponse.data)) {
+          extractedUniversities = rawResponse.data;
+        } else if (rawResponse && rawResponse.success && Array.isArray(rawResponse.universities)) {
+          extractedUniversities = rawResponse.universities;
         }
+
+        setUniversities(extractedUniversities);
       } catch (err) {
         console.error('Failed to fetch tenants:', err);
         setError(isAr ? 'فشل الاتصال بالخادم. يرجى التأكد من اتصال الشبكة' : 'Connection error. Please check the network connection.');
